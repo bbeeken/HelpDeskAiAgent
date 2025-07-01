@@ -1,18 +1,24 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException
+import logging
 from db.models import Ticket
+
+logger = logging.getLogger(__name__)
 
 
 def get_ticket(db: Session, ticket_id: int):
+    logger.info("Fetching ticket %s", ticket_id)
     return db.query(Ticket).filter(Ticket.Ticket_ID == ticket_id).first()
 
 
 def list_tickets(db: Session, skip: int = 0, limit: int = 10):
+    logger.info("Listing tickets skip=%s limit=%s", skip, limit)
     return db.query(Ticket).offset(skip).limit(limit).all()
 
 
 def create_ticket(db: Session, ticket_obj: Ticket):
+    logger.info("Creating ticket")
 
     db.add(ticket_obj)
     try:
@@ -20,6 +26,7 @@ def create_ticket(db: Session, ticket_obj: Ticket):
         db.refresh(ticket_obj)
     except SQLAlchemyError as e:
         db.rollback()
+        logger.exception("Failed to create ticket")
         raise HTTPException(status_code=500, detail=f"Failed to create ticket: {e}")
     return ticket_obj
 
@@ -34,9 +41,11 @@ def update_ticket(db: Session, ticket_id: int, updates: dict) -> Ticket | None:
     try:
         db.commit()
         db.refresh(ticket)
+        logger.info("Updated ticket %s", ticket_id)
         return ticket
     except Exception:
         db.rollback()
+        logger.exception("Failed to update ticket %s", ticket_id)
         raise
 
 
@@ -47,17 +56,21 @@ def delete_ticket(db: Session, ticket_id: int) -> bool:
     try:
         db.delete(ticket)
         db.commit()
+        logger.info("Deleted ticket %s", ticket_id)
         return True
     except Exception:
         db.rollback()
+        logger.exception("Failed to delete ticket %s", ticket_id)
         raise
 
 
 def search_tickets(db: Session, query: str, limit: int = 10):
     like = f"%{query}%"
+    logger.info("Searching tickets for '%s'", query)
     return (
         db.query(Ticket)
         .filter((Ticket.Subject.ilike(like)) | (Ticket.Ticket_Body.ilike(like)))
         .limit(limit)
         .all()
     )
+
