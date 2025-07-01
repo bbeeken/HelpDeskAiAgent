@@ -1,20 +1,27 @@
 import os
 from datetime import datetime, timedelta
 
-from fastapi.testclient import TestClient
+import pytest
+from httpx import AsyncClient
 from main import app
 from db.models import Ticket
 from db.mssql import SessionLocal
-from tools.ticket_tools import create_ticket
+from services.ticket_service import TicketService
 
 os.environ.setdefault("OPENAI_API_KEY", "test")
-os.environ.setdefault("DB_CONN_STRING", "sqlite:///:memory:")
+os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
 
-client = TestClient(app)
 
-def _add_ticket(**kwargs):
-    db = SessionLocal()
-    try:
+import pytest_asyncio
+
+
+@pytest_asyncio.fixture
+async def client():
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
+
+async def _add_ticket(**kwargs):
+    async with SessionLocal() as db:
         ticket = Ticket(
             Subject="subj",
             Ticket_Body="body",
@@ -25,63 +32,69 @@ def _add_ticket(**kwargs):
             Assigned_Email=kwargs.get("Assigned_Email"),
             Created_Date=kwargs.get("Created_Date", datetime.utcnow()),
         )
-        create_ticket(db, ticket)
+
+        await create_ticket(db, ticket)
+
         return ticket
-    finally:
-        db.close()
 
-def test_analytics_status():
-    _add_ticket(Ticket_Status_ID=1)
-    _add_ticket(Ticket_Status_ID=1)
-    _add_ticket(Ticket_Status_ID=2)
+@pytest.mark.asyncio
+async def test_analytics_status(client: AsyncClient):
+    await _add_ticket(Ticket_Status_ID=1)
+    await _add_ticket(Ticket_Status_ID=1)
+    await _add_ticket(Ticket_Status_ID=2)
 
-    resp = client.get("/analytics/status")
+    resp = await client.get("/analytics/status")
     assert resp.status_code == 200
     data = {item[0]: item[1] for item in resp.json()}
     assert data == {1: 2, 2: 1}
 
-def test_analytics_open_by_site():
-    _add_ticket(Site_ID=1, Ticket_Status_ID=1)
-    _add_ticket(Site_ID=1, Ticket_Status_ID=2)
-    _add_ticket(Site_ID=2, Ticket_Status_ID=1)
-    _add_ticket(Site_ID=2, Ticket_Status_ID=3)  # closed
+@pytest.mark.asyncio
+async def test_analytics_open_by_site(client: AsyncClient):
+    await _add_ticket(Site_ID=1, Ticket_Status_ID=1)
+    await _add_ticket(Site_ID=1, Ticket_Status_ID=2)
+    await _add_ticket(Site_ID=2, Ticket_Status_ID=1)
+    await _add_ticket(Site_ID=2, Ticket_Status_ID=3)  # closed
 
-    resp = client.get("/analytics/open_by_site")
+    resp = await client.get("/analytics/open_by_site")
     assert resp.status_code == 200
     data = {item[0]: item[1] for item in resp.json()}
     assert data == {1: 2, 2: 1}
 
-def test_analytics_sla_breaches():
+@pytest.mark.asyncio
+async def test_analytics_sla_breaches(client: AsyncClient):
     old = datetime.utcnow() - timedelta(days=3)
-    _add_ticket(Created_Date=old)
-    _add_ticket()
-    resp = client.get("/analytics/sla_breaches", params={"sla_days": 2})
+    await _add_ticket(Created_Date=old)
+    await _add_ticket()
+    resp = await client.get("/analytics/sla_breaches", params={"sla_days": 2})
     assert resp.status_code == 200
     assert resp.json() == {"breaches": 1}
 
-def test_analytics_open_by_user():
-    _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=1)
-    _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=1)
-    _add_ticket(Assigned_Email="other@example.com", Ticket_Status_ID=1)
-    _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=3)
+@pytest.mark.asyncio
+async def test_analytics_open_by_user(client: AsyncClient):
+    await _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=1)
+    await _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=1)
+    await _add_ticket(Assigned_Email="other@example.com", Ticket_Status_ID=1)
+    await _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=3)
 
-    resp = client.get("/analytics/open_by_user")
+    resp = await client.get("/analytics/open_by_user")
     assert resp.status_code == 200
     data = {item[0]: item[1] for item in resp.json()}
     assert data == {"tech@example.com": 2, "other@example.com": 1}
 
-def test_analytics_waiting_on_user():
-    _add_ticket(Ticket_Status_ID=4, Ticket_Contact_Email="user1@example.com")
-    _add_ticket(Ticket_Status_ID=4, Ticket_Contact_Email="user1@example.com")
-    _add_ticket(Ticket_Status_ID=4, Ticket_Contact_Email="user2@example.com")
-    _add_ticket(Ticket_Status_ID=1, Ticket_Contact_Email="user1@example.com")
+@pytest.mark.asyncio
+async def test_analytics_waiting_on_user(client: AsyncClient):
+    await _add_ticket(Ticket_Status_ID=4, Ticket_Contact_Email="user1@example.com")
+    await _add_ticket(Ticket_Status_ID=4, Ticket_Contact_Email="user1@example.com")
+    await _add_ticket(Ticket_Status_ID=4, Ticket_Contact_Email="user2@example.com")
+    await _add_ticket(Ticket_Status_ID=1, Ticket_Contact_Email="user1@example.com")
 
-    resp = client.get("/analytics/waiting_on_user")
+    resp = await client.get("/analytics/waiting_on_user")
     assert resp.status_code == 200
     data = {item[0]: item[1] for item in resp.json()}
     assert data == {"user1@example.com": 2, "user2@example.com": 1}
 
-def test_ai_suggest_response(monkeypatch):
+@pytest.mark.asyncio
+async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
     def fake_create(*args, **kwargs):
         return {"choices": [{"message": {"content": "ok"}}]}
     import openai
@@ -91,7 +104,7 @@ def test_ai_suggest_response(monkeypatch):
         "Subject": "AI", "Ticket_Body": "body",
         "Ticket_Contact_Name": "Tester", "Ticket_Contact_Email": "t@example.com"
     }
-    ticket = client.post("/ticket", json=payload).json()
-    resp = client.post("/ai/suggest_response", params={"context": "test"}, json=ticket)
+    ticket = (await client.post("/ticket", json=payload)).json()
+    resp = await client.post("/ai/suggest_response", params={"context": "test"}, json=ticket)
     assert resp.status_code == 200
     assert resp.json()["response"] == "ok"

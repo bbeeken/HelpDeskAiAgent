@@ -1,6 +1,8 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from db.models import TicketCategory
 
 
-def list_categories(db: Session):
-    return db.query(TicketCategory).all()
+async def list_categories(db: AsyncSession):
+    result = await db.execute(select(TicketCategory))
+    return result.scalars().all()

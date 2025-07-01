@@ -2,11 +2,14 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from api.routes import router
+
 from datetime import datetime
 from errors import ErrorResponse, NotFoundError, ValidationError, DatabaseError
 
+
 app = FastAPI(title="Truck Stop MCP Helpdesk API")
 app.include_router(router)
+
 
 
 @app.exception_handler(NotFoundError)
@@ -40,3 +43,4 @@ async def handle_database(request: Request, exc: DatabaseError):
         timestamp=datetime.utcnow(),
     )
     return JSONResponse(status_code=500, content=jsonable_encoder(resp))
+

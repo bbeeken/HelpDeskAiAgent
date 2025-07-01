@@ -1,21 +1,22 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from errors import DatabaseError
 from db.models import TicketMessage
 from datetime import datetime
 
 
-def get_ticket_messages(db: Session, ticket_id: int):
-    return (
-        db.query(TicketMessage)
+async def get_ticket_messages(db: AsyncSession, ticket_id: int):
+    result = await db.execute(
+        select(TicketMessage)
         .filter(TicketMessage.Ticket_ID == ticket_id)
         .order_by(TicketMessage.DateTimeStamp)
-        .all()
     )
+    return result.scalars().all()
 
 
-def post_ticket_message(
-    db: Session, ticket_id: int, message: str, sender_code: str, sender_name: str
+async def post_ticket_message(
+    db: AsyncSession, ticket_id: int, message: str, sender_code: str, sender_name: str
 ):
     msg = TicketMessage(
         Ticket_ID=ticket_id,
@@ -27,9 +28,11 @@ def post_ticket_message(
 
     db.add(msg)
     try:
-        db.commit()
-        db.refresh(msg)
+        await db.commit()
+        await db.refresh(msg)
     except SQLAlchemyError as e:
+
         db.rollback()
         raise DatabaseError("Failed to save message", str(e))
+
     return msg

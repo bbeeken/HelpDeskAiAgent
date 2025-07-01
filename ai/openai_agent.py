@@ -1,6 +1,10 @@
 import openai
 from openai import OpenAIError, APITimeoutError
-from config import OPENAI_API_KEY
+from config import (
+    OPENAI_API_KEY,
+    OPENAI_MODEL_NAME,
+    OPENAI_TIMEOUT,
+)
 
 
 def suggest_ticket_response(ticket: dict, context: str = "") -> str:
@@ -16,9 +20,9 @@ def suggest_ticket_response(ticket: dict, context: str = "") -> str:
     )
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o",
+            model=OPENAI_MODEL_NAME,
             messages=[{"role": "system", "content": prompt}],
-            timeout=15,
+            timeout=OPENAI_TIMEOUT,
         )
         return response["choices"][0]["message"]["content"]
     except APITimeoutError:
