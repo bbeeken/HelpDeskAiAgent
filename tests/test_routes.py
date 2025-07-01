@@ -32,3 +32,5 @@ def test_create_and_get_ticket():
 def test_get_ticket_not_found():
     resp = client.get("/ticket/999")
     assert resp.status_code == 404
+    data = resp.json()
+    assert data["error_code"] == "NOT_FOUND"

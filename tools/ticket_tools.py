@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from fastapi import HTTPException
+from errors import DatabaseError
 from db.models import Ticket
 
 
@@ -20,7 +20,7 @@ def create_ticket(db: Session, ticket_obj: Ticket):
         db.refresh(ticket_obj)
     except SQLAlchemyError as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create ticket: {e}")
+        raise DatabaseError("Failed to create ticket", str(e))
     return ticket_obj
 
 

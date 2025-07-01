@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from db.mssql import SessionLocal
 
@@ -29,12 +29,12 @@ from tools.analysis_tools import (
 
 from pydantic import BaseModel
 from typing import List
+from errors import NotFoundError
 
 
 from schemas.ticket import TicketOut, TicketCreate
 
 from datetime import datetime
-from typing import List
 
 
 router = APIRouter()
@@ -58,7 +58,7 @@ class MessageIn(BaseModel):
 def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)):
     ticket = get_ticket(db, ticket_id)
     if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        raise NotFoundError("Ticket not found")
     return ticket
 
 
@@ -92,14 +92,14 @@ def api_update_ticket(
 ):
     ticket = update_ticket(db, ticket_id, updates)
     if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        raise NotFoundError("Ticket not found")
     return ticket
 
 
 @router.delete("/ticket/{ticket_id}")
 def api_delete_ticket(ticket_id: int, db: Session = Depends(get_db)):
     if not delete_ticket(db, ticket_id):
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        raise NotFoundError("Ticket not found")
     return {"deleted": True}
 
 
@@ -107,7 +107,7 @@ def api_delete_ticket(ticket_id: int, db: Session = Depends(get_db)):
 def api_get_asset(asset_id: int, db: Session = Depends(get_db)):
     asset = get_asset(db, asset_id)
     if not asset:
-        raise HTTPException(status_code=404, detail="Asset not found")
+        raise NotFoundError("Asset not found")
     return asset
 
 
@@ -122,7 +122,7 @@ def api_list_assets(
 def api_get_vendor(vendor_id: int, db: Session = Depends(get_db)):
     vendor = get_vendor(db, vendor_id)
     if not vendor:
-        raise HTTPException(status_code=404, detail="Vendor not found")
+        raise NotFoundError("Vendor not found")
     return vendor
 
 
@@ -137,7 +137,7 @@ def api_list_vendors(
 def api_get_site(site_id: int, db: Session = Depends(get_db)):
     site = get_site(db, site_id)
     if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
+        raise NotFoundError("Site not found")
     return site
 
 
