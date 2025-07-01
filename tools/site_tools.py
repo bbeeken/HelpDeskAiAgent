@@ -1,13 +1,20 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+
+from sqlalchemy.orm import Session
+import logging
+
 from db.models import Site
 
-
-async def get_site(db: AsyncSession, site_id: int):
-    return await db.get(Site, site_id)
+logger = logging.getLogger(__name__)
 
 
-async def list_sites(db: AsyncSession, skip: int = 0, limit: int = 10):
-    result = await db.execute(select(Site).offset(skip).limit(limit))
-    return result.scalars().all()
+
+def get_site(db: Session, site_id: int):
+    logger.info("Fetching site %s", site_id)
+    return db.query(Site).filter(Site.ID == site_id).first()
+
+
+def list_sites(db: Session, skip: int = 0, limit: int = 10):
+    logger.info("Listing sites skip=%s limit=%s", skip, limit)
+    return db.query(Site).offset(skip).limit(limit).all()
+
 

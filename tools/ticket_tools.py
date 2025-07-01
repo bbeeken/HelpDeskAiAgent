@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from errors import DatabaseError
+from fastapi import HTTPException
+import logging
 
 from db.models import Ticket
 from services.ticket_service import TicketService
@@ -13,19 +14,23 @@ from services.ticket_service import TicketService
 async def get_ticket(db: AsyncSession, ticket_id: int):
     return await db.get(Ticket, ticket_id)
 
-
-async def list_tickets(db: AsyncSession, skip: int = 0, limit: int = 10):
-    result = await db.execute(select(Ticket).offset(skip).limit(limit))
-    return result.scalars().all()
+logger = logging.getLogger(__name__)
 
 
-    query = db.query(Ticket)
-    total = query.count()
-    items = query.offset(skip).limit(limit).all()
-    return items, total
+
+def get_ticket(db: Session, ticket_id: int):
+    logger.info("Fetching ticket %s", ticket_id)
+    return db.query(Ticket).filter(Ticket.Ticket_ID == ticket_id).first()
 
 
-async def create_ticket(db: AsyncSession, ticket_obj: Ticket):
+def list_tickets(db: Session, skip: int = 0, limit: int = 10):
+    logger.info("Listing tickets skip=%s limit=%s", skip, limit)
+    return db.query(Ticket).offset(skip).limit(limit).all()
+
+
+def create_ticket(db: Session, ticket_obj: Ticket):
+    logger.info("Creating ticket")
+
 
     db.add(ticket_obj)
     try:
@@ -34,7 +39,9 @@ async def create_ticket(db: AsyncSession, ticket_obj: Ticket):
     except SQLAlchemyError as e:
 
         db.rollback()
-        raise DatabaseError("Failed to create ticket", str(e))
+
+        logger.exception("Failed to create ticket")
+        raise HTTPException(status_code=500, detail=f"Failed to create ticket: {e}")
 
     return ticket_obj
 
@@ -47,11 +54,15 @@ async def update_ticket(db: AsyncSession, ticket_id: int, updates: dict) -> Tick
         if hasattr(ticket, key):
             setattr(ticket, key, value)
     try:
-        await db.commit()
-        await db.refresh(ticket)
+
+        db.commit()
+        db.refresh(ticket)
+        logger.info("Updated ticket %s", ticket_id)
         return ticket
     except Exception:
-        await db.rollback()
+        db.rollback()
+        logger.exception("Failed to update ticket %s", ticket_id)
+
         raise
 
 
@@ -60,20 +71,27 @@ async def delete_ticket(db: AsyncSession, ticket_id: int) -> bool:
     if not ticket:
         return False
     try:
-        await db.delete(ticket)
-        await db.commit()
+
+        db.delete(ticket)
+        db.commit()
+        logger.info("Deleted ticket %s", ticket_id)
         return True
     except Exception:
-        await db.rollback()
+        db.rollback()
+        logger.exception("Failed to delete ticket %s", ticket_id)
+
         raise
 
 
 async def search_tickets(db: AsyncSession, query: str, limit: int = 10):
     like = f"%{query}%"
-    result = await db.execute(
-        select(Ticket)
+
+    logger.info("Searching tickets for '%s'", query)
+    return (
+        db.query(Ticket)
+
         .filter((Ticket.Subject.ilike(like)) | (Ticket.Ticket_Body.ilike(like)))
         .limit(limit)
     )
-    return result.scalars().all()
+
 

@@ -1,6 +1,10 @@
 import importlib
 import os
 
+import logging
+from dotenv import load_dotenv
+
+
 CONFIG_ENV = os.getenv("CONFIG_ENV", "dev").lower()
 module_name = f"config_{CONFIG_ENV}"
 try:
@@ -24,4 +28,10 @@ GRAPH_ENABLED = all(
 
 
 __all__ = [name for name in globals() if name.isupper()]
+
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 

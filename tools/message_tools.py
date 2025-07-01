@@ -4,11 +4,17 @@ from sqlalchemy.exc import SQLAlchemyError
 from errors import DatabaseError
 from db.models import TicketMessage
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-async def get_ticket_messages(db: AsyncSession, ticket_id: int):
-    result = await db.execute(
-        select(TicketMessage)
+
+def get_ticket_messages(db: Session, ticket_id: int):
+    logger.info("Fetching messages for ticket %s", ticket_id)
+    return (
+        db.query(TicketMessage)
+
         .filter(TicketMessage.Ticket_ID == ticket_id)
         .order_by(TicketMessage.DateTimeStamp)
     )
@@ -28,11 +34,17 @@ async def post_ticket_message(
 
     db.add(msg)
     try:
-        await db.commit()
-        await db.refresh(msg)
+
+        db.commit()
+        db.refresh(msg)
+        logger.info("Posted message to ticket %s", ticket_id)
+
     except SQLAlchemyError as e:
 
         db.rollback()
-        raise DatabaseError("Failed to save message", str(e))
+
+        logger.exception("Failed to save ticket message for %s", ticket_id)
+        raise HTTPException(status_code=500, detail=f"Failed to save message: {e}")
 
     return msg
+

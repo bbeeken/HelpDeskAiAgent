@@ -1,4 +1,5 @@
 import openai
+import logging
 from openai import OpenAIError, APITimeoutError
 from config import (
     OPENAI_API_KEY,
@@ -6,9 +7,13 @@ from config import (
     OPENAI_TIMEOUT,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def suggest_ticket_response(ticket: dict, context: str = "") -> str:
+    logger.info("Requesting AI response for ticket %s", ticket.get("Ticket_ID"))
     if not OPENAI_API_KEY:
+        logger.error("OPENAI_API_KEY environment variable not set")
         raise RuntimeError("OPENAI_API_KEY environment variable not set")
     openai.api_key = OPENAI_API_KEY
 
@@ -24,9 +29,14 @@ def suggest_ticket_response(ticket: dict, context: str = "") -> str:
             messages=[{"role": "system", "content": prompt}],
             timeout=OPENAI_TIMEOUT,
         )
-        return response["choices"][0]["message"]["content"]
+        result = response["choices"][0]["message"]["content"]
+        logger.info("AI response received for ticket %s", ticket.get("Ticket_ID"))
+        return result
     except APITimeoutError:
+        logger.exception("OpenAI request timed out")
         return "OpenAI request timed out."
 
     except OpenAIError as exc:
+        logger.exception("OpenAI API error")
         return f"OpenAI API error: {exc}"
+

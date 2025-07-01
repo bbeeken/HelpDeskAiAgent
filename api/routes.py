@@ -2,6 +2,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+import logging
+
 from db.mssql import SessionLocal
 
 
@@ -40,6 +42,7 @@ from datetime import datetime
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def get_db():
@@ -72,11 +75,13 @@ class MessageIn(BaseModel):
 
 @router.get("/ticket/{ticket_id}", response_model=TicketOut)
 
-async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)):
-    ticket = await get_ticket(db, ticket_id)
-
+def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    logger.info("API get ticket %s", ticket_id)
+    ticket = get_ticket(db, ticket_id)
     if not ticket:
-        raise NotFoundError("Ticket not found")
+        logger.warning("Ticket %s not found", ticket_id)
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
     return ticket
 
 
@@ -85,7 +90,9 @@ async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)):
 async def api_list_tickets(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
 ):
-    return await list_tickets(db, skip, limit)
+
+    logger.info("API list tickets skip=%s limit=%s", skip, limit)
+    return list_tickets(db, skip, limit)
 
 
 
@@ -93,9 +100,10 @@ async def api_list_tickets(
 
 @router.get("/tickets/search", response_model=List[TicketOut])
 
-async def api_search_tickets(q: str, limit: int = 10, db: AsyncSession = Depends(get_db)):
+def api_search_tickets(q: str, limit: int = 10, db: Session = Depends(get_db)):
+    logger.info("API search tickets query=%s limit=%s", q, limit)
+    return search_tickets(db, q, limit)
 
-    return await search_tickets(db, q, limit)
 
 
 @router.post("/ticket", response_model=TicketOut)
@@ -103,7 +111,10 @@ async def api_create_ticket(ticket: TicketCreate, db: AsyncSession = Depends(get
     from db.models import Ticket
 
     obj = Ticket(**ticket.dict(), Created_Date=datetime.utcnow())
-    created = await create_ticket(db, obj)
+
+    logger.info("API create ticket")
+    created = create_ticket(db, obj)
+
     return created
 
 
@@ -111,10 +122,13 @@ async def api_create_ticket(ticket: TicketCreate, db: AsyncSession = Depends(get
 async def api_update_ticket(
     ticket_id: int, updates: dict, db: AsyncSession = Depends(get_db)
 ):
-    ticket = await update_ticket(db, ticket_id, updates)
 
+    logger.info("API update ticket %s", ticket_id)
+    ticket = update_ticket(db, ticket_id, updates)
     if not ticket:
-        raise NotFoundError("Ticket not found")
+        logger.warning("Ticket %s not found for update", ticket_id)
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
     return ticket
 
 
@@ -122,19 +136,25 @@ async def api_update_ticket(
 @router.delete("/ticket/{ticket_id}")
 
 def api_delete_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    logger.info("API delete ticket %s", ticket_id)
     if not delete_ticket(db, ticket_id):
-        raise NotFoundError("Ticket not found")
+
+        logger.warning("Ticket %s not found for delete", ticket_id)
+        raise HTTPException(status_code=404, detail="Ticket not found")
 
     return {"deleted": True}
 
 
 
 @router.get("/asset/{asset_id}")
-async def api_get_asset(asset_id: int, db: AsyncSession = Depends(get_db)):
-    asset = await get_asset(db, asset_id)
 
+def api_get_asset(asset_id: int, db: Session = Depends(get_db)):
+    logger.info("API get asset %s", asset_id)
+    asset = get_asset(db, asset_id)
     if not asset:
-        raise NotFoundError("Asset not found")
+        logger.warning("Asset %s not found", asset_id)
+        raise HTTPException(status_code=404, detail="Asset not found")
+
     return asset
 
 
@@ -143,15 +163,19 @@ async def api_get_asset(asset_id: int, db: AsyncSession = Depends(get_db)):
 async def api_list_assets(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
 ):
-    return await list_assets(db, skip, limit)
+
+    logger.info("API list assets skip=%s limit=%s", skip, limit)
+    return list_assets(db, skip, limit)
 
 
 @router.get("/vendor/{vendor_id}")
-async def api_get_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)):
-    vendor = await get_vendor(db, vendor_id)
-
+def api_get_vendor(vendor_id: int, db: Session = Depends(get_db)):
+    logger.info("API get vendor %s", vendor_id)
+    vendor = get_vendor(db, vendor_id)
     if not vendor:
-        raise NotFoundError("Vendor not found")
+        logger.warning("Vendor %s not found", vendor_id)
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
     return vendor
 
 
@@ -160,15 +184,19 @@ async def api_get_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)):
 async def api_list_vendors(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
 ):
-    return await list_vendors(db, skip, limit)
+
+    logger.info("API list vendors skip=%s limit=%s", skip, limit)
+    return list_vendors(db, skip, limit)
 
 
 @router.get("/site/{site_id}")
-async def api_get_site(site_id: int, db: AsyncSession = Depends(get_db)):
-    site = await get_site(db, site_id)
-
+def api_get_site(site_id: int, db: Session = Depends(get_db)):
+    logger.info("API get site %s", site_id)
+    site = get_site(db, site_id)
     if not site:
-        raise NotFoundError("Site not found")
+        logger.warning("Site %s not found", site_id)
+        raise HTTPException(status_code=404, detail="Site not found")
+
     return site
 
 
@@ -177,31 +205,42 @@ async def api_get_site(site_id: int, db: AsyncSession = Depends(get_db)):
 async def api_list_sites(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
 ):
-    return await list_sites(db, skip, limit)
+
+    logger.info("API list sites skip=%s limit=%s", skip, limit)
+    return list_sites(db, skip, limit)
 
 
 @router.get("/categories")
-async def api_list_categories(db: AsyncSession = Depends(get_db)):
-    return await list_categories(db)
+def api_list_categories(db: Session = Depends(get_db)):
+    logger.info("API list categories")
+    return list_categories(db)
 
 
 @router.get("/statuses")
-async def api_list_statuses(db: AsyncSession = Depends(get_db)):
-    return await list_statuses(db)
+def api_list_statuses(db: Session = Depends(get_db)):
+    logger.info("API list statuses")
+    return list_statuses(db)
+
 
 
 @router.get("/ticket/{ticket_id}/attachments")
 async def api_get_ticket_attachments(
     ticket_id: int, db: AsyncSession = Depends(get_db)
 ):
-    return await get_ticket_attachments(db, ticket_id)
+
+    logger.info("API get attachments for ticket %s", ticket_id)
+    return get_ticket_attachments(db, ticket_id)
+
 
 
 @router.get("/ticket/{ticket_id}/messages")
 async def api_get_ticket_messages(
     ticket_id: int, db: AsyncSession = Depends(get_db)
 ):
-    return await get_ticket_messages(db, ticket_id)
+
+    logger.info("API get messages for ticket %s", ticket_id)
+    return get_ticket_messages(db, ticket_id)
+
 
 
 @router.post("/ticket/{ticket_id}/messages")
@@ -212,7 +251,8 @@ async def api_post_ticket_message(
     db: AsyncSession = Depends(get_db),
 ):
 
-    return await post_ticket_message(
+    logger.info("API post message to ticket %s", ticket_id)
+    return post_ticket_message(
 
         db, ticket_id, msg.message, msg.sender_code, msg.sender_name
     )
@@ -221,7 +261,9 @@ async def api_post_ticket_message(
 
 
 @router.post("/ai/suggest_response")
-async def api_ai_suggest_response(ticket: TicketOut, context: str = ""):
+
+def api_ai_suggest_response(ticket: TicketOut, context: str = ""):
+    logger.info("API AI suggest response")
 
     return {"response": ai_suggest_response(ticket.dict(), context)}
 
@@ -232,26 +274,32 @@ async def api_ai_suggest_response(ticket: TicketOut, context: str = ""):
 
 @router.get("/analytics/status")
 
-async def api_tickets_by_status(db: AsyncSession = Depends(get_db)):
-    return await tickets_by_status(db)
+def api_tickets_by_status(db: Session = Depends(get_db)):
+    logger.info("API analytics tickets by status")
+    return tickets_by_status(db)
 
 
 @router.get("/analytics/open_by_site")
-async def api_open_tickets_by_site(db: AsyncSession = Depends(get_db)):
-    return await open_tickets_by_site(db)
+def api_open_tickets_by_site(db: Session = Depends(get_db)):
+    logger.info("API analytics open tickets by site")
+    return open_tickets_by_site(db)
 
 
 @router.get("/analytics/sla_breaches")
-async def api_sla_breaches(sla_days: int = 2, db: AsyncSession = Depends(get_db)):
-    return {"breaches": await sla_breaches(db, sla_days)}
+def api_sla_breaches(sla_days: int = 2, db: Session = Depends(get_db)):
+    logger.info("API analytics SLA breaches sla_days=%s", sla_days)
+    return {"breaches": sla_breaches(db, sla_days)}
 
 
 @router.get("/analytics/open_by_user")
-async def api_open_tickets_by_user(db: AsyncSession = Depends(get_db)):
-    return await open_tickets_by_user(db)
+def api_open_tickets_by_user(db: Session = Depends(get_db)):
+    logger.info("API analytics open tickets by user")
+    return open_tickets_by_user(db)
 
 
 @router.get("/analytics/waiting_on_user")
-async def api_tickets_waiting_on_user(db: AsyncSession = Depends(get_db)):
-    return await tickets_waiting_on_user(db)
+def api_tickets_waiting_on_user(db: Session = Depends(get_db)):
+    logger.info("API analytics tickets waiting on user")
+    return tickets_waiting_on_user(db)
+
 

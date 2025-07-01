@@ -1,8 +1,15 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+
+from sqlalchemy.orm import Session
+import logging
+
 from db.models import TicketStatus
 
+logger = logging.getLogger(__name__)
 
-async def list_statuses(db: AsyncSession):
-    result = await db.execute(select(TicketStatus))
-    return result.scalars().all()
+
+
+def list_statuses(db: Session):
+    logger.info("Listing ticket statuses")
+    return db.query(TicketStatus).all()
+
+
