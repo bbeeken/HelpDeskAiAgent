@@ -3,6 +3,7 @@ from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
+
 class Ticket(Base):
     __tablename__ = "Tickets_Master"
     Ticket_ID = Column(Integer, primary_key=True, index=True)
@@ -21,6 +22,7 @@ class Ticket(Base):
     Assigned_Vendor_ID = Column(Integer)
     Resolution = Column(Text)
 
+
 class Asset(Base):
     __tablename__ = "Assets"
     ID = Column(Integer, primary_key=True, index=True)
@@ -31,12 +33,14 @@ class Asset(Base):
     Manufacturer = Column(String)
     Site_ID = Column(Integer)
 
+
 class Vendor(Base):
     __tablename__ = "Vendors"
     ID = Column(Integer, primary_key=True, index=True)
     Name = Column(String)
     Site_ID = Column(Integer)
     Asset_Category_ID = Column(Integer)
+
 
 class TicketAttachment(Base):
     __tablename__ = "Ticket_Attachments"
@@ -45,6 +49,7 @@ class TicketAttachment(Base):
     Name = Column(String)
     WebURl = Column(String)
     UploadDateTime = Column(DateTime)
+
 
 class TicketMessage(Base):
     __tablename__ = "Ticket_Messages"
@@ -55,6 +60,7 @@ class TicketMessage(Base):
     SenderUserName = Column(String)
     DateTimeStamp = Column(DateTime)
 
+
 class Site(Base):
     __tablename__ = "Sites"
     ID = Column(Integer, primary_key=True, index=True)
@@ -62,10 +68,12 @@ class Site(Base):
     City = Column(String)
     State = Column(String)
 
+
 class TicketCategory(Base):
     __tablename__ = "Ticket_Categories"
     ID = Column(Integer, primary_key=True, index=True)
     Label = Column(String)
+
 
 class TicketStatus(Base):
     __tablename__ = "Ticket_Status"

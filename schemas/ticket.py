@@ -21,7 +21,9 @@ class TicketBase(BaseModel):
 
 class TicketCreate(TicketBase):
     """Schema used when creating a new ticket."""
+
     pass
+
 
 class TicketIn(BaseModel):
     Subject: Optional[str] = None
@@ -38,6 +40,7 @@ class TicketIn(BaseModel):
     Severity_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[str] = None
+
 
 class TicketOut(TicketIn):
     Ticket_ID: int
