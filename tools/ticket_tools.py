@@ -26,5 +26,16 @@ def delete_ticket(db: Session, ticket_id: int) -> bool:
     return TicketService(db).delete_ticket(ticket_id)
 
 
+def _escape_wildcards(query: str) -> str:
+    """Escape SQL wildcard characters in a LIKE pattern."""
+    return (
+        query.replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
+
+
 def search_tickets(db: Session, query: str, limit: int = 10):
+
     return TicketService(db).search_tickets(query, limit)
+
