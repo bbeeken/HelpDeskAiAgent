@@ -2,13 +2,12 @@ import openai
 from openai import OpenAIError, APITimeoutError
 from config import OPENAI_API_KEY
 
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY environment variable not set")
-
-openai.api_key = OPENAI_API_KEY
-
 
 def suggest_ticket_response(ticket: dict, context: str = "") -> str:
+    if not OPENAI_API_KEY:
+        raise RuntimeError("OPENAI_API_KEY environment variable not set")
+    openai.api_key = OPENAI_API_KEY
+
     prompt = (
         "You are a Tier 1 help desk agent for a truck stop. Here is the ticket:\n"
         f"{ticket}\n"
