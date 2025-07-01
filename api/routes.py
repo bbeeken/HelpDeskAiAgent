@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from db.mssql import SessionLocal
+from db.mssql import SessionLocal, engine
+from sqlalchemy import text
 
 from tools.ticket_tools import (
     get_ticket,
@@ -34,7 +35,9 @@ from typing import List
 from schemas.ticket import TicketOut, TicketCreate
 
 from datetime import datetime
-from typing import List
+
+APP_VERSION = "0.1.0"
+START_TIME = datetime.utcnow()
 
 
 router = APIRouter()
@@ -215,3 +218,22 @@ def api_open_tickets_by_user(db: Session = Depends(get_db)):
 @router.get("/analytics/waiting_on_user")
 def api_tickets_waiting_on_user(db: Session = Depends(get_db)):
     return tickets_waiting_on_user(db)
+
+
+@router.get("/health")
+def api_health():
+    """Return application health information."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_status = "ok"
+    except Exception:
+        db_status = "error"
+
+    uptime = (datetime.utcnow() - START_TIME).total_seconds()
+    return {
+        "status": "ok",
+        "db": db_status,
+        "uptime": uptime,
+        "version": APP_VERSION,
+    }
