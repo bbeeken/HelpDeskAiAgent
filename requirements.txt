@@ -5,5 +5,7 @@ pydantic
 pyodbc
 python-dotenv
 openai
+
 pytest
 email-validator
+
