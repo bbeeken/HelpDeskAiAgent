@@ -1,5 +1,6 @@
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
+
 from sqlalchemy.orm import Session
 
 import logging
@@ -26,6 +27,7 @@ from tools.category_tools import list_categories
 from tools.status_tools import list_statuses
 from tools.message_tools import get_ticket_messages, post_ticket_message
 from tools.ai_tools import ai_suggest_response
+
 
 from pydantic import BaseModel
 from typing import List
@@ -262,8 +264,8 @@ async def api_post_ticket_message(
 
 @router.post("/ai/suggest_response")
 
-def api_ai_suggest_response(ticket: TicketOut, context: str = ""):
-    logger.info("API AI suggest response")
+@limiter.limit("10/minute")
+def api_ai_suggest_response(request: Request, ticket: TicketOut, context: str = ""):
 
     return {"response": ai_suggest_response(ticket.dict(), context)}
 
