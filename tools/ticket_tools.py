@@ -18,19 +18,15 @@ async def get_ticket(db: AsyncSession, ticket_id: int):
 logger = logging.getLogger(__name__)
 
 
-
-def get_ticket(db: Session, ticket_id: int):
-    logger.info("Fetching ticket %s", ticket_id)
+def get_ticket(db: Session, ticket_id: int) -> Ticket | None:
     return db.query(Ticket).filter(Ticket.Ticket_ID == ticket_id).first()
 
 
-def list_tickets(db: Session, skip: int = 0, limit: int = 10):
-    logger.info("Listing tickets skip=%s limit=%s", skip, limit)
+def list_tickets(db: Session, skip: int = 0, limit: int = 10) -> list[Ticket]:
     return db.query(Ticket).offset(skip).limit(limit).all()
 
 
-def create_ticket(db: Session, ticket_obj: Ticket):
-    logger.info("Creating ticket")
+def create_ticket(db: Session, ticket_obj: Ticket) -> Ticket:
 
 
     db.add(ticket_obj)
@@ -89,7 +85,8 @@ async def delete_ticket(db: AsyncSession, ticket_id: int) -> bool:
         raise
 
 
-async def search_tickets(db: AsyncSession, query: str, limit: int = 10):
+def search_tickets(db: Session, query: str, limit: int = 10) -> list[Ticket]:
+
     like = f"%{query}%"
 
     logger.info("Searching tickets for '%s'", query)

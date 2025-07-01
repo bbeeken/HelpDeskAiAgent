@@ -1,23 +1,13 @@
+from typing import Any, Dict
+
 import openai
-import logging
-from openai import OpenAIError, APITimeoutError
-from config import (
-    OPENAI_API_KEY,
-    OPENAI_MODEL_NAME,
-    OPENAI_TIMEOUT,
-)
 
-logger = logging.getLogger(__name__)
-
-# Initialize a client at import time if an API key is available.  This avoids
-# repeatedly setting the key for each request.
-openai_client = openai.Client(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+from openai import APITimeoutError, OpenAIError
+from config import OPENAI_API_KEY
 
 
-def suggest_ticket_response(ticket: dict, context: str = "") -> str:
-
-    """Return an AI generated response for a help desk ticket."""
-    if openai_client is None:
+def suggest_ticket_response(ticket: Dict[str, Any], context: str = "") -> str:
+    if not OPENAI_API_KEY:
 
         raise RuntimeError("OPENAI_API_KEY environment variable not set")
 
@@ -29,7 +19,8 @@ def suggest_ticket_response(ticket: dict, context: str = "") -> str:
     )
     try:
 
-        response = openai_client.chat.completions.create(
+        response = openai.ChatCompletion.create(  # type: ignore[attr-defined]
+
             model="gpt-4o",
 
             messages=[{"role": "system", "content": prompt}],

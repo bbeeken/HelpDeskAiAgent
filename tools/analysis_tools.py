@@ -9,7 +9,9 @@ from services.analytics_service import AnalyticsService
 logger = logging.getLogger(__name__)
 
 
-async def tickets_by_status(db: AsyncSession):
+
+def tickets_by_status(db: Session) -> list[tuple[int | None, int]]:
+
     """
     Returns a list of tuples (status_id, count) for all tickets.
     """
@@ -22,7 +24,8 @@ async def tickets_by_status(db: AsyncSession):
 
 
 
-async def open_tickets_by_site(db: AsyncSession):
+def open_tickets_by_site(db: Session) -> list[tuple[int | None, int]]:
+
     """
     Returns list of tuples (site_id, open_count) for tickets not closed (status != 3).
     """
@@ -36,7 +39,8 @@ async def open_tickets_by_site(db: AsyncSession):
 
 
 
-async def sla_breaches(db: AsyncSession, sla_days: int = 2):
+def sla_breaches(db: Session, sla_days: int = 2) -> int:
+
     """
     Count tickets older than sla_days and not closed.
     """
@@ -52,7 +56,9 @@ async def sla_breaches(db: AsyncSession, sla_days: int = 2):
     return result.scalar()
 
 
-async def open_tickets_by_user(db: AsyncSession):
+
+def open_tickets_by_user(db: Session) -> list[tuple[str | None, int]]:
+
     """
     Returns list of tuples (assigned_email, open_count) for tickets not closed.
     """
@@ -65,7 +71,8 @@ async def open_tickets_by_user(db: AsyncSession):
     return [(row[0], row[1]) for row in results]
 
 
-async def tickets_waiting_on_user(db: AsyncSession):
+def tickets_waiting_on_user(db: Session) -> list[tuple[str | None, int]]:
+
     """
     Returns list of tuples (contact_email, waiting_count) for tickets awaiting contact reply (status == 4).
     """

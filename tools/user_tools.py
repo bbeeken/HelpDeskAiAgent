@@ -24,7 +24,7 @@ is missing these functions fall back to simple stubs so tests can run without
 network access.
 """
 
-from typing import List, Dict
+from typing import Dict, List
 
 import logging
 
@@ -34,28 +34,7 @@ logger = logging.getLogger(__name__)
 GROUP_ID = "2ea9cf9b-4d28-456e-9eda-bd2c15825ee2"
 
 
-def _acquire_token() -> str | None:
-    """Return an access token if Graph integration is configured."""
-    if not GRAPH_ENABLED:
-        return None
-
-    # TODO: handle token caching/expiry when implementing full support
-    url = f"https://login.microsoftonline.com/{GRAPH_TENANT_ID}/oauth2/v2.0/token"
-    data = {
-        "client_id": GRAPH_CLIENT_ID,
-        "client_secret": GRAPH_CLIENT_SECRET,
-        "scope": "https://graph.microsoft.com/.default",
-        "grant_type": "client_credentials",
-    }
-
-    resp = requests.post(url, data=data, timeout=5)
-    resp.raise_for_status()
-    return resp.json().get("access_token")
-
-
-def get_user_by_email(email: str) -> Dict:
-
-    logger.info("Resolving user by email %s", email)
+def get_user_by_email(email: str) -> Dict[str, str | None]:
 
     return {
         "email": data.get("mail"),
@@ -64,9 +43,9 @@ def get_user_by_email(email: str) -> Dict:
     }
 
 
-def get_all_users_in_group() -> List[Dict]:
 
-    logger.info("Fetching all users in group")
+def get_all_users_in_group() -> List[Dict[str, str | None]]:
+
     return []
 
 

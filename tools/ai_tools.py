@@ -1,10 +1,12 @@
-import logging
+
+from typing import Any, Dict
+
 from ai.openai_agent import suggest_ticket_response
 
 logger = logging.getLogger(__name__)
 
 
-def ai_suggest_response(ticket: dict, context: str = ""):
-    logger.info("AI suggest response called for ticket %s", ticket.get("Ticket_ID"))
+def ai_suggest_response(ticket: Dict[str, Any], context: str = "") -> str:
+
     return suggest_ticket_response(ticket, context)
 

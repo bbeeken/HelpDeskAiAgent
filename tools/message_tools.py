@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 
-def get_ticket_messages(db: Session, ticket_id: int):
-    logger.info("Fetching messages for ticket %s", ticket_id)
+def get_ticket_messages(db: Session, ticket_id: int) -> list[TicketMessage]:
+
     return (
         db.query(TicketMessage)
 
@@ -21,9 +21,10 @@ def get_ticket_messages(db: Session, ticket_id: int):
     return result.scalars().all()
 
 
-async def post_ticket_message(
-    db: AsyncSession, ticket_id: int, message: str, sender_code: str, sender_name: str
-):
+def post_ticket_message(
+    db: Session, ticket_id: int, message: str, sender_code: str, sender_name: str
+) -> TicketMessage:
+
     msg = TicketMessage(
         Ticket_ID=ticket_id,
         Message=message,
