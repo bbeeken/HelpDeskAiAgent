@@ -5,7 +5,7 @@ from db.models import TicketMessage
 from datetime import datetime
 
 
-def get_ticket_messages(db: Session, ticket_id: int):
+def get_ticket_messages(db: Session, ticket_id: int) -> list[TicketMessage]:
     return (
         db.query(TicketMessage)
         .filter(TicketMessage.Ticket_ID == ticket_id)
@@ -16,7 +16,7 @@ def get_ticket_messages(db: Session, ticket_id: int):
 
 def post_ticket_message(
     db: Session, ticket_id: int, message: str, sender_code: str, sender_name: str
-):
+) -> TicketMessage:
     msg = TicketMessage(
         Ticket_ID=ticket_id,
         Message=message,

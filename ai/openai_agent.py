@@ -1,9 +1,11 @@
+from typing import Any, Dict
+
 import openai
-from openai import OpenAIError, APITimeoutError
+from openai import APITimeoutError, OpenAIError
 from config import OPENAI_API_KEY
 
 
-def suggest_ticket_response(ticket: dict, context: str = "") -> str:
+def suggest_ticket_response(ticket: Dict[str, Any], context: str = "") -> str:
     if not OPENAI_API_KEY:
         raise RuntimeError("OPENAI_API_KEY environment variable not set")
     openai.api_key = OPENAI_API_KEY
@@ -15,7 +17,7 @@ def suggest_ticket_response(ticket: dict, context: str = "") -> str:
         "Suggest the best response, including troubleshooting or assignment if possible."
     )
     try:
-        response = openai.ChatCompletion.create(
+        response = openai.ChatCompletion.create(  # type: ignore[attr-defined]
             model="gpt-4o",
             messages=[{"role": "system", "content": prompt}],
             timeout=15,

@@ -2,5 +2,5 @@ from sqlalchemy.orm import Session
 from db.models import TicketStatus
 
 
-def list_statuses(db: Session):
+def list_statuses(db: Session) -> list[TicketStatus]:
     return db.query(TicketStatus).all()

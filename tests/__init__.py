@@ -13,7 +13,7 @@ if 'type_params' in sig.parameters:
     def _evaluate(self, globalns, localns, type_params=None, *, recursive_guard=frozenset()):
         return original(self, globalns, localns, type_params, recursive_guard=recursive_guard)
 
-    typing.ForwardRef._evaluate = _evaluate
+    typing.ForwardRef._evaluate = _evaluate  # type: ignore[assignment]
 
 import httpx
 if 'app' not in inspect.signature(httpx.Client.__init__).parameters:
@@ -23,4 +23,4 @@ if 'app' not in inspect.signature(httpx.Client.__init__).parameters:
         kwargs.pop('app', None)
         return original_client_init(self, *args, **kwargs)
 
-    httpx.Client.__init__ = client_init
+    httpx.Client.__init__ = client_init  # type: ignore[assignment]

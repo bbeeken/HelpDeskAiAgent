@@ -4,15 +4,15 @@ from fastapi import HTTPException
 from db.models import Ticket
 
 
-def get_ticket(db: Session, ticket_id: int):
+def get_ticket(db: Session, ticket_id: int) -> Ticket | None:
     return db.query(Ticket).filter(Ticket.Ticket_ID == ticket_id).first()
 
 
-def list_tickets(db: Session, skip: int = 0, limit: int = 10):
+def list_tickets(db: Session, skip: int = 0, limit: int = 10) -> list[Ticket]:
     return db.query(Ticket).offset(skip).limit(limit).all()
 
 
-def create_ticket(db: Session, ticket_obj: Ticket):
+def create_ticket(db: Session, ticket_obj: Ticket) -> Ticket:
 
     db.add(ticket_obj)
     try:
@@ -53,7 +53,7 @@ def delete_ticket(db: Session, ticket_id: int) -> bool:
         raise
 
 
-def search_tickets(db: Session, query: str, limit: int = 10):
+def search_tickets(db: Session, query: str, limit: int = 10) -> list[Ticket]:
     like = f"%{query}%"
     return (
         db.query(Ticket)

@@ -3,7 +3,7 @@ from sqlalchemy import func
 from db.models import Ticket
 
 
-def tickets_by_status(db: Session):
+def tickets_by_status(db: Session) -> list[tuple[int | None, int]]:
     """
     Returns a list of tuples (status_id, count) for all tickets.
     """
@@ -13,7 +13,7 @@ def tickets_by_status(db: Session):
     return [(row[0], row[1]) for row in results]
 
 
-def open_tickets_by_site(db: Session):
+def open_tickets_by_site(db: Session) -> list[tuple[int | None, int]]:
     """
     Returns list of tuples (site_id, open_count) for tickets not closed (status != 3).
     """
@@ -24,7 +24,7 @@ def open_tickets_by_site(db: Session):
     return [(row[0], row[1]) for row in results]
 
 
-def sla_breaches(db: Session, sla_days: int = 2):
+def sla_breaches(db: Session, sla_days: int = 2) -> int:
     """
     Count tickets older than sla_days and not closed.
     """
@@ -39,7 +39,7 @@ def sla_breaches(db: Session, sla_days: int = 2):
     )
 
 
-def open_tickets_by_user(db: Session):
+def open_tickets_by_user(db: Session) -> list[tuple[str | None, int]]:
     """
     Returns list of tuples (assigned_email, open_count) for tickets not closed.
     """
@@ -49,7 +49,7 @@ def open_tickets_by_user(db: Session):
                 .group_by(Ticket.Assigned_Email).all()
     return [(row[0], row[1]) for row in results]
 
-def tickets_waiting_on_user(db: Session):
+def tickets_waiting_on_user(db: Session) -> list[tuple[str | None, int]]:
     """
     Returns list of tuples (contact_email, waiting_count) for tickets awaiting contact reply (status == 4).
     """
