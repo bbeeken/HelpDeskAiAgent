@@ -29,7 +29,6 @@ from tools.analysis_tools import (
 
 from pydantic import BaseModel
 
-from typing import List
 
 from schemas.ticket import TicketOut, TicketCreate
 
@@ -61,13 +60,17 @@ def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)):
     return ticket
 
 
-@router.get("/tickets", response_model=List[TicketOut])
-def api_list_tickets(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+@router.get("/tickets", response_model=list[TicketOut])
+def api_list_tickets(
+    skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
+):
     return list_tickets(db, skip, limit)
 
 
 @router.get("/tickets/search", response_model=list[TicketOut])
-def api_search_tickets(q: str, limit: int = 10, db: Session = Depends(get_db)):
+def api_search_tickets(
+    q: str, limit: int = 10, db: Session = Depends(get_db)
+):
     return search_tickets(db, q, limit)
 
 
@@ -81,7 +84,9 @@ def api_create_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/ticket/{ticket_id}", response_model=TicketOut)
-def api_update_ticket(ticket_id: int, updates: dict, db: Session = Depends(get_db)):
+def api_update_ticket(
+    ticket_id: int, updates: dict, db: Session = Depends(get_db)
+):
     ticket = update_ticket(db, ticket_id, updates)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
@@ -104,7 +109,9 @@ def api_get_asset(asset_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/assets")
-def api_list_assets(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+def api_list_assets(
+    skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
+):
     return list_assets(db, skip, limit)
 
 
@@ -117,7 +124,9 @@ def api_get_vendor(vendor_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/vendors")
-def api_list_vendors(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+def api_list_vendors(
+    skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
+):
     return list_vendors(db, skip, limit)
 
 
@@ -130,7 +139,9 @@ def api_get_site(site_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/sites")
-def api_list_sites(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+def api_list_sites(
+    skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
+):
     return list_sites(db, skip, limit)
 
 
@@ -145,18 +156,29 @@ def api_list_statuses(db: Session = Depends(get_db)):
 
 
 @router.get("/ticket/{ticket_id}/attachments")
-def api_get_ticket_attachments(ticket_id: int, db: Session = Depends(get_db)):
+def api_get_ticket_attachments(
+    ticket_id: int, db: Session = Depends(get_db)
+):
     return get_ticket_attachments(db, ticket_id)
 
 
 @router.get("/ticket/{ticket_id}/messages")
-def api_get_ticket_messages(ticket_id: int, db: Session = Depends(get_db)):
+def api_get_ticket_messages(
+    ticket_id: int, db: Session = Depends(get_db)
+):
     return get_ticket_messages(db, ticket_id)
 
 
 @router.post("/ticket/{ticket_id}/messages")
-def api_post_ticket_message(ticket_id: int, msg: MessageIn, db: Session = Depends(get_db)):
-    return post_ticket_message(db, ticket_id, msg.message, msg.sender_code, msg.sender_name)
+def api_post_ticket_message(
+    ticket_id: int,
+    msg: MessageIn,
+    db: Session = Depends(get_db),
+):
+    return post_ticket_message(
+        db, ticket_id, msg.message, msg.sender_code, msg.sender_name
+    )
+
 
 
 @router.post("/ai/suggest_response")
@@ -165,6 +187,8 @@ def api_ai_suggest_response(ticket: TicketOut, context: str = ""):
 
 
 # Analysis endpoints
+
+
 @router.get("/analytics/status")
 def api_tickets_by_status(db: Session = Depends(get_db)):
     return tickets_by_status(db)
