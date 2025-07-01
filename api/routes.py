@@ -13,7 +13,9 @@ from tools.ai_tools import ai_suggest_response
 from tools.analysis_tools import tickets_by_status, open_tickets_by_site, sla_breaches, open_tickets_by_user, tickets_waiting_on_user
 
 from pydantic import BaseModel
-from datetime import datetime
+from typing import List
+
+from schemas.ticket import TicketIn, TicketOut
 
 router = APIRouter()
 
@@ -29,23 +31,23 @@ class MessageIn(BaseModel):
     sender_code: str
     sender_name: str
 
-@router.get("/ticket/{ticket_id}")
+@router.get("/ticket/{ticket_id}", response_model=TicketOut)
 def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)):
     ticket = get_ticket(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return ticket
 
-@router.get("/tickets")
+@router.get("/tickets", response_model=List[TicketOut])
 def api_list_tickets(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     return list_tickets(db, skip, limit)
 
-@router.post("/ticket")
-def api_create_ticket(ticket: dict, db: Session = Depends(get_db)):
+@router.post("/ticket", response_model=TicketOut)
+def api_create_ticket(ticket: TicketIn, db: Session = Depends(get_db)):
     from db.models import Ticket
-    obj = Ticket(**ticket)
+    obj = Ticket(**ticket.dict())
     created = create_ticket(db, obj)
-    return {"Ticket_ID": created.Ticket_ID}
+    return created
 
 @router.get("/asset/{asset_id}")
 def api_get_asset(asset_id: int, db: Session = Depends(get_db)):
@@ -101,8 +103,8 @@ def api_post_ticket_message(ticket_id: int, msg: MessageIn, db: Session = Depend
     return post_ticket_message(db, ticket_id, msg.message, msg.sender_code, msg.sender_name)
 
 @router.post("/ai/suggest_response")
-def api_ai_suggest_response(ticket: dict, context: str = ""):
-    return {"response": ai_suggest_response(ticket, context)}
+def api_ai_suggest_response(ticket: TicketOut, context: str = ""):
+    return {"response": ai_suggest_response(ticket.dict(), context)}
 
 # Analysis endpoints
 @router.get("/analytics/status")
