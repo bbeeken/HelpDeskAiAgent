@@ -7,4 +7,7 @@ def get_site(db: Session, site_id: int):
 
 
 def list_sites(db: Session, skip: int = 0, limit: int = 10):
-    return db.query(Site).offset(skip).limit(limit).all()
+    query = db.query(Site)
+    total = query.count()
+    items = query.offset(skip).limit(limit).all()
+    return items, total

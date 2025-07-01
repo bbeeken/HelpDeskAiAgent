@@ -7,4 +7,7 @@ def get_vendor(db: Session, vendor_id: int):
 
 
 def list_vendors(db: Session, skip: int = 0, limit: int = 10):
-    return db.query(Vendor).offset(skip).limit(limit).all()
+    query = db.query(Vendor)
+    total = query.count()
+    items = query.offset(skip).limit(limit).all()
+    return items, total

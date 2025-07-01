@@ -29,6 +29,7 @@ from tools.ai_tools import ai_suggest_response
 
 from pydantic import BaseModel
 from typing import List
+from schemas.paginated import PaginatedResponse
 
 from schemas.ticket import TicketOut, TicketCreate
 
@@ -88,12 +89,19 @@ def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)):
     return ticket
 
 
-@router.get("/tickets", response_model=list[TicketOut], tags=["Tickets"])
+
+@router.get("/tickets", response_model=PaginatedResponse[TicketOut])
+
+
 def api_list_tickets(
     skip: int = 0, limit: int = 10, service: TicketService = Depends(get_ticket_service)
 ):
 
-    return service.list_tickets(skip, limit)
+    items, total = list_tickets(db, skip, limit)
+    return PaginatedResponse[TicketOut](
+        items=items, total=total, skip=skip, limit=limit
+    )
+
 
 
 
@@ -169,12 +177,16 @@ def api_get_asset(asset_id: int, db: Session = Depends(get_db)):
     return asset
 
 
-@router.get("/assets", tags=["Assets"])
+
+@router.get("/assets", response_model=PaginatedResponse[dict])
 def api_list_assets(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
 ):
-    """Return a paginated list of assets."""
-    return list_assets(db, skip, limit)
+    items, total = list_assets(db, skip, limit)
+    return PaginatedResponse(
+        items=items, total=total, skip=skip, limit=limit
+    )
+
 
 
 @router.get("/vendor/{vendor_id}", tags=["Vendors"])
@@ -186,12 +198,16 @@ def api_get_vendor(vendor_id: int, db: Session = Depends(get_db)):
     return vendor
 
 
-@router.get("/vendors", tags=["Vendors"])
+
+@router.get("/vendors", response_model=PaginatedResponse[dict])
 def api_list_vendors(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
 ):
-    """List vendors with pagination."""
-    return list_vendors(db, skip, limit)
+    items, total = list_vendors(db, skip, limit)
+    return PaginatedResponse(
+        items=items, total=total, skip=skip, limit=limit
+    )
+
 
 
 @router.get("/site/{site_id}", tags=["Sites"])
@@ -203,12 +219,16 @@ def api_get_site(site_id: int, db: Session = Depends(get_db)):
     return site
 
 
-@router.get("/sites", tags=["Sites"])
+
+@router.get("/sites", response_model=PaginatedResponse[dict])
 def api_list_sites(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
 ):
-    """Return all sites with pagination."""
-    return list_sites(db, skip, limit)
+    items, total = list_sites(db, skip, limit)
+    return PaginatedResponse(
+        items=items, total=total, skip=skip, limit=limit
+    )
+
 
 
 @router.get("/categories", tags=["Metadata"])
