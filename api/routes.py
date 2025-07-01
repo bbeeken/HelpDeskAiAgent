@@ -33,6 +33,7 @@ from pydantic import BaseModel
 from schemas.ticket import TicketOut, TicketCreate
 
 from datetime import datetime
+from typing import List
 
 
 router = APIRouter()
