@@ -22,7 +22,15 @@ class TicketBase(BaseModel):
 class TicketCreate(TicketBase):
     """Schema used when creating a new ticket."""
 
-    pass
+    class Config:
+        schema_extra = {
+            "example": {
+                "Subject": "Printer not working",
+                "Ticket_Body": "The office printer is jammed",
+                "Ticket_Contact_Name": "Jane Doe",
+                "Ticket_Contact_Email": "jane@example.com",
+            }
+        }
 
 
 class TicketIn(BaseModel):
@@ -47,3 +55,14 @@ class TicketOut(TicketIn):
 
     class Config:
         orm_mode = True
+        schema_extra = {
+            "example": {
+                "Ticket_ID": 1,
+                "Subject": "Printer not working",
+                "Ticket_Body": "The office printer is jammed",
+                "Ticket_Status_ID": 1,
+                "Ticket_Contact_Name": "Jane Doe",
+                "Ticket_Contact_Email": "jane@example.com",
+                "Created_Date": "2024-01-01T12:00:00Z",
+            }
+        }
