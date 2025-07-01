@@ -1,15 +1,18 @@
 import openai
-from openai.error import OpenAIError, Timeout
-from config import OPENAI_API_KEY
+from openai import OpenAIError, Timeout
+from config import require_openai_key
 
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY environment variable not set")
 
-openai.api_key = OPENAI_API_KEY
+def _set_api_key() -> None:
+    """Configure the OpenAI client with the API key."""
+    openai.api_key = require_openai_key()
+
 
 def suggest_ticket_response(ticket: dict, context: str = "") -> str:
+    """Return a suggested response for a help desk ticket using OpenAI."""
+    _set_api_key()
     prompt = (
-        f"You are a Tier 1 help desk agent for a truck stop. Here is the ticket:\n"
+        "You are a Tier 1 help desk agent for a truck stop. Here is the ticket:\n"
         f"{ticket}\n"
         f"Context: {context}\n"
         "Suggest the best response, including troubleshooting or assignment if possible."
@@ -17,7 +20,6 @@ def suggest_ticket_response(ticket: dict, context: str = "") -> str:
     try:
         response = openai.ChatCompletion.create(
             model="gpt-4o",
-
             messages=[{"role": "system", "content": prompt}],
             timeout=15,
         )
@@ -26,11 +28,4 @@ def suggest_ticket_response(ticket: dict, context: str = "") -> str:
         return "OpenAI request timed out."
     except OpenAIError as e:
         return f"OpenAI API error: {e}"
-
-            messages=[{"role": "system", "content": prompt}]
-        )
-    except openai.error.OpenAIError as exc:
-        return f"OpenAI API error: {exc}"
-
-    return response['choices'][0]['message']['content']
 
