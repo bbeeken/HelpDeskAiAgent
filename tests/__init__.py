@@ -7,7 +7,7 @@ import typing
 import inspect
 
 sig = inspect.signature(typing.ForwardRef._evaluate)
-if 'recursive_guard' in sig.parameters:
+if 'type_params' in sig.parameters:
     original = typing.ForwardRef._evaluate
 
     def _evaluate(self, globalns, localns, type_params=None, *, recursive_guard=frozenset()):
