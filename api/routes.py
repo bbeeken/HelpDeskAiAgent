@@ -1,7 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from db.session import SessionLocal
+from db.mssql import SessionLocal
+
 from tools.ticket_tools import get_ticket, list_tickets, create_ticket
+
+from tools.ticket_tools import (
+    get_ticket,
+    list_tickets,
+    create_ticket,
+    update_ticket,
+    delete_ticket,
+    search_tickets,
+)
+
 from tools.asset_tools import get_asset, list_assets
 from tools.vendor_tools import get_vendor, list_vendors
 from tools.attachment_tools import get_ticket_attachments
@@ -13,9 +24,14 @@ from tools.ai_tools import ai_suggest_response
 from tools.analysis_tools import tickets_by_status, open_tickets_by_site, sla_breaches, open_tickets_by_user, tickets_waiting_on_user
 
 from pydantic import BaseModel
+
 from typing import List
 
 from schemas.ticket import TicketIn, TicketOut
+
+from datetime import datetime
+from schemas import TicketCreate, TicketOut
+
 
 router = APIRouter()
 
@@ -38,16 +54,40 @@ def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Ticket not found")
     return ticket
 
+
 @router.get("/tickets", response_model=List[TicketOut])
 def api_list_tickets(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     return list_tickets(db, skip, limit)
 
+
+@router.get("/tickets", response_model=list[TicketOut])
+def api_list_tickets(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    return list_tickets(db, skip, limit)
+
+@router.get("/tickets/search", response_model=list[TicketOut])
+def api_search_tickets(q: str, limit: int = 10, db: Session = Depends(get_db)):
+    return search_tickets(db, q, limit)
+
 @router.post("/ticket", response_model=TicketOut)
-def api_create_ticket(ticket: TicketIn, db: Session = Depends(get_db)):
+def api_create_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
     from db.models import Ticket
-    obj = Ticket(**ticket.dict())
+    obj = Ticket(**ticket.dict(), Created_Date=datetime.utcnow())
     created = create_ticket(db, obj)
     return created
+
+@router.put("/ticket/{ticket_id}", response_model=TicketOut)
+def api_update_ticket(ticket_id: int, updates: dict, db: Session = Depends(get_db)):
+    ticket = update_ticket(db, ticket_id, updates)
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return ticket
+
+@router.delete("/ticket/{ticket_id}")
+def api_delete_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    if not delete_ticket(db, ticket_id):
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return {"deleted": True}
+
 
 @router.get("/asset/{asset_id}")
 def api_get_asset(asset_id: int, db: Session = Depends(get_db)):
