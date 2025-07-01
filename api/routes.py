@@ -30,7 +30,7 @@ from typing import List
 from schemas.ticket import TicketIn, TicketOut
 
 from datetime import datetime
-from schemas import TicketCreate, TicketOut
+from schema_models import TicketCreate
 
 
 router = APIRouter()
