@@ -58,11 +58,5 @@ def tickets_waiting_on_user(db: Session):
                 .group_by(Ticket.Ticket_Contact_Email).all()
     return [(row[0], row[1]) for row in results]
 
-    return (
-        db.query(Ticket.Assigned_Email, func.count(Ticket.Ticket_ID))
-        .filter(Ticket.Ticket_Status_ID != 3)
-        .group_by(Ticket.Assigned_Email)
-        .all()
-    )
 
 
