@@ -27,4 +27,3 @@ def suggest_ticket_response(ticket: dict, context: str = "") -> str:
 
     except OpenAIError as exc:
         return f"OpenAI API error: {exc}"
-
