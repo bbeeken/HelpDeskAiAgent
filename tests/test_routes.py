@@ -32,3 +32,20 @@ def test_create_and_get_ticket():
 def test_get_ticket_not_found():
     resp = client.get("/ticket/999")
     assert resp.status_code == 404
+
+
+def test_update_ticket():
+    ticket = _create_ticket()
+    tid = ticket["Ticket_ID"]
+
+    resp = client.put(f"/ticket/{tid}", json={"Subject": "Updated"})
+    assert resp.status_code == 200
+    assert resp.json()["Subject"] == "Updated"
+
+
+def test_update_ticket_invalid_field():
+    ticket = _create_ticket()
+    tid = ticket["Ticket_ID"]
+
+    resp = client.put(f"/ticket/{tid}", json={"BadField": "x"})
+    assert resp.status_code == 422

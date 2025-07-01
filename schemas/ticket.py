@@ -25,6 +25,27 @@ class TicketCreate(TicketBase):
     pass
 
 
+class TicketUpdate(BaseModel):
+    """Schema used when updating an existing ticket."""
+
+    Subject: Optional[str] = None
+    Ticket_Body: Optional[str] = None
+    Ticket_Status_ID: Optional[int] = None
+    Ticket_Contact_Name: Optional[str] = None
+    Ticket_Contact_Email: Optional[EmailStr] = None
+    Asset_ID: Optional[int] = None
+    Site_ID: Optional[int] = None
+    Ticket_Category_ID: Optional[int] = None
+    Assigned_Name: Optional[str] = None
+    Assigned_Email: Optional[EmailStr] = None
+    Severity_ID: Optional[int] = None
+    Assigned_Vendor_ID: Optional[int] = None
+    Resolution: Optional[str] = None
+
+    class Config:
+        extra = "forbid"
+
+
 class TicketIn(BaseModel):
     Subject: Optional[str] = None
     Ticket_Body: Optional[str] = None

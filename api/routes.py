@@ -31,7 +31,7 @@ from pydantic import BaseModel
 from typing import List
 
 
-from schemas.ticket import TicketOut, TicketCreate
+from schemas.ticket import TicketOut, TicketCreate, TicketUpdate
 
 from datetime import datetime
 from typing import List
@@ -88,7 +88,7 @@ def api_create_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
 
 @router.put("/ticket/{ticket_id}", response_model=TicketOut)
 def api_update_ticket(
-    ticket_id: int, updates: dict, db: Session = Depends(get_db)
+    ticket_id: int, updates: TicketUpdate, db: Session = Depends(get_db)
 ):
     ticket = update_ticket(db, ticket_id, updates)
     if not ticket:
