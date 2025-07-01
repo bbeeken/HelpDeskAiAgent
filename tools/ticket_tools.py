@@ -53,11 +53,25 @@ def delete_ticket(db: Session, ticket_id: int) -> bool:
         raise
 
 
+def _escape_wildcards(query: str) -> str:
+    """Escape SQL wildcard characters in a LIKE pattern."""
+    return (
+        query.replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
+
+
 def search_tickets(db: Session, query: str, limit: int = 10):
-    like = f"%{query}%"
+    """Search tickets by subject or body with wildcard escaping."""
+    sanitized = _escape_wildcards(query)
+    like = f"%{sanitized}%"
     return (
         db.query(Ticket)
-        .filter((Ticket.Subject.ilike(like)) | (Ticket.Ticket_Body.ilike(like)))
+        .filter(
+            (Ticket.Subject.ilike(like, escape="\\"))
+            | (Ticket.Ticket_Body.ilike(like, escape="\\"))
+        )
         .limit(limit)
         .all()
     )

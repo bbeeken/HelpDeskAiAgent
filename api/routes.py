@@ -10,6 +10,7 @@ from tools.ticket_tools import (
     update_ticket,
     delete_ticket,
     search_tickets,
+    _escape_wildcards,
 )
 
 from tools.asset_tools import get_asset, list_assets
@@ -87,8 +88,9 @@ def api_list_tickets(
 
 @router.get("/tickets/search", response_model=List[TicketOut], tags=["Tickets"])
 def api_search_tickets(q: str, limit: int = 10, db: Session = Depends(get_db)):
-    """Search tickets by keyword in the subject or body."""
-    return search_tickets(db, q, limit)
+
+    return search_tickets(db, _escape_wildcards(q), limit)
+
 
 
 @router.post("/ticket", response_model=TicketOut, tags=["Tickets"])
