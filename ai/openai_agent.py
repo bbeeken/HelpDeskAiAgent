@@ -24,5 +24,6 @@ def suggest_ticket_response(ticket: dict, context: str = "") -> str:
         return response["choices"][0]["message"]["content"]
     except APITimeoutError:
         return "OpenAI request timed out."
+
     except OpenAIError as exc:
         return f"OpenAI API error: {exc}"
