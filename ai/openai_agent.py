@@ -1,4 +1,5 @@
 import openai
+from openai.error import OpenAIError, Timeout
 from config import OPENAI_API_KEY
 
 openai.api_key = OPENAI_API_KEY
@@ -10,8 +11,14 @@ def suggest_ticket_response(ticket: dict, context: str = "") -> str:
         f"Context: {context}\n"
         "Suggest the best response, including troubleshooting or assignment if possible."
     )
-    response = openai.ChatCompletion.create(
-        model="gpt-4o",
-        messages=[{"role": "system", "content": prompt}]
-    )
-    return response['choices'][0]['message']['content']
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o",
+            messages=[{"role": "system", "content": prompt}],
+            timeout=15,
+        )
+        return response["choices"][0]["message"]["content"]
+    except Timeout:
+        return "OpenAI request timed out."
+    except OpenAIError as e:
+        return f"OpenAI API error: {e}"
