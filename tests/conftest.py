@@ -1,5 +1,8 @@
 import os
 
+# Pydantic 1.x fails on Python 3.12 unless this shim is disabled
+os.environ.setdefault("PYDANTIC_DISABLE_STD_TYPES_SHIM", "1")
+
 os.environ.setdefault("OPENAI_API_KEY", "test")
 os.environ.setdefault("DB_CONN_STRING", "sqlite:///:memory:")
 
@@ -19,10 +22,10 @@ mssql.engine = create_engine(
 mssql.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=mssql.engine)
 Base.metadata.create_all(mssql.engine)
 
+
 @pytest.fixture(autouse=True)
 def db_setup():
     Base.metadata.drop_all(bind=mssql.engine)
     Base.metadata.create_all(bind=mssql.engine)
     yield
     Base.metadata.drop_all(bind=mssql.engine)
-

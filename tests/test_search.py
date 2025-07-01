@@ -9,6 +9,7 @@ os.environ.setdefault("DB_CONN_STRING", "sqlite:///:memory:")
 
 Base.metadata.create_all(engine)
 
+
 def test_search_tickets():
     db: Session = SessionLocal()
     try:

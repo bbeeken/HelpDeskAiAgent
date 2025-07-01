@@ -13,4 +13,3 @@ def test_app_import():
 
 def test_app_loads():
     assert app.title
-

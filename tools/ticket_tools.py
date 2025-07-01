@@ -3,11 +3,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException
 from db.models import Ticket
 
+
 def get_ticket(db: Session, ticket_id: int):
     return db.query(Ticket).filter(Ticket.Ticket_ID == ticket_id).first()
 
+
 def list_tickets(db: Session, skip: int = 0, limit: int = 10):
     return db.query(Ticket).offset(skip).limit(limit).all()
+
 
 def create_ticket(db: Session, ticket_obj: Ticket):
 
@@ -19,7 +22,6 @@ def create_ticket(db: Session, ticket_obj: Ticket):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to create ticket: {e}")
     return ticket_obj
-
 
 
 def update_ticket(db: Session, ticket_id: int, updates: dict) -> Ticket | None:
@@ -37,6 +39,7 @@ def update_ticket(db: Session, ticket_id: int, updates: dict) -> Ticket | None:
         db.rollback()
         raise
 
+
 def delete_ticket(db: Session, ticket_id: int) -> bool:
     ticket = get_ticket(db, ticket_id)
     if not ticket:
@@ -49,6 +52,7 @@ def delete_ticket(db: Session, ticket_id: int) -> bool:
         db.rollback()
         raise
 
+
 def search_tickets(db: Session, query: str, limit: int = 10):
     like = f"%{query}%"
     return (
@@ -57,4 +61,3 @@ def search_tickets(db: Session, query: str, limit: int = 10):
         .limit(limit)
         .all()
     )
-
