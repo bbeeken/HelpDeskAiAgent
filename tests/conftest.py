@@ -22,10 +22,10 @@ mssql.engine = create_engine(
 mssql.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=mssql.engine)
 Base.metadata.create_all(mssql.engine)
 
+
 @pytest.fixture(autouse=True)
 def db_setup():
     Base.metadata.drop_all(bind=mssql.engine)
     Base.metadata.create_all(bind=mssql.engine)
     yield
     Base.metadata.drop_all(bind=mssql.engine)
-
