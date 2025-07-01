@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from main import app
 from db.models import Ticket
 from db.mssql import SessionLocal
-from tools.ticket_tools import create_ticket
+from services.ticket_service import TicketService
 
 os.environ.setdefault("OPENAI_API_KEY", "test")
 os.environ.setdefault("DB_CONN_STRING", "sqlite:///:memory:")
@@ -25,7 +25,7 @@ def _add_ticket(**kwargs):
             Assigned_Email=kwargs.get("Assigned_Email"),
             Created_Date=kwargs.get("Created_Date", datetime.utcnow()),
         )
-        create_ticket(db, ticket)
+        TicketService(db).create_ticket(ticket)
         return ticket
     finally:
         db.close()

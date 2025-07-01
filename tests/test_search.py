@@ -2,7 +2,7 @@ import os
 from sqlalchemy.orm import Session
 from db.models import Base, Ticket
 from db.mssql import engine, SessionLocal
-from tools.ticket_tools import search_tickets, create_ticket
+from services.ticket_service import TicketService
 from datetime import datetime
 
 os.environ.setdefault("DB_CONN_STRING", "sqlite:///:memory:")
@@ -18,8 +18,9 @@ def test_search_tickets():
             Ticket_Body="Cannot connect",
             Created_Date=datetime.utcnow(),
         )
-        create_ticket(db, t)
-        results = search_tickets(db, "Network")
+        service = TicketService(db)
+        service.create_ticket(t)
+        results = service.search_tickets("Network")
         assert results and results[0].Subject == "Network issue"
     finally:
         db.close()

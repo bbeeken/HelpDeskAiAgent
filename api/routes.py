@@ -3,6 +3,10 @@ from sqlalchemy.orm import Session
 from db.mssql import SessionLocal, engine
 from sqlalchemy import text
 
+
+from services.ticket_service import TicketService
+from services.analytics_service import AnalyticsService
+
 from tools.ticket_tools import (
     get_ticket,
     list_tickets,
@@ -13,6 +17,7 @@ from tools.ticket_tools import (
     _escape_wildcards,
 )
 
+
 from tools.asset_tools import get_asset, list_assets
 from tools.vendor_tools import get_vendor, list_vendors
 from tools.attachment_tools import get_ticket_attachments
@@ -21,17 +26,9 @@ from tools.category_tools import list_categories
 from tools.status_tools import list_statuses
 from tools.message_tools import get_ticket_messages, post_ticket_message
 from tools.ai_tools import ai_suggest_response
-from tools.analysis_tools import (
-    tickets_by_status,
-    open_tickets_by_site,
-    sla_breaches,
-    open_tickets_by_user,
-    tickets_waiting_on_user,
-)
 
 from pydantic import BaseModel
 from typing import List
-
 
 from schemas.ticket import TicketOut, TicketCreate
 
@@ -39,6 +36,7 @@ from datetime import datetime
 
 APP_VERSION = "0.1.0"
 START_TIME = datetime.utcnow()
+
 
 
 router = APIRouter()
@@ -50,6 +48,14 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def get_ticket_service(db: Session = Depends(get_db)) -> TicketService:
+    return TicketService(db)
+
+
+def get_analytics_service(db: Session = Depends(get_db)) -> AnalyticsService:
+    return AnalyticsService(db)
 
 
 class MessageIn(BaseModel):
@@ -67,10 +73,16 @@ class MessageIn(BaseModel):
         }
 
 
+@router.get("/ticket/{ticket_id}", response_model=TicketOut)
+def api_get_ticket(ticket_id: int, service: TicketService = Depends(get_ticket_service)):
+    ticket = service.get_ticket(ticket_id)
+
+
 @router.get("/ticket/{ticket_id}", response_model=TicketOut, tags=["Tickets"])
 def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)):
     """Retrieve a single ticket by its ID."""
     ticket = get_ticket(db, ticket_id)
+
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return ticket
@@ -78,8 +90,23 @@ def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)):
 
 @router.get("/tickets", response_model=list[TicketOut], tags=["Tickets"])
 def api_list_tickets(
-    skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
+    skip: int = 0, limit: int = 10, service: TicketService = Depends(get_ticket_service)
 ):
+
+    return service.list_tickets(skip, limit)
+
+
+
+
+@router.get("/tickets/search", response_model=List[TicketOut])
+def api_search_tickets(q: str, limit: int = 10, service: TicketService = Depends(get_ticket_service)):
+
+    return service.search_tickets(q, limit)
+
+
+@router.post("/ticket", response_model=TicketOut)
+def api_create_ticket(ticket: TicketCreate, service: TicketService = Depends(get_ticket_service)):
+
     """Return a paginated list of tickets."""
     return list_tickets(db, skip, limit)
 
@@ -96,28 +123,39 @@ def api_search_tickets(q: str, limit: int = 10, db: Session = Depends(get_db)):
 @router.post("/ticket", response_model=TicketOut, tags=["Tickets"])
 def api_create_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
     """Create a new ticket and return the created record."""
+
     from db.models import Ticket
 
     obj = Ticket(**ticket.dict(), Created_Date=datetime.utcnow())
-    created = create_ticket(db, obj)
+    created = service.create_ticket(obj)
     return created
 
 
 @router.put("/ticket/{ticket_id}", response_model=TicketOut, tags=["Tickets"])
 def api_update_ticket(
-    ticket_id: int, updates: dict, db: Session = Depends(get_db)
+    ticket_id: int, updates: dict, service: TicketService = Depends(get_ticket_service)
 ):
+
+    ticket = service.update_ticket(ticket_id, updates)
+
     """Update an existing ticket with a dictionary of fields."""
     ticket = update_ticket(db, ticket_id, updates)
+
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return ticket
 
 
+
+@router.delete("/ticket/{ticket_id}")
+def api_delete_ticket(ticket_id: int, service: TicketService = Depends(get_ticket_service)):
+    if not service.delete_ticket(ticket_id):
+
 @router.delete("/ticket/{ticket_id}", tags=["Tickets"])
 def api_delete_ticket(ticket_id: int, db: Session = Depends(get_db)):
     """Delete a ticket by ID."""
     if not delete_ticket(db, ticket_id):
+
         raise HTTPException(status_code=404, detail="Ticket not found")
     return {"deleted": True}
 
@@ -222,6 +260,31 @@ def api_ai_suggest_response(ticket: TicketOut, context: str = ""):
 
 # Analysis endpoints
 
+
+
+@router.get("/analytics/status")
+def api_tickets_by_status(service: AnalyticsService = Depends(get_analytics_service)):
+    return service.tickets_by_status()
+
+
+@router.get("/analytics/open_by_site")
+def api_open_tickets_by_site(service: AnalyticsService = Depends(get_analytics_service)):
+    return service.open_tickets_by_site()
+
+
+@router.get("/analytics/sla_breaches")
+def api_sla_breaches(sla_days: int = 2, service: AnalyticsService = Depends(get_analytics_service)):
+    return {"breaches": service.sla_breaches(sla_days)}
+
+
+@router.get("/analytics/open_by_user")
+def api_open_tickets_by_user(service: AnalyticsService = Depends(get_analytics_service)):
+    return service.open_tickets_by_user()
+
+
+@router.get("/analytics/waiting_on_user")
+def api_tickets_waiting_on_user(service: AnalyticsService = Depends(get_analytics_service)):
+    return service.tickets_waiting_on_user()
 
 @router.get("/analytics/status", tags=["Analytics"])
 def api_tickets_by_status(db: Session = Depends(get_db)):
