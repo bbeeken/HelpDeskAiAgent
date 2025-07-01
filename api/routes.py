@@ -24,8 +24,14 @@ from tools.ai_tools import ai_suggest_response
 from tools.analysis_tools import tickets_by_status, open_tickets_by_site, sla_breaches, open_tickets_by_user, tickets_waiting_on_user
 
 from pydantic import BaseModel
+
+from typing import List
+
+from schemas.ticket import TicketIn, TicketOut
+
 from datetime import datetime
 from schemas import TicketCreate, TicketOut
+
 
 router = APIRouter()
 
@@ -47,6 +53,12 @@ def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)):
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return ticket
+
+
+@router.get("/tickets", response_model=List[TicketOut])
+def api_list_tickets(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    return list_tickets(db, skip, limit)
+
 
 @router.get("/tickets", response_model=list[TicketOut])
 def api_list_tickets(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
@@ -75,6 +87,7 @@ def api_delete_ticket(ticket_id: int, db: Session = Depends(get_db)):
     if not delete_ticket(db, ticket_id):
         raise HTTPException(status_code=404, detail="Ticket not found")
     return {"deleted": True}
+
 
 @router.get("/asset/{asset_id}")
 def api_get_asset(asset_id: int, db: Session = Depends(get_db)):
@@ -130,8 +143,8 @@ def api_post_ticket_message(ticket_id: int, msg: MessageIn, db: Session = Depend
     return post_ticket_message(db, ticket_id, msg.message, msg.sender_code, msg.sender_name)
 
 @router.post("/ai/suggest_response")
-def api_ai_suggest_response(ticket: dict, context: str = ""):
-    return {"response": ai_suggest_response(ticket, context)}
+def api_ai_suggest_response(ticket: TicketOut, context: str = ""):
+    return {"response": ai_suggest_response(ticket.dict(), context)}
 
 # Analysis endpoints
 @router.get("/analytics/status")
