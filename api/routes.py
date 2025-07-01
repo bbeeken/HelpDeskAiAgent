@@ -28,6 +28,7 @@ from tools.analysis_tools import (
 )
 
 from pydantic import BaseModel
+from typing import List
 
 
 from schemas.ticket import TicketOut, TicketCreate
