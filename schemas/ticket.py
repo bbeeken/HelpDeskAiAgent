@@ -1,45 +1,72 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, constr, validator
+from email_validator import validate_email, EmailNotValidError
 from typing import Optional
 from datetime import datetime
 
 
 class TicketBase(BaseModel):
-    Subject: str
-    Ticket_Body: str
+    Subject: constr(max_length=255)
+    Ticket_Body: constr(max_length=2000)
     Ticket_Status_ID: Optional[int] = 1
-    Ticket_Contact_Name: str
+    Ticket_Contact_Name: constr(max_length=255)
     Ticket_Contact_Email: EmailStr
     Asset_ID: Optional[int] = None
     Site_ID: Optional[int] = None
     Ticket_Category_ID: Optional[int] = None
-    Assigned_Name: Optional[str] = None
+    Assigned_Name: Optional[constr(max_length=255)] = None
     Assigned_Email: Optional[EmailStr] = None
     Severity_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
-    Resolution: Optional[str] = None
+    Resolution: Optional[constr(max_length=2000)] = None
+
+    @validator("Ticket_Contact_Email", "Assigned_Email")
+    def validate_emails(cls, v):
+        if v is None:
+            return v
+        try:
+            return validate_email(v, check_deliverability=False).email
+        except EmailNotValidError as e:
+            raise ValueError(str(e))
 
 
 class TicketCreate(TicketBase):
     """Schema used when creating a new ticket."""
 
-    pass
+    class Config:
+        schema_extra = {
+            "example": {
+                "Subject": "Printer not working",
+                "Ticket_Body": "The office printer is jammed",
+                "Ticket_Contact_Name": "Jane Doe",
+                "Ticket_Contact_Email": "jane@example.com",
+            }
+        }
 
 
 class TicketIn(BaseModel):
-    Subject: Optional[str] = None
-    Ticket_Body: Optional[str] = None
+    Subject: Optional[constr(max_length=255)] = None
+    Ticket_Body: Optional[constr(max_length=2000)] = None
     Ticket_Status_ID: Optional[int] = None
-    Ticket_Contact_Name: Optional[str] = None
-    Ticket_Contact_Email: Optional[str] = None
+    Ticket_Contact_Name: Optional[constr(max_length=255)] = None
+    Ticket_Contact_Email: Optional[EmailStr] = None
     Asset_ID: Optional[int] = None
     Site_ID: Optional[int] = None
     Ticket_Category_ID: Optional[int] = None
     Created_Date: Optional[datetime] = None
-    Assigned_Name: Optional[str] = None
-    Assigned_Email: Optional[str] = None
+    Assigned_Name: Optional[constr(max_length=255)] = None
+    Assigned_Email: Optional[EmailStr] = None
     Severity_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
-    Resolution: Optional[str] = None
+    Resolution: Optional[constr(max_length=2000)] = None
+
+    @validator("Ticket_Contact_Email", "Assigned_Email")
+    def validate_emails(cls, v):
+        if v is None:
+            return v
+        try:
+            return validate_email(v, check_deliverability=False).email
+        except EmailNotValidError as e:
+            raise ValueError(str(e))
 
 
 class TicketOut(TicketIn):
@@ -47,3 +74,14 @@ class TicketOut(TicketIn):
 
     class Config:
         orm_mode = True
+        schema_extra = {
+            "example": {
+                "Ticket_ID": 1,
+                "Subject": "Printer not working",
+                "Ticket_Body": "The office printer is jammed",
+                "Ticket_Status_ID": 1,
+                "Ticket_Contact_Name": "Jane Doe",
+                "Ticket_Contact_Email": "jane@example.com",
+                "Created_Date": "2024-01-01T12:00:00Z",
+            }
+        }
