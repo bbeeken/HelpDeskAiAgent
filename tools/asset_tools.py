@@ -7,4 +7,7 @@ def get_asset(db: Session, asset_id: int):
 
 
 def list_assets(db: Session, skip: int = 0, limit: int = 10):
-    return db.query(Asset).offset(skip).limit(limit).all()
+    query = db.query(Asset)
+    total = query.count()
+    items = query.offset(skip).limit(limit).all()
+    return items, total
