@@ -67,10 +67,11 @@ def api_list_tickets(
     return list_tickets(db, skip, limit)
 
 
-@router.get("/tickets/search", response_model=list[TicketOut])
-def api_search_tickets(
-    q: str, limit: int = 10, db: Session = Depends(get_db)
-):
+
+
+@router.get("/tickets/search", response_model=List[TicketOut])
+def api_search_tickets(q: str, limit: int = 10, db: Session = Depends(get_db)):
+
     return search_tickets(db, q, limit)
 
 
