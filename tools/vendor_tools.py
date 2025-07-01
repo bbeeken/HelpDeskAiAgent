@@ -1,13 +1,14 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from db.models import Vendor
 
 
-def get_vendor(db: Session, vendor_id: int):
-    return db.query(Vendor).filter(Vendor.ID == vendor_id).first()
+async def get_vendor(db: AsyncSession, vendor_id: int):
+    return await db.get(Vendor, vendor_id)
 
 
-def list_vendors(db: Session, skip: int = 0, limit: int = 10):
-    query = db.query(Vendor)
-    total = query.count()
-    items = query.offset(skip).limit(limit).all()
-    return items, total
+
+async def list_vendors(db: AsyncSession, skip: int = 0, limit: int = 10):
+    result = await db.execute(select(Vendor).offset(skip).limit(limit))
+    return result.scalars().all()
+

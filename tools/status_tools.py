@@ -1,6 +1,8 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from db.models import TicketStatus
 
 
-def list_statuses(db: Session):
-    return db.query(TicketStatus).all()
+async def list_statuses(db: AsyncSession):
+    result = await db.execute(select(TicketStatus))
+    return result.scalars().all()

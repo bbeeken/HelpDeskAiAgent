@@ -1,16 +1,22 @@
-"""Legacy wrappers around :class:`TicketService` methods."""
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+from fastapi import HTTPException
+
 from db.models import Ticket
 from services.ticket_service import TicketService
 
 
-def get_ticket(db: Session, ticket_id: int):
-    """Return a single ticket using :class:`TicketService`."""
-    return TicketService(db).get_ticket(ticket_id)
+
+async def get_ticket(db: AsyncSession, ticket_id: int):
+    return await db.get(Ticket, ticket_id)
 
 
-def list_tickets(db: Session, skip: int = 0, limit: int = 10):
+async def list_tickets(db: AsyncSession, skip: int = 0, limit: int = 10):
+    result = await db.execute(select(Ticket).offset(skip).limit(limit))
+    return result.scalars().all()
+
 
     query = db.query(Ticket)
     total = query.count()
@@ -18,28 +24,53 @@ def list_tickets(db: Session, skip: int = 0, limit: int = 10):
     return items, total
 
 
-def create_ticket(db: Session, ticket_obj: Ticket):
-    return TicketService(db).create_ticket(ticket_obj)
+async def create_ticket(db: AsyncSession, ticket_obj: Ticket):
+
+    db.add(ticket_obj)
+    try:
+        await db.commit()
+        await db.refresh(ticket_obj)
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create ticket: {e}")
+    return ticket_obj
 
 
-def update_ticket(db: Session, ticket_id: int, updates: dict) -> Ticket | None:
-    return TicketService(db).update_ticket(ticket_id, updates)
+async def update_ticket(db: AsyncSession, ticket_id: int, updates: dict) -> Ticket | None:
+    ticket = await get_ticket(db, ticket_id)
+    if not ticket:
+        return None
+    for key, value in updates.items():
+        if hasattr(ticket, key):
+            setattr(ticket, key, value)
+    try:
+        await db.commit()
+        await db.refresh(ticket)
+        return ticket
+    except Exception:
+        await db.rollback()
+        raise
 
 
-def delete_ticket(db: Session, ticket_id: int) -> bool:
-    return TicketService(db).delete_ticket(ticket_id)
+async def delete_ticket(db: AsyncSession, ticket_id: int) -> bool:
+    ticket = await get_ticket(db, ticket_id)
+    if not ticket:
+        return False
+    try:
+        await db.delete(ticket)
+        await db.commit()
+        return True
+    except Exception:
+        await db.rollback()
+        raise
 
 
-def _escape_wildcards(query: str) -> str:
-    """Escape SQL wildcard characters in a LIKE pattern."""
-    return (
-        query.replace("\\", "\\\\")
-        .replace("%", "\\%")
-        .replace("_", "\\_")
+async def search_tickets(db: AsyncSession, query: str, limit: int = 10):
+    like = f"%{query}%"
+    result = await db.execute(
+        select(Ticket)
+        .filter((Ticket.Subject.ilike(like)) | (Ticket.Ticket_Body.ilike(like)))
+        .limit(limit)
     )
-
-
-def search_tickets(db: Session, query: str, limit: int = 10):
-
-    return TicketService(db).search_tickets(query, limit)
+    return result.scalars().all()
 
