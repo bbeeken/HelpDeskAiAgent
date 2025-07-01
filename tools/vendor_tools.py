@@ -1,8 +1,11 @@
+
 from sqlalchemy.orm import Session
 import logging
+
 from db.models import Vendor
 
 logger = logging.getLogger(__name__)
+
 
 
 def get_vendor(db: Session, vendor_id: int):

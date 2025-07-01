@@ -1,34 +1,50 @@
-from fastapi.testclient import TestClient
+import pytest
+from httpx import AsyncClient
 from main import app
 
-client = TestClient(app)
+
+import pytest_asyncio
 
 
-def _create_ticket():
+@pytest_asyncio.fixture
+async def client():
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
+
+
+async def _create_ticket(client: AsyncClient):
     payload = {
         "Subject": "API test",
         "Ticket_Body": "Checking routes",
         "Ticket_Contact_Name": "Tester",
         "Ticket_Contact_Email": "tester@example.com",
     }
-    response = client.post("/ticket", json=payload)
+    response = await client.post("/ticket", json=payload)
     assert response.status_code == 200
     return response.json()
 
 
-def test_create_and_get_ticket():
-    created = _create_ticket()
+@pytest.mark.asyncio
+async def test_create_and_get_ticket(client: AsyncClient):
+    created = await _create_ticket(client)
     tid = created["Ticket_ID"]
 
-    list_resp = client.get("/tickets")
+    list_resp = await client.get("/tickets")
     assert list_resp.status_code == 200
-    assert list_resp.json()[0]["Ticket_ID"] == tid
+    data = list_resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["Ticket_ID"] == tid
+    assert data["skip"] == 0
+    assert data["limit"] == 10
 
-    get_resp = client.get(f"/ticket/{tid}")
+    get_resp = await client.get(f"/ticket/{tid}")
     assert get_resp.status_code == 200
     assert get_resp.json()["Subject"] == "API test"
 
 
-def test_get_ticket_not_found():
-    resp = client.get("/ticket/999")
+@pytest.mark.asyncio
+async def test_get_ticket_not_found(client: AsyncClient):
+    resp = await client.get("/ticket/999")
     assert resp.status_code == 404
+    data = resp.json()
+    assert data["error_code"] == "NOT_FOUND"
