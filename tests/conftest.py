@@ -1,5 +1,8 @@
 import os
 
+# Pydantic 1.x fails on Python 3.12 unless this shim is disabled
+os.environ.setdefault("PYDANTIC_DISABLE_STD_TYPES_SHIM", "1")
+
 os.environ.setdefault("OPENAI_API_KEY", "test")
 os.environ.setdefault("DB_CONN_STRING", "sqlite:///:memory:")
 
