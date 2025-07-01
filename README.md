@@ -44,6 +44,17 @@ pip install -r requirements.txt
 pytest
 ```
 
+## Database Migrations
+
+Alembic manages schema migrations. Common commands:
+
+```bash
+# create a new revision from models
+alembic revision --autogenerate -m "message"
+# apply migrations to the database
+alembic upgrade head
+```
+
 ### API Highlights
 
 - `GET /health` - health check returning uptime and version
