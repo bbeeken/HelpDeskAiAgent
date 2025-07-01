@@ -9,7 +9,10 @@ def get_ticket(db: Session, ticket_id: int):
 
 
 def list_tickets(db: Session, skip: int = 0, limit: int = 10):
-    return db.query(Ticket).offset(skip).limit(limit).all()
+    query = db.query(Ticket)
+    total = query.count()
+    items = query.offset(skip).limit(limit).all()
+    return items, total
 
 
 def create_ticket(db: Session, ticket_obj: Ticket):
