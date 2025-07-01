@@ -36,7 +36,7 @@ from errors import NotFoundError
 
 
 
-from schemas.ticket import TicketOut, TicketCreate
+from schemas.ticket import TicketOut, TicketCreate, TicketUpdate
 
 from datetime import datetime
 
@@ -121,8 +121,10 @@ async def api_create_ticket(ticket: TicketCreate, db: AsyncSession = Depends(get
 
 
 @router.put("/ticket/{ticket_id}", response_model=TicketOut)
-async def api_update_ticket(
-    ticket_id: int, updates: dict, db: AsyncSession = Depends(get_db)
+
+def api_update_ticket(
+    ticket_id: int, updates: TicketUpdate, db: Session = Depends(get_db)
+
 ):
 
     logger.info("API update ticket %s", ticket_id)

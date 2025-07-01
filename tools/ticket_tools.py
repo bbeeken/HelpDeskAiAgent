@@ -4,7 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from fastapi import HTTPException
-import logging
+
+from pydantic import BaseModel
 
 from db.models import Ticket
 from services.ticket_service import TicketService
@@ -46,8 +47,13 @@ def create_ticket(db: Session, ticket_obj: Ticket):
     return ticket_obj
 
 
-async def update_ticket(db: AsyncSession, ticket_id: int, updates: dict) -> Ticket | None:
-    ticket = await get_ticket(db, ticket_id)
+
+def update_ticket(db: Session, ticket_id: int, updates) -> Ticket | None:
+    """Update a ticket with a mapping or Pydantic model."""
+    if isinstance(updates, BaseModel):
+        updates = updates.dict(exclude_unset=True)
+    ticket = get_ticket(db, ticket_id)
+
     if not ticket:
         return None
     for key, value in updates.items():

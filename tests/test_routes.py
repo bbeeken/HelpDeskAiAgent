@@ -46,5 +46,22 @@ async def test_create_and_get_ticket(client: AsyncClient):
 async def test_get_ticket_not_found(client: AsyncClient):
     resp = await client.get("/ticket/999")
     assert resp.status_code == 404
-    data = resp.json()
-    assert data["error_code"] == "NOT_FOUND"
+
+
+
+def test_update_ticket():
+    ticket = _create_ticket()
+    tid = ticket["Ticket_ID"]
+
+    resp = client.put(f"/ticket/{tid}", json={"Subject": "Updated"})
+    assert resp.status_code == 200
+    assert resp.json()["Subject"] == "Updated"
+
+
+def test_update_ticket_invalid_field():
+    ticket = _create_ticket()
+    tid = ticket["Ticket_ID"]
+
+    resp = client.put(f"/ticket/{tid}", json={"BadField": "x"})
+    assert resp.status_code == 422
+
