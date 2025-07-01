@@ -31,7 +31,11 @@ async def test_create_and_get_ticket(client: AsyncClient):
 
     list_resp = await client.get("/tickets")
     assert list_resp.status_code == 200
-    assert list_resp.json()[0]["Ticket_ID"] == tid
+    data = list_resp.json()
+    assert data["total"] == 1
+    assert data["items"][0]["Ticket_ID"] == tid
+    assert data["skip"] == 0
+    assert data["limit"] == 10
 
     get_resp = await client.get(f"/ticket/{tid}")
     assert get_resp.status_code == 200

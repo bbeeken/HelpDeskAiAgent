@@ -1,6 +1,9 @@
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
+
 from db.models import Ticket
+from services.analytics_service import AnalyticsService
 
 
 async def tickets_by_status(db: AsyncSession):

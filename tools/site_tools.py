@@ -10,3 +10,4 @@ async def get_site(db: AsyncSession, site_id: int):
 async def list_sites(db: AsyncSession, skip: int = 0, limit: int = 10):
     result = await db.execute(select(Site).offset(skip).limit(limit))
     return result.scalars().all()
+

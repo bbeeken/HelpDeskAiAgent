@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from main import app
 from db.models import Ticket
 from db.mssql import SessionLocal
-from tools.ticket_tools import create_ticket
+from services.ticket_service import TicketService
 
 os.environ.setdefault("OPENAI_API_KEY", "test")
 os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
@@ -32,7 +32,9 @@ async def _add_ticket(**kwargs):
             Assigned_Email=kwargs.get("Assigned_Email"),
             Created_Date=kwargs.get("Created_Date", datetime.utcnow()),
         )
+
         await create_ticket(db, ticket)
+
         return ticket
 
 @pytest.mark.asyncio
