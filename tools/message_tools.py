@@ -18,7 +18,11 @@ def post_ticket_message(db: Session, ticket_id: int, message: str, sender_code: 
         SenderUserName=sender_name,
         DateTimeStamp=datetime.utcnow()
     )
-    db.add(msg)
-    db.commit()
-    db.refresh(msg)
-    return msg
+    try:
+        db.add(msg)
+        db.commit()
+        db.refresh(msg)
+        return msg
+    except Exception:
+        db.rollback()
+        raise
