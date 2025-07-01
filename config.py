@@ -22,4 +22,6 @@ GRAPH_ENABLED = all(
     [GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET, GRAPH_TENANT_ID]
 )
 
+
 __all__ = [name for name in globals() if name.isupper()]
+
