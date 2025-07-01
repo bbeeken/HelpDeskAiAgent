@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
 from db.mssql import SessionLocal
 
 
@@ -26,14 +27,15 @@ from tools.ai_tools import ai_suggest_response
 
 from pydantic import BaseModel
 from typing import List
-from schemas.paginated import PaginatedResponse
+
+from errors import NotFoundError
+
+
 
 from schemas.ticket import TicketOut, TicketCreate
 
 from datetime import datetime
 
-APP_VERSION = "0.1.0"
-START_TIME = datetime.utcnow()
 
 
 
@@ -74,7 +76,7 @@ async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)):
     ticket = await get_ticket(db, ticket_id)
 
     if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        raise NotFoundError("Ticket not found")
     return ticket
 
 
@@ -112,17 +114,17 @@ async def api_update_ticket(
     ticket = await update_ticket(db, ticket_id, updates)
 
     if not ticket:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        raise NotFoundError("Ticket not found")
     return ticket
 
 
 
 @router.delete("/ticket/{ticket_id}")
 
-async def api_delete_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)):
-    if not await delete_ticket(db, ticket_id):
+def api_delete_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    if not delete_ticket(db, ticket_id):
+        raise NotFoundError("Ticket not found")
 
-        raise HTTPException(status_code=404, detail="Ticket not found")
     return {"deleted": True}
 
 
@@ -132,7 +134,7 @@ async def api_get_asset(asset_id: int, db: AsyncSession = Depends(get_db)):
     asset = await get_asset(db, asset_id)
 
     if not asset:
-        raise HTTPException(status_code=404, detail="Asset not found")
+        raise NotFoundError("Asset not found")
     return asset
 
 
@@ -149,7 +151,7 @@ async def api_get_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)):
     vendor = await get_vendor(db, vendor_id)
 
     if not vendor:
-        raise HTTPException(status_code=404, detail="Vendor not found")
+        raise NotFoundError("Vendor not found")
     return vendor
 
 
@@ -166,7 +168,7 @@ async def api_get_site(site_id: int, db: AsyncSession = Depends(get_db)):
     site = await get_site(db, site_id)
 
     if not site:
-        raise HTTPException(status_code=404, detail="Site not found")
+        raise NotFoundError("Site not found")
     return site
 
 

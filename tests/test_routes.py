@@ -46,3 +46,5 @@ async def test_create_and_get_ticket(client: AsyncClient):
 async def test_get_ticket_not_found(client: AsyncClient):
     resp = await client.get("/ticket/999")
     assert resp.status_code == 404
+    data = resp.json()
+    assert data["error_code"] == "NOT_FOUND"

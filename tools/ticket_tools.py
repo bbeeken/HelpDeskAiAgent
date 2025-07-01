@@ -2,7 +2,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from fastapi import HTTPException
+
+from errors import DatabaseError
 
 from db.models import Ticket
 from services.ticket_service import TicketService
@@ -31,8 +32,10 @@ async def create_ticket(db: AsyncSession, ticket_obj: Ticket):
         await db.commit()
         await db.refresh(ticket_obj)
     except SQLAlchemyError as e:
-        await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create ticket: {e}")
+
+        db.rollback()
+        raise DatabaseError("Failed to create ticket", str(e))
+
     return ticket_obj
 
 
