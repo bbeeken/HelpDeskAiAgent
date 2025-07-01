@@ -53,32 +53,44 @@ class MessageIn(BaseModel):
     sender_code: str
     sender_name: str
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "message": "Thanks for the update",
+                "sender_code": "USR123",
+                "sender_name": "John Doe",
+            }
+        }
 
-@router.get("/ticket/{ticket_id}", response_model=TicketOut)
+
+@router.get("/ticket/{ticket_id}", response_model=TicketOut, tags=["Tickets"])
 def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    """Retrieve a single ticket by its ID."""
     ticket = get_ticket(db, ticket_id)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return ticket
 
 
-@router.get("/tickets", response_model=list[TicketOut])
+@router.get("/tickets", response_model=list[TicketOut], tags=["Tickets"])
 def api_list_tickets(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
 ):
+    """Return a paginated list of tickets."""
     return list_tickets(db, skip, limit)
 
 
 
 
-@router.get("/tickets/search", response_model=List[TicketOut])
+@router.get("/tickets/search", response_model=List[TicketOut], tags=["Tickets"])
 def api_search_tickets(q: str, limit: int = 10, db: Session = Depends(get_db)):
-
+    """Search tickets by keyword in the subject or body."""
     return search_tickets(db, q, limit)
 
 
-@router.post("/ticket", response_model=TicketOut)
+@router.post("/ticket", response_model=TicketOut, tags=["Tickets"])
 def api_create_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
+    """Create a new ticket and return the created record."""
     from db.models import Ticket
 
     obj = Ticket(**ticket.dict(), Created_Date=datetime.utcnow())
@@ -86,132 +98,151 @@ def api_create_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
     return created
 
 
-@router.put("/ticket/{ticket_id}", response_model=TicketOut)
+@router.put("/ticket/{ticket_id}", response_model=TicketOut, tags=["Tickets"])
 def api_update_ticket(
     ticket_id: int, updates: dict, db: Session = Depends(get_db)
 ):
+    """Update an existing ticket with a dictionary of fields."""
     ticket = update_ticket(db, ticket_id, updates)
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return ticket
 
 
-@router.delete("/ticket/{ticket_id}")
+@router.delete("/ticket/{ticket_id}", tags=["Tickets"])
 def api_delete_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    """Delete a ticket by ID."""
     if not delete_ticket(db, ticket_id):
         raise HTTPException(status_code=404, detail="Ticket not found")
     return {"deleted": True}
 
 
-@router.get("/asset/{asset_id}")
+@router.get("/asset/{asset_id}", tags=["Assets"])
 def api_get_asset(asset_id: int, db: Session = Depends(get_db)):
+    """Retrieve a single asset by ID."""
     asset = get_asset(db, asset_id)
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
     return asset
 
 
-@router.get("/assets")
+@router.get("/assets", tags=["Assets"])
 def api_list_assets(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
 ):
+    """Return a paginated list of assets."""
     return list_assets(db, skip, limit)
 
 
-@router.get("/vendor/{vendor_id}")
+@router.get("/vendor/{vendor_id}", tags=["Vendors"])
 def api_get_vendor(vendor_id: int, db: Session = Depends(get_db)):
+    """Retrieve a vendor record by ID."""
     vendor = get_vendor(db, vendor_id)
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
     return vendor
 
 
-@router.get("/vendors")
+@router.get("/vendors", tags=["Vendors"])
 def api_list_vendors(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
 ):
+    """List vendors with pagination."""
     return list_vendors(db, skip, limit)
 
 
-@router.get("/site/{site_id}")
+@router.get("/site/{site_id}", tags=["Sites"])
 def api_get_site(site_id: int, db: Session = Depends(get_db)):
+    """Get a site record by ID."""
     site = get_site(db, site_id)
     if not site:
         raise HTTPException(status_code=404, detail="Site not found")
     return site
 
 
-@router.get("/sites")
+@router.get("/sites", tags=["Sites"])
 def api_list_sites(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
 ):
+    """Return all sites with pagination."""
     return list_sites(db, skip, limit)
 
 
-@router.get("/categories")
+@router.get("/categories", tags=["Metadata"])
 def api_list_categories(db: Session = Depends(get_db)):
+    """Return available ticket categories."""
     return list_categories(db)
 
 
-@router.get("/statuses")
+@router.get("/statuses", tags=["Metadata"])
 def api_list_statuses(db: Session = Depends(get_db)):
+    """Return available status values."""
     return list_statuses(db)
 
 
-@router.get("/ticket/{ticket_id}/attachments")
+@router.get("/ticket/{ticket_id}/attachments", tags=["Attachments"])
 def api_get_ticket_attachments(
     ticket_id: int, db: Session = Depends(get_db)
 ):
+    """List attachments associated with a ticket."""
     return get_ticket_attachments(db, ticket_id)
 
 
-@router.get("/ticket/{ticket_id}/messages")
+@router.get("/ticket/{ticket_id}/messages", tags=["Messages"])
 def api_get_ticket_messages(
     ticket_id: int, db: Session = Depends(get_db)
 ):
+    """Return the message thread for a ticket."""
     return get_ticket_messages(db, ticket_id)
 
 
-@router.post("/ticket/{ticket_id}/messages")
+@router.post("/ticket/{ticket_id}/messages", tags=["Messages"])
 def api_post_ticket_message(
     ticket_id: int,
     msg: MessageIn,
     db: Session = Depends(get_db),
 ):
+    """Add a new message to a ticket conversation."""
     return post_ticket_message(
         db, ticket_id, msg.message, msg.sender_code, msg.sender_name
     )
 
 
 
-@router.post("/ai/suggest_response")
+@router.post("/ai/suggest_response", tags=["AI"])
 def api_ai_suggest_response(ticket: TicketOut, context: str = ""):
+    """Generate an AI suggested response for the provided ticket."""
     return {"response": ai_suggest_response(ticket.dict(), context)}
 
 
 # Analysis endpoints
 
 
-@router.get("/analytics/status")
+@router.get("/analytics/status", tags=["Analytics"])
 def api_tickets_by_status(db: Session = Depends(get_db)):
+    """Return ticket counts grouped by status."""
     return tickets_by_status(db)
 
 
-@router.get("/analytics/open_by_site")
+@router.get("/analytics/open_by_site", tags=["Analytics"])
 def api_open_tickets_by_site(db: Session = Depends(get_db)):
+    """Return counts of open tickets grouped by site."""
     return open_tickets_by_site(db)
 
 
-@router.get("/analytics/sla_breaches")
+@router.get("/analytics/sla_breaches", tags=["Analytics"])
 def api_sla_breaches(sla_days: int = 2, db: Session = Depends(get_db)):
+    """Return the number of tickets that exceeded the SLA."""
     return {"breaches": sla_breaches(db, sla_days)}
 
 
-@router.get("/analytics/open_by_user")
+@router.get("/analytics/open_by_user", tags=["Analytics"])
 def api_open_tickets_by_user(db: Session = Depends(get_db)):
+    """Return counts of open tickets grouped by assigned user."""
     return open_tickets_by_user(db)
 
 
-@router.get("/analytics/waiting_on_user")
+@router.get("/analytics/waiting_on_user", tags=["Analytics"])
 def api_tickets_waiting_on_user(db: Session = Depends(get_db)):
+    """Return counts of tickets waiting on a user response."""
     return tickets_waiting_on_user(db)
