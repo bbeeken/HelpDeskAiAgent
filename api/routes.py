@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from db.session import SessionLocal
+from db.mssql import SessionLocal
 from tools.ticket_tools import get_ticket, list_tickets, create_ticket
 from tools.asset_tools import get_asset, list_assets
 from tools.vendor_tools import get_vendor, list_vendors
