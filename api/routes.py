@@ -25,10 +25,9 @@ from pydantic import BaseModel
 
 from typing import List
 
-from schemas.ticket import TicketIn, TicketOut
+from schemas.ticket import TicketIn, TicketOut, TicketCreate
 
 from datetime import datetime
-from schema_models import TicketCreate
 
 
 router = APIRouter()
