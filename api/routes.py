@@ -29,6 +29,7 @@ from tools.analysis_tools import (
 
 from pydantic import BaseModel
 from typing import List
+from schemas.paginated import PaginatedResponse
 
 
 from schemas.ticket import TicketOut, TicketCreate
@@ -62,11 +63,14 @@ def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)):
     return ticket
 
 
-@router.get("/tickets", response_model=list[TicketOut])
+@router.get("/tickets", response_model=PaginatedResponse[TicketOut])
 def api_list_tickets(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
 ):
-    return list_tickets(db, skip, limit)
+    items, total = list_tickets(db, skip, limit)
+    return PaginatedResponse[TicketOut](
+        items=items, total=total, skip=skip, limit=limit
+    )
 
 
 
@@ -111,11 +115,14 @@ def api_get_asset(asset_id: int, db: Session = Depends(get_db)):
     return asset
 
 
-@router.get("/assets")
+@router.get("/assets", response_model=PaginatedResponse[dict])
 def api_list_assets(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
 ):
-    return list_assets(db, skip, limit)
+    items, total = list_assets(db, skip, limit)
+    return PaginatedResponse(
+        items=items, total=total, skip=skip, limit=limit
+    )
 
 
 @router.get("/vendor/{vendor_id}")
@@ -126,11 +133,14 @@ def api_get_vendor(vendor_id: int, db: Session = Depends(get_db)):
     return vendor
 
 
-@router.get("/vendors")
+@router.get("/vendors", response_model=PaginatedResponse[dict])
 def api_list_vendors(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
 ):
-    return list_vendors(db, skip, limit)
+    items, total = list_vendors(db, skip, limit)
+    return PaginatedResponse(
+        items=items, total=total, skip=skip, limit=limit
+    )
 
 
 @router.get("/site/{site_id}")
@@ -141,11 +151,14 @@ def api_get_site(site_id: int, db: Session = Depends(get_db)):
     return site
 
 
-@router.get("/sites")
+@router.get("/sites", response_model=PaginatedResponse[dict])
 def api_list_sites(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
 ):
-    return list_sites(db, skip, limit)
+    items, total = list_sites(db, skip, limit)
+    return PaginatedResponse(
+        items=items, total=total, skip=skip, limit=limit
+    )
 
 
 @router.get("/categories")
