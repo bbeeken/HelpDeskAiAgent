@@ -1,4 +1,6 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+from fastapi import HTTPException
 from db.models import Ticket
 
 def get_ticket(db: Session, ticket_id: int):
@@ -8,14 +10,17 @@ def list_tickets(db: Session, skip: int = 0, limit: int = 10):
     return db.query(Ticket).offset(skip).limit(limit).all()
 
 def create_ticket(db: Session, ticket_obj: Ticket):
+
+    db.add(ticket_obj)
     try:
-        db.add(ticket_obj)
         db.commit()
         db.refresh(ticket_obj)
-        return ticket_obj
-    except Exception:
+    except SQLAlchemyError as e:
         db.rollback()
-        raise
+        raise HTTPException(status_code=500, detail=f"Failed to create ticket: {e}")
+    return ticket_obj
+
+
 
 def update_ticket(db: Session, ticket_id: int, updates: dict) -> Ticket | None:
     ticket = get_ticket(db, ticket_id)
@@ -52,3 +57,4 @@ def search_tickets(db: Session, query: str, limit: int = 10):
         .limit(limit)
         .all()
     )
+

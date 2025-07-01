@@ -1,4 +1,6 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+from fastapi import HTTPException
 from db.models import TicketMessage
 from datetime import datetime
 
@@ -18,11 +20,13 @@ def post_ticket_message(db: Session, ticket_id: int, message: str, sender_code: 
         SenderUserName=sender_name,
         DateTimeStamp=datetime.utcnow()
     )
+
+    db.add(msg)
     try:
-        db.add(msg)
         db.commit()
         db.refresh(msg)
-        return msg
-    except Exception:
+    except SQLAlchemyError as e:
         db.rollback()
-        raise
+        raise HTTPException(status_code=500, detail=f"Failed to save message: {e}")
+    return msg
+
