@@ -27,10 +27,4 @@ def suggest_ticket_response(ticket: dict, context: str = "") -> str:
     except OpenAIError as e:
         return f"OpenAI API error: {e}"
 
-            messages=[{"role": "system", "content": prompt}]
-        )
-    except openai.error.OpenAIError as exc:
-        return f"OpenAI API error: {exc}"
-
-    return response['choices'][0]['message']['content']
 
