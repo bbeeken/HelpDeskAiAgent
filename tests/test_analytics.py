@@ -109,13 +109,11 @@ async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
                     class Choice:
                         message = Msg()
 
-                    return type("Resp", (), {"choices": [Choice()]})()
 
-            completions = Completions()
+    from ai import openai_agent
+    openai_agent._get_client()
+    monkeypatch.setattr(openai_agent.openai_client.chat.completions, "create", fake_create)
 
-        chat = Chat()
-
-    openai_agent.set_client(DummyClient())
 
     payload = {
         "Subject": "AI", "Ticket_Body": "body",
