@@ -26,9 +26,6 @@ network access.
 
 from typing import Dict, List
 
-import os
-import requests
-
 import logging
 import os
 import requests

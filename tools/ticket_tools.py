@@ -17,11 +17,6 @@ from db.models import Ticket
 logger = logging.getLogger(__name__)
 
 
-def _escape_wildcards(text: str) -> str:
-    """Escape SQL wildcard characters for LIKE queries."""
-    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
-
 async def get_ticket(db: AsyncSession, ticket_id: int) -> Ticket | None:
     return await db.get(Ticket, ticket_id)
 
