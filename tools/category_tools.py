@@ -1,5 +1,6 @@
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 import logging
 
 from db.models import TicketCategory
@@ -7,7 +8,7 @@ from db.models import TicketCategory
 logger = logging.getLogger(__name__)
 
 
-def list_categories(db: Session) -> list[TicketCategory]:
-
-    return db.query(TicketCategory).all()
+async def list_categories(db: AsyncSession) -> list[TicketCategory]:
+    result = await db.execute(select(TicketCategory))
+    return result.scalars().all()
 

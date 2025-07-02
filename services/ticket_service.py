@@ -1,5 +1,6 @@
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from fastapi import HTTPException
 from db.models import Ticket
 
@@ -7,57 +8,58 @@ from db.models import Ticket
 class TicketService:
     """Service class providing ticket-related database operations."""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
-    def get_ticket(self, ticket_id: int):
-        return self.db.query(Ticket).filter(Ticket.Ticket_ID == ticket_id).first()
+    async def get_ticket(self, ticket_id: int) -> Ticket | None:
+        return await self.db.get(Ticket, ticket_id)
 
-    def list_tickets(self, skip: int = 0, limit: int = 10):
-        return self.db.query(Ticket).offset(skip).limit(limit).all()
+    async def list_tickets(self, skip: int = 0, limit: int = 10):
+        result = await self.db.execute(select(Ticket).offset(skip).limit(limit))
+        return result.scalars().all()
 
-    def create_ticket(self, ticket_obj: Ticket):
+    async def create_ticket(self, ticket_obj: Ticket) -> Ticket:
         self.db.add(ticket_obj)
         try:
-            self.db.commit()
-            self.db.refresh(ticket_obj)
+            await self.db.commit()
+            await self.db.refresh(ticket_obj)
         except SQLAlchemyError as e:
-            self.db.rollback()
+            await self.db.rollback()
             raise HTTPException(status_code=500, detail=f"Failed to create ticket: {e}")
         return ticket_obj
 
-    def update_ticket(self, ticket_id: int, updates: dict):
-        ticket = self.get_ticket(ticket_id)
+    async def update_ticket(self, ticket_id: int, updates: dict):
+        ticket = await self.get_ticket(ticket_id)
         if not ticket:
             return None
         for key, value in updates.items():
             if hasattr(ticket, key):
                 setattr(ticket, key, value)
         try:
-            self.db.commit()
-            self.db.refresh(ticket)
+            await self.db.commit()
+            await self.db.refresh(ticket)
             return ticket
         except Exception:
-            self.db.rollback()
+            await self.db.rollback()
             raise
 
-    def delete_ticket(self, ticket_id: int) -> bool:
-        ticket = self.get_ticket(ticket_id)
+    async def delete_ticket(self, ticket_id: int) -> bool:
+        ticket = await self.get_ticket(ticket_id)
         if not ticket:
             return False
         try:
-            self.db.delete(ticket)
-            self.db.commit()
+            await self.db.delete(ticket)
+            await self.db.commit()
             return True
         except Exception:
-            self.db.rollback()
+            await self.db.rollback()
             raise
 
-    def search_tickets(self, query: str, limit: int = 10):
+    async def search_tickets(self, query: str, limit: int = 10):
         like = f"%{query}%"
-        return (
-            self.db.query(Ticket)
+        result = await self.db.execute(
+            select(Ticket)
             .filter((Ticket.Subject.ilike(like)) | (Ticket.Ticket_Body.ilike(like)))
             .limit(limit)
-            .all()
         )
+        return result.scalars().all()

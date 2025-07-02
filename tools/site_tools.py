@@ -1,5 +1,6 @@
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 import logging
 
 from db.models import Site
@@ -8,12 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 
-def get_site(db: Session, site_id: int) -> Site | None:
-    return db.query(Site).filter(Site.ID == site_id).first()
+async def get_site(db: AsyncSession, site_id: int) -> Site | None:
+    return await db.get(Site, site_id)
 
 
-def list_sites(db: Session, skip: int = 0, limit: int = 10) -> list[Site]:
-
-    return db.query(Site).offset(skip).limit(limit).all()
+async def list_sites(db: AsyncSession, skip: int = 0, limit: int = 10) -> list[Site]:
+    result = await db.execute(select(Site).offset(skip).limit(limit))
+    return result.scalars().all()
 
 
