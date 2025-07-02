@@ -105,7 +105,19 @@ async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
         return type("Resp", (), {"choices": [Choice()]})()
 
     from ai import openai_agent
-    monkeypatch.setattr(openai_agent.openai_client.chat.completions, "create", fake_create)
+
+    class DummyClient:
+        class Chat:
+            class Completions:
+                @staticmethod
+                def create(*args, **kwargs):
+                    return type("Resp", (), {"choices": [{"message": {"content": "ok"}}]})()
+
+            completions = Completions()
+
+        chat = Chat()
+
+    monkeypatch.setattr(openai_agent, "_get_client", lambda: DummyClient())
 
     payload = {
         "Subject": "AI", "Ticket_Body": "body",

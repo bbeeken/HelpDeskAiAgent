@@ -4,6 +4,7 @@ from ai import openai_agent
 
 def test_suggest_ticket_response_requires_key(monkeypatch):
     monkeypatch.setattr(openai_agent, "openai_client", None)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     with pytest.raises(RuntimeError):
         openai_agent.suggest_ticket_response({"Subject": "Test", "Ticket_Body": "body"})
 
@@ -38,7 +39,7 @@ def test_client_initialized_once(monkeypatch):
     import importlib
     import openai
 
-    monkeypatch.setattr(openai, "Client", DummyClient)
+    monkeypatch.setattr(openai, "OpenAI", DummyClient)
     oa = importlib.reload(openai_agent)
 
     # Call multiple times; initialization should only happen once
