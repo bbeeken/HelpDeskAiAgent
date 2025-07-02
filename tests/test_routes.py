@@ -51,14 +51,17 @@ async def test_get_ticket_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_update_ticket(client: AsyncClient):
+
     resp = await _create_ticket(client)
     assert resp.status_code == 200
     ticket = resp.json()
     tid = ticket["Ticket_ID"]
 
+
     resp = await client.put(f"/ticket/{tid}", json={"Subject": "Updated"})
     assert resp.status_code == 200
     assert resp.json()["Subject"] == "Updated"
+
 
 
 
@@ -68,6 +71,7 @@ async def test_update_ticket_invalid_field(client: AsyncClient):
     assert resp.status_code == 200
     ticket = resp.json()
     tid = ticket["Ticket_ID"]
+
 
     resp = await client.put(f"/ticket/{tid}", json={"BadField": "x"})
     assert resp.status_code == 422

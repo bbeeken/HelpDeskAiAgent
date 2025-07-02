@@ -1,15 +1,36 @@
 from typing import Any, Dict
 
+import logging
 import openai
 
 from openai import APITimeoutError, OpenAIError
 from config import OPENAI_API_KEY
 
+OPENAI_TIMEOUT = 15  # seconds
+
+logger = logging.getLogger(__name__)
+
+# Lazily created OpenAI client instance
+openai_client: openai.Client | None = None
+
+
+def _get_client() -> openai.Client:
+    """Return a reusable OpenAI client instance."""
+    global openai_client
+
+    if openai_client is None:
+        if not OPENAI_API_KEY:
+            raise RuntimeError("OPENAI_API_KEY environment variable not set")
+
+        openai_client = openai.Client(api_key=OPENAI_API_KEY, timeout=OPENAI_TIMEOUT)
+
+    return openai_client
+
 
 def suggest_ticket_response(ticket: Dict[str, Any], context: str = "") -> str:
-    if not OPENAI_API_KEY:
+    """Generate a suggested response to a ticket using OpenAI."""
 
-        raise RuntimeError("OPENAI_API_KEY environment variable not set")
+    client = _get_client()
 
     prompt = (
         "You are a Tier 1 help desk agent for a truck stop. Here is the ticket:\n"
@@ -17,16 +38,12 @@ def suggest_ticket_response(ticket: Dict[str, Any], context: str = "") -> str:
         f"Context: {context}\n"
         "Suggest the best response, including troubleshooting or assignment if possible."
     )
+
     try:
-
-        response = openai.ChatCompletion.create(  # type: ignore[attr-defined]
-
+        response = client.chat.completions.create(
             model="gpt-4o",
-
             messages=[{"role": "system", "content": prompt}],
-            timeout=OPENAI_TIMEOUT,
         )
-
         return response.choices[0].message.content
 
     except APITimeoutError:
