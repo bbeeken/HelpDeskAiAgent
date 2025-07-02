@@ -76,6 +76,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await db.close()
 
 
+
 def get_ticket_service(db: AsyncSession = Depends(get_db)) -> TicketService:
     return TicketService(db)
 
