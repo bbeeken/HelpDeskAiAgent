@@ -56,7 +56,7 @@ from db.models import (
 )
 
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 
@@ -134,7 +134,7 @@ async def api_search_tickets(
 
 @router.post("/ticket", response_model=TicketOut)
 async def api_create_ticket(ticket: TicketCreate, db: AsyncSession = Depends(get_db)) -> Ticket:
-    obj = Ticket(**ticket.dict(), Created_Date=datetime.utcnow())
+    obj = Ticket(**ticket.dict(), Created_Date=datetime.now(UTC))
     logger.info("API create ticket")
     created = await create_ticket(db, obj)
     return created

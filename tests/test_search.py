@@ -4,7 +4,7 @@ import pytest
 from db.models import Base, Ticket
 from db.mssql import engine, SessionLocal
 from services.ticket_service import TicketService
-from datetime import datetime
+from datetime import datetime, UTC
 from tools.ticket_tools import create_ticket, search_tickets
 
 os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
@@ -23,7 +23,7 @@ async def test_search_tickets():
         t = Ticket(
             Subject="Network issue",
             Ticket_Body="Cannot connect",
-            Created_Date=datetime.utcnow(),
+            Created_Date=datetime.now(UTC),
         )
 
         await create_ticket(db, t)

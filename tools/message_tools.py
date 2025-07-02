@@ -5,7 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException
 
 from db.models import TicketMessage
-from datetime import datetime
+from datetime import datetime, UTC
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ async def post_ticket_message(
         Message=message,
         SenderUserCode=sender_code,
         SenderUserName=sender_name,
-        DateTimeStamp=datetime.utcnow(),
+        DateTimeStamp=datetime.now(UTC),
     )
 
     db.add(msg)
