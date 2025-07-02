@@ -4,6 +4,7 @@ from typing import Any, Generator, List
 from fastapi import APIRouter, Depends, HTTPException
 
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import logging
 
@@ -56,10 +57,8 @@ logger = logging.getLogger(__name__)
 
 
 
-def get_db() -> Generator[Session, None, None]:
-    db = SessionLocal()
-    try:
-
+async def get_db() -> Generator[AsyncSession, None, None]:
+    async with SessionLocal() as db:
         yield db
 
 
@@ -112,13 +111,9 @@ def api_list_tickets(
 
 
 @router.get("/tickets/search", response_model=List[TicketOut])
-
 def api_search_tickets(
     q: str, limit: int = 10, db: Session = Depends(get_db)
 ) -> list[Ticket]:
-
-
-def api_search_tickets(q: str, limit: int = 10, db: Session = Depends(get_db)):
     logger.info("API search tickets query=%s limit=%s", q, limit)
     return search_tickets(db, q, limit)
 
@@ -257,26 +252,20 @@ def api_get_ticket_attachments(
 
 
 @router.get("/ticket/{ticket_id}/messages")
-
-def api_get_ticket_messages(
-    ticket_id: int, db: Session = Depends(get_db)
+async def api_get_ticket_messages(
+    ticket_id: int, db: AsyncSession = Depends(get_db)
 ) -> list[Any]:
-
-    return get_ticket_messages(db, ticket_id)
+    return await get_ticket_messages(db, ticket_id)
 
 
 
 @router.post("/ticket/{ticket_id}/messages")
 async def api_post_ticket_message(
-
     ticket_id: int,
     msg: MessageIn,
-
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ) -> Any:
-
-    return post_ticket_message(
-
+    return await post_ticket_message(
         db, ticket_id, msg.message, msg.sender_code, msg.sender_name
     )
 
