@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from errors import DatabaseError
+from fastapi import HTTPException
 
 from db.models import TicketMessage
 from datetime import datetime
@@ -16,11 +16,10 @@ logger = logging.getLogger(__name__)
 async def get_ticket_messages(db: AsyncSession, ticket_id: int) -> list[TicketMessage]:
     result = await db.execute(
         select(TicketMessage)
-
         .filter(TicketMessage.Ticket_ID == ticket_id)
         .order_by(TicketMessage.DateTimeStamp)
     )
-    return query.all()
+    return result.scalars().all()
 
 
 async def post_ticket_message(
