@@ -1,5 +1,5 @@
 
-from typing import Any, Generator, List
+from typing import Generator, List
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -167,7 +167,7 @@ def api_delete_ticket(ticket_id: int, db: Session = Depends(get_db)) -> dict:
 
 @router.get("/asset/{asset_id}")
 
-def api_get_asset(asset_id: int, db: Session = Depends(get_db)) -> Any:
+def api_get_asset(asset_id: int, db: Session = Depends(get_db)) -> Asset:
 
     asset = get_asset(db, asset_id)
     if not asset:
@@ -182,14 +182,14 @@ def api_get_asset(asset_id: int, db: Session = Depends(get_db)) -> Any:
 
 def api_list_assets(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
-) -> list[Any]:
+) -> list[Asset]:
 
     return list_assets(db, skip, limit)
 
 
 @router.get("/vendor/{vendor_id}")
 
-def api_get_vendor(vendor_id: int, db: Session = Depends(get_db)) -> Any:
+def api_get_vendor(vendor_id: int, db: Session = Depends(get_db)) -> Vendor:
 
     vendor = get_vendor(db, vendor_id)
     if not vendor:
@@ -204,14 +204,14 @@ def api_get_vendor(vendor_id: int, db: Session = Depends(get_db)) -> Any:
 
 def api_list_vendors(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
-) -> list[Any]:
+) -> list[Vendor]:
 
     return list_vendors(db, skip, limit)
 
 
 @router.get("/site/{site_id}")
 
-def api_get_site(site_id: int, db: Session = Depends(get_db)) -> Any:
+def api_get_site(site_id: int, db: Session = Depends(get_db)) -> Site:
 
     site = get_site(db, site_id)
     if not site:
@@ -226,21 +226,21 @@ def api_get_site(site_id: int, db: Session = Depends(get_db)) -> Any:
 
 def api_list_sites(
     skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
-) -> list[Any]:
+) -> list[Site]:
 
     return list_sites(db, skip, limit)
 
 
 @router.get("/categories")
 
-def api_list_categories(db: Session = Depends(get_db)) -> list[Any]:
+def api_list_categories(db: Session = Depends(get_db)) -> list[TicketCategory]:
 
     return list_categories(db)
 
 
 @router.get("/statuses")
 
-def api_list_statuses(db: Session = Depends(get_db)) -> list[Any]:
+def api_list_statuses(db: Session = Depends(get_db)) -> list[TicketStatus]:
 
     return list_statuses(db)
 
@@ -250,7 +250,7 @@ def api_list_statuses(db: Session = Depends(get_db)) -> list[Any]:
 
 def api_get_ticket_attachments(
     ticket_id: int, db: Session = Depends(get_db)
-) -> list[Any]:
+) -> list[TicketAttachment]:
 
     return get_ticket_attachments(db, ticket_id)
 
@@ -260,7 +260,7 @@ def api_get_ticket_attachments(
 
 def api_get_ticket_messages(
     ticket_id: int, db: Session = Depends(get_db)
-) -> list[Any]:
+) -> list[TicketMessage]:
 
     return get_ticket_messages(db, ticket_id)
 
@@ -273,7 +273,7 @@ async def api_post_ticket_message(
     msg: MessageIn,
 
     db: Session = Depends(get_db),
-) -> Any:
+) -> TicketMessage:
 
     return post_ticket_message(
 

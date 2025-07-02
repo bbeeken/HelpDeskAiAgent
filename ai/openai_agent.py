@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Dict
 
 import openai
 
@@ -6,7 +6,7 @@ from openai import APITimeoutError, OpenAIError
 from config import OPENAI_API_KEY
 
 
-def suggest_ticket_response(ticket: Dict[str, Any], context: str = "") -> str:
+def suggest_ticket_response(ticket: Dict[str, object], context: str = "") -> str:
     if not OPENAI_API_KEY:
 
         raise RuntimeError("OPENAI_API_KEY environment variable not set")
