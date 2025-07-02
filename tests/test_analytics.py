@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 
 import pytest
-from httpx import AsyncClient
+import httpx
 from main import app
 from db.models import Ticket
 from db.mssql import SessionLocal
@@ -17,7 +17,7 @@ import pytest_asyncio
 
 @pytest_asyncio.fixture
 async def client():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with httpx.AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
 
 async def _add_ticket(**kwargs):
@@ -38,7 +38,7 @@ async def _add_ticket(**kwargs):
         return ticket
 
 @pytest.mark.asyncio
-async def test_analytics_status(client: AsyncClient):
+async def test_analytics_status(client: httpx.AsyncClient):
     await _add_ticket(Ticket_Status_ID=1)
     await _add_ticket(Ticket_Status_ID=1)
     await _add_ticket(Ticket_Status_ID=2)
@@ -49,7 +49,7 @@ async def test_analytics_status(client: AsyncClient):
     assert data == {1: 2, 2: 1}
 
 @pytest.mark.asyncio
-async def test_analytics_open_by_site(client: AsyncClient):
+async def test_analytics_open_by_site(client: httpx.AsyncClient):
     await _add_ticket(Site_ID=1, Ticket_Status_ID=1)
     await _add_ticket(Site_ID=1, Ticket_Status_ID=2)
     await _add_ticket(Site_ID=2, Ticket_Status_ID=1)
@@ -61,7 +61,7 @@ async def test_analytics_open_by_site(client: AsyncClient):
     assert data == {1: 2, 2: 1}
 
 @pytest.mark.asyncio
-async def test_analytics_sla_breaches(client: AsyncClient):
+async def test_analytics_sla_breaches(client: httpx.AsyncClient):
     old = datetime.utcnow() - timedelta(days=3)
     await _add_ticket(Created_Date=old)
     await _add_ticket()
@@ -70,7 +70,7 @@ async def test_analytics_sla_breaches(client: AsyncClient):
     assert resp.json() == {"breaches": 1}
 
 @pytest.mark.asyncio
-async def test_analytics_open_by_user(client: AsyncClient):
+async def test_analytics_open_by_user(client: httpx.AsyncClient):
     await _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=1)
     await _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=1)
     await _add_ticket(Assigned_Email="other@example.com", Ticket_Status_ID=1)
@@ -82,7 +82,7 @@ async def test_analytics_open_by_user(client: AsyncClient):
     assert data == {"tech@example.com": 2, "other@example.com": 1}
 
 @pytest.mark.asyncio
-async def test_analytics_waiting_on_user(client: AsyncClient):
+async def test_analytics_waiting_on_user(client: httpx.AsyncClient):
     await _add_ticket(Ticket_Status_ID=4, Ticket_Contact_Email="user1@example.com")
     await _add_ticket(Ticket_Status_ID=4, Ticket_Contact_Email="user1@example.com")
     await _add_ticket(Ticket_Status_ID=4, Ticket_Contact_Email="user2@example.com")
@@ -94,7 +94,7 @@ async def test_analytics_waiting_on_user(client: AsyncClient):
     assert data == {"user1@example.com": 2, "user2@example.com": 1}
 
 @pytest.mark.asyncio
-async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
+async def test_ai_suggest_response(client: httpx.AsyncClient, monkeypatch):
     def fake_create(*args, **kwargs):
         class Msg:
             content = "ok"

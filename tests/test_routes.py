@@ -1,18 +1,17 @@
 import pytest
-from httpx import AsyncClient
+import httpx
 from main import app
-
 
 import pytest_asyncio
 
 
 @pytest_asyncio.fixture
 async def client():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with httpx.AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
 
 
-async def _create_ticket(client: AsyncClient):
+async def _create_ticket(client: httpx.AsyncClient):
     payload = {
         "Subject": "API test",
         "Ticket_Body": "Checking routes",
@@ -25,7 +24,7 @@ async def _create_ticket(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_create_and_get_ticket(client: AsyncClient):
+async def test_create_and_get_ticket(client: httpx.AsyncClient):
     created = await _create_ticket(client)
     tid = created["Ticket_ID"]
 
@@ -43,25 +42,27 @@ async def test_create_and_get_ticket(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_ticket_not_found(client: AsyncClient):
+async def test_get_ticket_not_found(client: httpx.AsyncClient):
     resp = await client.get("/ticket/999")
     assert resp.status_code == 404
 
 
 
-def test_update_ticket():
-    ticket = _create_ticket()
+@pytest.mark.asyncio
+async def test_update_ticket(client: httpx.AsyncClient):
+    ticket = await _create_ticket(client)
     tid = ticket["Ticket_ID"]
 
-    resp = client.put(f"/ticket/{tid}", json={"Subject": "Updated"})
+    resp = await client.put(f"/ticket/{tid}", json={"Subject": "Updated"})
     assert resp.status_code == 200
     assert resp.json()["Subject"] == "Updated"
 
 
-def test_update_ticket_invalid_field():
-    ticket = _create_ticket()
+@pytest.mark.asyncio
+async def test_update_ticket_invalid_field(client: httpx.AsyncClient):
+    ticket = await _create_ticket(client)
     tid = ticket["Ticket_ID"]
 
-    resp = client.put(f"/ticket/{tid}", json={"BadField": "x"})
+    resp = await client.put(f"/ticket/{tid}", json={"BadField": "x"})
     assert resp.status_code == 422
 

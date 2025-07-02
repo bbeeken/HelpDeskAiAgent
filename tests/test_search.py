@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from db.models import Base, Ticket
 from db.mssql import engine, SessionLocal
-from services.ticket_service import TicketService
+from tools.ticket_tools import create_ticket, search_tickets
 from datetime import datetime
 
 os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")

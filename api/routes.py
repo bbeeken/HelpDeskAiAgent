@@ -28,6 +28,8 @@ from tools.site_tools import get_site, list_sites
 from tools.category_tools import list_categories
 from tools.status_tools import list_statuses
 from tools.message_tools import get_ticket_messages, post_ticket_message
+from services.ticket_service import TicketService
+from services.analytics_service import AnalyticsService
 from tools.ai_tools import ai_suggest_response
 
 
@@ -59,8 +61,9 @@ logger = logging.getLogger(__name__)
 def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
-
         yield db
+    finally:
+        db.close()
 
 
 def get_ticket_service(db: Session = Depends(get_db)) -> TicketService:
@@ -112,13 +115,9 @@ def api_list_tickets(
 
 
 @router.get("/tickets/search", response_model=List[TicketOut])
-
 def api_search_tickets(
     q: str, limit: int = 10, db: Session = Depends(get_db)
 ) -> list[Ticket]:
-
-
-def api_search_tickets(q: str, limit: int = 10, db: Session = Depends(get_db)):
     logger.info("API search tickets query=%s limit=%s", q, limit)
     return search_tickets(db, q, limit)
 
