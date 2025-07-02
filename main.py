@@ -11,7 +11,6 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from api.routes import router, get_db
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from limiter import limiter
 
@@ -23,9 +22,6 @@ APP_VERSION = "0.1.0"
 # Record startup time to report uptime
 START_TIME = datetime.utcnow()
 from errors import ErrorResponse, NotFoundError, ValidationError, DatabaseError
-
-VERSION = "0.1.0"
-start_time = datetime.utcnow()
 
 
 app = FastAPI(title="Truck Stop MCP Helpdesk API")
