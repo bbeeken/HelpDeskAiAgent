@@ -14,13 +14,13 @@ from api.routes import router, get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from limiter import limiter
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 # Application version
 APP_VERSION = "0.1.0"
 
 # Record startup time to report uptime
-START_TIME = datetime.utcnow()
+START_TIME = datetime.now(UTC)
 from errors import ErrorResponse, NotFoundError, ValidationError, DatabaseError
 
 
@@ -41,7 +41,7 @@ async def handle_not_found(request: Request, exc: NotFoundError):
         error_code=exc.error_code,
         message=exc.message,
         details=exc.details,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
     )
     return JSONResponse(status_code=404, content=jsonable_encoder(resp))
 
@@ -52,7 +52,7 @@ async def handle_validation(request: Request, exc: ValidationError):
         error_code=exc.error_code,
         message=exc.message,
         details=exc.details,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
     )
     return JSONResponse(status_code=400, content=jsonable_encoder(resp))
 
@@ -63,7 +63,7 @@ async def handle_database(request: Request, exc: DatabaseError):
         error_code=exc.error_code,
         message=exc.message,
         details=exc.details,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
     )
     return JSONResponse(status_code=500, content=jsonable_encoder(resp))
 
@@ -78,7 +78,7 @@ async def health(db: AsyncSession = Depends(get_db)) -> dict:
     except Exception:
         db_status = "error"
 
-    uptime = (datetime.utcnow() - START_TIME).total_seconds()
+    uptime = (datetime.now(UTC) - START_TIME).total_seconds()
     return {"db": db_status, "uptime": uptime, "version": APP_VERSION}
 
 

@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import pytest
 from httpx import AsyncClient
@@ -31,7 +31,7 @@ async def _add_ticket(**kwargs):
             Ticket_Status_ID=kwargs.get("Ticket_Status_ID", 1),
             Site_ID=kwargs.get("Site_ID"),
             Assigned_Email=kwargs.get("Assigned_Email"),
-            Created_Date=kwargs.get("Created_Date", datetime.utcnow()),
+            Created_Date=kwargs.get("Created_Date", datetime.now(UTC)),
         )
 
         await create_ticket(db, ticket)
@@ -63,7 +63,7 @@ async def test_analytics_open_by_site(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_analytics_sla_breaches(client: AsyncClient):
-    old = datetime.utcnow() - timedelta(days=3)
+    old = datetime.now(UTC) - timedelta(days=3)
     await _add_ticket(Created_Date=old)
     await _add_ticket()
     resp = await client.get("/analytics/sla_breaches", params={"sla_days": 2})
