@@ -50,10 +50,10 @@ async def sla_breaches(db: AsyncSession, sla_days: int = 2) -> int:
     """
     Count tickets older than sla_days and not closed.
     """
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, UTC
 
     logger.info("Counting SLA breaches older than %s days", sla_days)
-    cutoff = datetime.utcnow() - timedelta(days=sla_days)
+    cutoff = datetime.now(UTC) - timedelta(days=sla_days)
     result = await db.execute(
         select(func.count(Ticket.Ticket_ID))
         .filter(Ticket.Created_Date < cutoff)

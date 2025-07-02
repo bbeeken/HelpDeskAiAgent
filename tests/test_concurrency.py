@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from db.models import Ticket
 from db.mssql import SessionLocal
 from tools.ticket_tools import create_ticket
@@ -14,7 +14,7 @@ async def _add_sample_ticket():
             Ticket_Body="Conn",
             Ticket_Contact_Name="T",
             Ticket_Contact_Email="t@example.com",
-            Created_Date=datetime.utcnow(),
+            Created_Date=datetime.now(UTC),
             Ticket_Status_ID=1,
         )
         await create_ticket(session, t)

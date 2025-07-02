@@ -26,9 +26,9 @@ class AnalyticsService:
         return [(row[0], row[1]) for row in result.all()]
 
     async def sla_breaches(self, sla_days: int = 2):
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
 
-        cutoff = datetime.utcnow() - timedelta(days=sla_days)
+        cutoff = datetime.now(UTC) - timedelta(days=sla_days)
         result = await self.db.execute(
             select(func.count(Ticket.Ticket_ID))
             .filter(Ticket.Created_Date < cutoff)
