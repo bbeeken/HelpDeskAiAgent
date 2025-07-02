@@ -70,6 +70,7 @@ logger = logging.getLogger(__name__)
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with SessionLocal() as db:
 
+
         try:
             yield db
         finally:
