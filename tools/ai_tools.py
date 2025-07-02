@@ -1,6 +1,7 @@
 
 from typing import Any, Dict
 
+import logging
 from ai.openai_agent import suggest_ticket_response
 
 logger = logging.getLogger(__name__)
