@@ -14,7 +14,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
 
    The application requires the following variables:
 
-   - `DB_CONN_STRING` – SQLAlchemy connection string for your database.
+   - `DB_CONN_STRING` – SQLAlchemy connection string for your database. Use an async driver such as `mssql+aioodbc://`; synchronous `mssql+pyodbc` connections raise `InvalidRequestError` with `create_async_engine`.
    - `OPENAI_API_KEY` – API key used by the OpenAI integration.
    - `CONFIG_ENV` – which config to load: `dev`, `staging`, or `prod` (default `dev`).
 
