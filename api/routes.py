@@ -59,10 +59,13 @@ logger = logging.getLogger(__name__)
 
 
 
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with SessionLocal() as db:
-        yield db
 
+        yield db
+    finally:
+        db.close()
 
 def get_ticket_service(db: AsyncSession = Depends(get_db)) -> TicketService:
     return TicketService(db)
@@ -109,8 +112,10 @@ async def api_list_tickets(
 
 
 @router.get("/tickets/search", response_model=List[TicketOut])
+
 async def api_search_tickets(
     q: str, limit: int = 10, db: AsyncSession = Depends(get_db)
+
 ) -> list[Ticket]:
     logger.info("API search tickets query=%s limit=%s", q, limit)
     return await search_tickets(db, q, limit)
