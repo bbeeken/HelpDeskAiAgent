@@ -27,15 +27,49 @@ network access.
 from typing import Dict, List
 
 import logging
+import os
+import requests
 
 logger = logging.getLogger(__name__)
+
+GRAPH_CLIENT_ID = os.getenv("GRAPH_CLIENT_ID")
+GRAPH_CLIENT_SECRET = os.getenv("GRAPH_CLIENT_SECRET")
+GRAPH_TENANT_ID = os.getenv("GRAPH_TENANT_ID")
 
 
 GROUP_ID = "2ea9cf9b-4d28-456e-9eda-bd2c15825ee2"
 
 
-def get_user_by_email(email: str) -> Dict[str, str | None]:
+def _has_graph_creds() -> bool:
+    return all([GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET, GRAPH_TENANT_ID])
 
+
+def _get_token() -> str:
+    url = f"https://login.microsoftonline.com/{GRAPH_TENANT_ID}/oauth2/v2.0/token"
+    data = {
+        "grant_type": "client_credentials",
+        "client_id": GRAPH_CLIENT_ID,
+        "client_secret": GRAPH_CLIENT_SECRET,
+        "scope": "https://graph.microsoft.com/.default",
+    }
+    resp = requests.post(url, data=data, timeout=10)
+    resp.raise_for_status()
+    return resp.json()["access_token"]
+
+
+def _graph_get(endpoint: str, token: str) -> dict:
+    url = f"https://graph.microsoft.com/v1.0/{endpoint}"
+    resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=10)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def get_user_by_email(email: str) -> Dict[str, str | None]:
+    if not _has_graph_creds():
+        return {"email": email, "displayName": None, "id": None}
+
+    token = _get_token()
+    data = _graph_get(f"users/{email}", token)
     return {
         "email": data.get("mail"),
         "displayName": data.get("displayName"),
@@ -45,12 +79,20 @@ def get_user_by_email(email: str) -> Dict[str, str | None]:
 
 
 def get_all_users_in_group() -> List[Dict[str, str | None]]:
+    if not _has_graph_creds():
+        return []
 
-    return []
+    token = _get_token()
+    data = _graph_get(f"groups/{GROUP_ID}/members", token)
+    return [
+        {"email": u.get("mail"), "displayName": u.get("displayName"), "id": u.get("id")}
+        for u in data.get("value", [])
+    ]
 
 
 def resolve_user_display_name(identifier: str) -> str:
     logger.info("Resolving display name for %s", identifier)
+    user = get_user_by_email(identifier)
+    return user.get("displayName") or identifier
 
-    return identifier
 

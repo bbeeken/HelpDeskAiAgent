@@ -1,7 +1,7 @@
 
 from typing import Any, AsyncGenerator, List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -45,11 +45,14 @@ from tools.analysis_tools import (
 )
 from services.ticket_service import TicketService
 from services.analytics_service import AnalyticsService
+from limiter import limiter
 
 
 from pydantic import BaseModel
+from sqlalchemy import select, func
 
-from schemas.ticket import TicketCreate, TicketOut
+from schemas.ticket import TicketCreate, TicketOut, TicketUpdate
+from schemas.paginated import PaginatedResponse
 from db.models import (
     Asset,
     Site,
@@ -119,11 +122,13 @@ async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> 
 
 
 
-@router.get("/tickets", response_model=list[TicketOut])
+@router.get("/tickets", response_model=PaginatedResponse[TicketOut])
 async def api_list_tickets(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
-) -> list[Ticket]:
-    return await list_tickets(db, skip, limit)
+) -> PaginatedResponse[TicketOut]:
+    items = await list_tickets(db, skip, limit)
+    total = await db.scalar(select(func.count(Ticket.Ticket_ID)))
+    return PaginatedResponse[TicketOut](items=items, total=total, skip=skip, limit=limit)
 
 
 
@@ -150,7 +155,7 @@ async def api_create_ticket(ticket: TicketCreate, db: AsyncSession = Depends(get
 
 @router.put("/ticket/{ticket_id}", response_model=TicketOut)
 async def api_update_ticket(
-    ticket_id: int, updates: dict, db: AsyncSession = Depends(get_db)
+    ticket_id: int, updates: TicketUpdate, db: AsyncSession = Depends(get_db)
 ) -> Ticket:
     ticket = await update_ticket(db, ticket_id, updates)
     if not ticket:
@@ -269,9 +274,10 @@ async def api_post_ticket_message(
 
 
 
-@router.post("/ai/suggest_response")
 
-def api_ai_suggest_response(ticket: TicketOut, context: str = "") -> dict:
+@router.post("/ai/suggest_response")
+@limiter.limit("10/minute")
+def api_ai_suggest_response(request: Request, ticket: TicketOut, context: str = "") -> dict:
 
     return {"response": ai_suggest_response(ticket.dict(), context)}
 
