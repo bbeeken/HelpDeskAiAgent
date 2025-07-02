@@ -3,7 +3,8 @@ from ai import openai_agent
 
 
 def test_suggest_ticket_response_requires_key(monkeypatch):
-    monkeypatch.setattr(openai_agent, "openai_client", None)
+    monkeypatch.setattr(openai_agent, "OPENAI_API_KEY", None)
+    openai_agent.set_client(None)
     with pytest.raises(RuntimeError):
         openai_agent.suggest_ticket_response({"Subject": "Test", "Ticket_Body": "body"})
 

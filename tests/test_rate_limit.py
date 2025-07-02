@@ -1,13 +1,29 @@
-import openai
 from fastapi.testclient import TestClient
 from main import app
 
 client = TestClient(app)
 
 def _patch_openai(monkeypatch):
-    def fake_create(*args, **kwargs):
-        return {"choices": [{"message": {"content": "ok"}}]}
-    monkeypatch.setattr(openai.ChatCompletion, "create", fake_create)
+    from ai import openai_agent
+
+    class DummyClient:
+        class Chat:
+            class Completions:
+                @staticmethod
+                def create(*args, **kwargs):
+                    class Msg:
+                        content = "ok"
+
+                    class Choice:
+                        message = Msg()
+
+                    return type("Resp", (), {"choices": [Choice()]})()
+
+            completions = Completions()
+
+        chat = Chat()
+
+    openai_agent.set_client(DummyClient())
 
 def _create_ticket():
     payload = {
