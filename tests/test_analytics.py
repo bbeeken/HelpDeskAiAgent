@@ -7,6 +7,7 @@ from main import app
 from db.models import Ticket
 from db.mssql import SessionLocal
 from services.ticket_service import TicketService
+from tools.ticket_tools import create_ticket
 
 os.environ.setdefault("OPENAI_API_KEY", "test")
 os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
