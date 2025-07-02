@@ -120,6 +120,8 @@ async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
                     class Choice:
                         message = Msg()
 
+                    return type("Resp", (), {"choices": [Choice()]})()
+
 
     def fake_create(*_, **__):
         class Msg:
@@ -132,6 +134,7 @@ async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
 
     from ai import openai_agent
     openai_agent._get_client()
+    fake_create = DummyClient.Chat.Completions.create
     monkeypatch.setattr(openai_agent.openai_client.chat.completions, "create", fake_create)
 
 
