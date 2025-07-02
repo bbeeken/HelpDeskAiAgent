@@ -18,8 +18,10 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
    - `OPENAI_API_KEY` – API key used by the OpenAI integration.
    - `CONFIG_ENV` – which config to load: `dev`, `staging`, or `prod` (default `dev`).
 
-   They can be provided in the shell environment or in a `.env` file in the project root.  
-   OpenAI model parameters such as model name and timeouts are defined in the selected config file.
+   They can be provided in the shell environment or in a `.env` file in the project root.
+   `config.py` automatically loads `.env` and then imports `config_{CONFIG_ENV}.py`
+   so the appropriate settings are applied at startup. OpenAI model parameters
+   such as model name and timeouts are defined in the selected config file.
 
 ## Running the API
 
@@ -57,7 +59,7 @@ alembic upgrade head
 
 ### API Highlights
 
-- `GET /health` - health check returning uptime and version
+- `GET /health` - health check returning database status, uptime, and version
 - `POST /ticket` - create a ticket
 - `GET /tickets` - list tickets
 - `GET /tickets/search?q=term` - search tickets by subject or body
