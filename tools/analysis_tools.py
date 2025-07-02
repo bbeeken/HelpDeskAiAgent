@@ -4,7 +4,6 @@ from sqlalchemy import func
 import logging
 
 from db.models import Ticket
-from services.analytics_service import AnalyticsService
 
 logger = logging.getLogger(__name__)
 
