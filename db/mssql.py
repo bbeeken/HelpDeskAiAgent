@@ -1,8 +1,12 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from config import DB_CONN_STRING
+import logging
 
 engine_args = {}
 if DB_CONN_STRING and DB_CONN_STRING.startswith("mssql"):
+    if DB_CONN_STRING.startswith("mssql+pyodbc"):
+        logging.error("Synchronous driver detected in DB_CONN_STRING: %s", DB_CONN_STRING)
+        raise RuntimeError("Use an async SQLAlchemy driver such as 'mssql+aioodbc'.")
     engine_args["fast_executemany"] = True
 
 
