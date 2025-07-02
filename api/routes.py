@@ -1,8 +1,9 @@
 
-from typing import Any, Generator, List
+from typing import Any, AsyncGenerator, List
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 import logging
@@ -29,6 +30,8 @@ from tools.category_tools import list_categories
 from tools.status_tools import list_statuses
 from tools.message_tools import get_ticket_messages, post_ticket_message
 from tools.ai_tools import ai_suggest_response
+from services.ticket_service import TicketService
+from services.analytics_service import AnalyticsService
 
 
 from pydantic import BaseModel
@@ -56,18 +59,16 @@ logger = logging.getLogger(__name__)
 
 
 
-def get_db() -> Generator[Session, None, None]:
-    db = SessionLocal()
-    try:
-
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with SessionLocal() as db:
         yield db
 
 
-def get_ticket_service(db: Session = Depends(get_db)) -> TicketService:
+def get_ticket_service(db: AsyncSession = Depends(get_db)) -> TicketService:
     return TicketService(db)
 
 
-def get_analytics_service(db: Session = Depends(get_db)) -> AnalyticsService:
+def get_analytics_service(db: AsyncSession = Depends(get_db)) -> AnalyticsService:
     return AnalyticsService(db)
 
 
@@ -87,10 +88,8 @@ class MessageIn(BaseModel):
 
 
 @router.get("/ticket/{ticket_id}", response_model=TicketOut)
-
-def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)) -> Ticket:
-
-    ticket = get_ticket(db, ticket_id)
+async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> Ticket:
+    ticket = await get_ticket(db, ticket_id)
     if not ticket:
         logger.warning("Ticket %s not found", ticket_id)
         raise HTTPException(status_code=404, detail="Ticket not found")
@@ -100,50 +99,37 @@ def api_get_ticket(ticket_id: int, db: Session = Depends(get_db)) -> Ticket:
 
 
 @router.get("/tickets", response_model=list[TicketOut])
-
-def api_list_tickets(
-    skip: int = 0, limit: int = 10, db: Session = Depends(get_db)
+async def api_list_tickets(
+    skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
 ) -> list[Ticket]:
-
-    return list_tickets(db, skip, limit)
+    return await list_tickets(db, skip, limit)
 
 
 
 
 
 @router.get("/tickets/search", response_model=List[TicketOut])
-
-def api_search_tickets(
-    q: str, limit: int = 10, db: Session = Depends(get_db)
+async def api_search_tickets(
+    q: str, limit: int = 10, db: AsyncSession = Depends(get_db)
 ) -> list[Ticket]:
-
-
-def api_search_tickets(q: str, limit: int = 10, db: Session = Depends(get_db)):
     logger.info("API search tickets query=%s limit=%s", q, limit)
-    return search_tickets(db, q, limit)
+    return await search_tickets(db, q, limit)
 
 
 
 @router.post("/ticket", response_model=TicketOut)
-
-def api_create_ticket(ticket: TicketCreate, db: Session = Depends(get_db)) -> Ticket:
-
+async def api_create_ticket(ticket: TicketCreate, db: AsyncSession = Depends(get_db)) -> Ticket:
     obj = Ticket(**ticket.dict(), Created_Date=datetime.utcnow())
-
     logger.info("API create ticket")
-    created = create_ticket(db, obj)
-
+    created = await create_ticket(db, obj)
     return created
 
 
 @router.put("/ticket/{ticket_id}", response_model=TicketOut)
-
-def api_update_ticket(
-
-    ticket_id: int, updates: dict, db: Session = Depends(get_db)
+async def api_update_ticket(
+    ticket_id: int, updates: dict, db: AsyncSession = Depends(get_db)
 ) -> Ticket:
-
-    ticket = update_ticket(db, ticket_id, updates)
+    ticket = await update_ticket(db, ticket_id, updates)
     if not ticket:
         logger.warning("Ticket %s not found for update", ticket_id)
         raise HTTPException(status_code=404, detail="Ticket not found")
@@ -153,10 +139,8 @@ def api_update_ticket(
 
 
 @router.delete("/ticket/{ticket_id}")
-
-def api_delete_ticket(ticket_id: int, db: Session = Depends(get_db)) -> dict:
-
-    if not delete_ticket(db, ticket_id):
+async def api_delete_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> dict:
+    if not await delete_ticket(db, ticket_id):
 
         logger.warning("Ticket %s not found for delete", ticket_id)
         raise HTTPException(status_code=404, detail="Ticket not found")
