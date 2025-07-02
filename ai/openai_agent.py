@@ -4,9 +4,7 @@ import logging
 import openai
 
 from openai import APITimeoutError, OpenAIError
-from config import OPENAI_API_KEY
-
-OPENAI_TIMEOUT = 15  # seconds
+from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +45,7 @@ def suggest_ticket_response(ticket: Dict[str, Any], context: str = "") -> str:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=OPENAI_MODEL_NAME,
             messages=[{"role": "system", "content": prompt}],
         )
         return response.choices[0].message.content
