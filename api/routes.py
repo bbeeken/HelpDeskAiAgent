@@ -59,9 +59,9 @@ logger = logging.getLogger(__name__)
 def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
-
         yield db
-
+    finally:
+        db.close()
 
 def get_ticket_service(db: Session = Depends(get_db)) -> TicketService:
     return TicketService(db)
@@ -112,13 +112,9 @@ def api_list_tickets(
 
 
 @router.get("/tickets/search", response_model=List[TicketOut])
-
 def api_search_tickets(
     q: str, limit: int = 10, db: Session = Depends(get_db)
 ) -> list[Ticket]:
-
-
-def api_search_tickets(q: str, limit: int = 10, db: Session = Depends(get_db)):
     logger.info("API search tickets query=%s limit=%s", q, limit)
     return search_tickets(db, q, limit)
 
