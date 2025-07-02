@@ -1,70 +1,63 @@
+from __future__ import annotations
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
+import logging
+from typing import Any, Iterable
 
 from fastapi import HTTPException
-
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import Ticket
-from services.ticket_service import TicketService
-
-
-
-async def get_ticket(db: AsyncSession, ticket_id: int):
-    return await db.get(Ticket, ticket_id)
 
 logger = logging.getLogger(__name__)
 
 
-def get_ticket(db: Session, ticket_id: int) -> Ticket | None:
-    return db.query(Ticket).filter(Ticket.Ticket_ID == ticket_id).first()
+def _escape_wildcards(text: str) -> str:
+    """Escape % and _ for SQL LIKE queries."""
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def list_tickets(db: Session, skip: int = 0, limit: int = 10) -> list[Ticket]:
-    return db.query(Ticket).offset(skip).limit(limit).all()
+async def get_ticket(db: AsyncSession, ticket_id: int) -> Ticket | None:
+    result = await db.execute(select(Ticket).where(Ticket.Ticket_ID == ticket_id))
+    return result.scalar_one_or_none()
 
 
-def create_ticket(db: Session, ticket_obj: Ticket) -> Ticket:
+async def list_tickets(db: AsyncSession, skip: int = 0, limit: int = 10) -> list[Ticket]:
+    result = await db.execute(select(Ticket).offset(skip).limit(limit))
+    return result.scalars().all()
 
 
+async def create_ticket(db: AsyncSession, ticket_obj: Ticket) -> Ticket:
     db.add(ticket_obj)
     try:
         await db.commit()
         await db.refresh(ticket_obj)
     except SQLAlchemyError as e:
-
-        db.rollback()
-
+        await db.rollback()
         logger.exception("Failed to create ticket")
         raise HTTPException(status_code=500, detail=f"Failed to create ticket: {e}")
-
     return ticket_obj
 
 
-
-def update_ticket(db: Session, ticket_id: int, updates) -> Ticket | None:
-    """Update a ticket with a mapping or Pydantic model."""
+async def update_ticket(db: AsyncSession, ticket_id: int, updates: BaseModel | dict) -> Ticket | None:
     if isinstance(updates, BaseModel):
         updates = updates.dict(exclude_unset=True)
-    ticket = get_ticket(db, ticket_id)
-
+    ticket = await get_ticket(db, ticket_id)
     if not ticket:
         return None
     for key, value in updates.items():
         if hasattr(ticket, key):
             setattr(ticket, key, value)
     try:
-
-        db.commit()
-        db.refresh(ticket)
+        await db.commit()
+        await db.refresh(ticket)
         logger.info("Updated ticket %s", ticket_id)
         return ticket
     except Exception:
-        db.rollback()
+        await db.rollback()
         logger.exception("Failed to update ticket %s", ticket_id)
-
         raise
 
 
@@ -73,28 +66,21 @@ async def delete_ticket(db: AsyncSession, ticket_id: int) -> bool:
     if not ticket:
         return False
     try:
-
-        db.delete(ticket)
-        db.commit()
+        await db.delete(ticket)
+        await db.commit()
         logger.info("Deleted ticket %s", ticket_id)
         return True
     except Exception:
-        db.rollback()
+        await db.rollback()
         logger.exception("Failed to delete ticket %s", ticket_id)
-
         raise
 
 
-def search_tickets(db: Session, query: str, limit: int = 10) -> list[Ticket]:
-
-    like = f"%{query}%"
-
-    logger.info("Searching tickets for '%s'", query)
-    return (
-        db.query(Ticket)
-
-        .filter((Ticket.Subject.ilike(like)) | (Ticket.Ticket_Body.ilike(like)))
+async def search_tickets(db: AsyncSession, query: str, limit: int = 10) -> list[Ticket]:
+    like = f"%{_escape_wildcards(query)}%"
+    result = await db.execute(
+        select(Ticket)
+        .where((Ticket.Subject.ilike(like)) | (Ticket.Ticket_Body.ilike(like)))
         .limit(limit)
     )
-
-
+    return result.scalars().all()
