@@ -12,21 +12,21 @@ async def client():
         yield ac
 
 
-async def _create_ticket(client: AsyncClient):
+def _create_ticket(client: AsyncClient):
     payload = {
         "Subject": "API test",
         "Ticket_Body": "Checking routes",
         "Ticket_Contact_Name": "Tester",
         "Ticket_Contact_Email": "tester@example.com",
     }
-    response = await client.post("/ticket", json=payload)
-    assert response.status_code == 200
-    return response.json()
+    return client.post("/ticket", json=payload)
 
 
 @pytest.mark.asyncio
 async def test_create_and_get_ticket(client: AsyncClient):
-    created = await _create_ticket(client)
+    resp = await _create_ticket(client)
+    assert resp.status_code == 200
+    created = resp.json()
     tid = created["Ticket_ID"]
 
     list_resp = await client.get("/tickets")
@@ -51,17 +51,28 @@ async def test_get_ticket_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_update_ticket(client: AsyncClient):
-    ticket = await _create_ticket(client)
+
+    resp = await _create_ticket(client)
+    assert resp.status_code == 200
+    ticket = resp.json()
     tid = ticket["Ticket_ID"]
+
+
     resp = await client.put(f"/ticket/{tid}", json={"Subject": "Updated"})
     assert resp.status_code == 200
     assert resp.json()["Subject"] == "Updated"
 
 
+
+
 @pytest.mark.asyncio
 async def test_update_ticket_invalid_field(client: AsyncClient):
-    ticket = await _create_ticket(client)
+    resp = await _create_ticket(client)
+    assert resp.status_code == 200
+    ticket = resp.json()
     tid = ticket["Ticket_ID"]
+
+
     resp = await client.put(f"/ticket/{tid}", json={"BadField": "x"})
     assert resp.status_code == 422
 
