@@ -1,14 +1,20 @@
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from api.routes import router
 from limiter import limiter
+from db.mssql import SessionLocal
+from sqlalchemy import text
 
 from datetime import datetime
 from errors import ErrorResponse, NotFoundError, ValidationError, DatabaseError
+
+START_TIME = datetime.utcnow()
+VERSION = "0.1.0"
 
 
 app = FastAPI(title="Truck Stop MCP Helpdesk API")
@@ -19,6 +25,20 @@ app.add_exception_handler(
 )
 app.add_middleware(SlowAPIMiddleware)
 app.include_router(router)
+
+
+@app.get("/health")
+async def health() -> dict:
+    """Return basic service health information."""
+    uptime = (datetime.utcnow() - START_TIME).total_seconds()
+    db_status = "ok"
+    try:
+        async with SessionLocal() as db:
+            await db.execute(text("SELECT 1"))
+    except Exception:
+        db_status = "error"
+
+    return {"db": db_status, "uptime": uptime, "version": VERSION}
 
 
 
