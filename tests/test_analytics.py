@@ -16,6 +16,17 @@ os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
 import pytest_asyncio
 
 
+def fake_create(*args, **kwargs):
+    """Return a dummy OpenAI chat completion response."""
+    class Msg:
+        content = "ok"
+
+    class Choice:
+        message = Msg()
+
+    return type("Resp", (), {"choices": [Choice()]})()
+
+
 @pytest_asyncio.fixture
 async def client():
     async with AsyncClient(app=app, base_url="http://test") as ac:
