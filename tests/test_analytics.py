@@ -96,18 +96,24 @@ async def test_analytics_waiting_on_user(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
-    def fake_create(*args, **kwargs):
-        class Msg:
-            content = "ok"
+    from ai import openai_agent
 
-        class Choice:
-            message = Msg()
+    class DummyClient:
+        class Chat:
+            class Completions:
+                @staticmethod
+                def create(*_, **__):
+                    class Msg:
+                        content = "ok"
 
-        return type("Resp", (), {"choices": [Choice()]})()
+                    class Choice:
+                        message = Msg()
+
 
     from ai import openai_agent
     openai_agent._get_client()
     monkeypatch.setattr(openai_agent.openai_client.chat.completions, "create", fake_create)
+
 
     payload = {
         "Subject": "AI", "Ticket_Body": "body",

@@ -26,6 +26,9 @@ network access.
 
 from typing import Dict, List
 
+import os
+import requests
+
 import logging
 import os
 import requests
@@ -38,6 +41,7 @@ GRAPH_TENANT_ID = os.getenv("GRAPH_TENANT_ID")
 
 
 GROUP_ID = "2ea9cf9b-4d28-456e-9eda-bd2c15825ee2"
+
 
 
 def _has_graph_creds() -> bool:
@@ -68,6 +72,7 @@ def get_user_by_email(email: str) -> Dict[str, str | None]:
     if not _has_graph_creds():
         return {"email": email, "displayName": None, "id": None}
 
+
     token = _get_token()
     data = _graph_get(f"users/{email}", token)
     return {
@@ -87,6 +92,7 @@ def get_all_users_in_group() -> List[Dict[str, str | None]]:
     return [
         {"email": u.get("mail"), "displayName": u.get("displayName"), "id": u.get("id")}
         for u in data.get("value", [])
+
     ]
 
 
