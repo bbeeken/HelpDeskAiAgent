@@ -10,4 +10,6 @@ pytest-asyncio==0.23.6
 email-validator==2.2.0
 httpx<0.28
 mypy==1.16.1
+slowapi==0.1.9
+aiosqlite==0.21.0
 
