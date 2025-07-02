@@ -17,7 +17,6 @@ from tools.ticket_tools import (
     update_ticket,
     delete_ticket,
     search_tickets,
-    _escape_wildcards,
 )
 
 
@@ -36,14 +35,6 @@ from tools.analysis_tools import (
     tickets_waiting_on_user,
 )
 from tools.ai_tools import ai_suggest_response
-from tools.analysis_tools import (
-    tickets_by_status,
-    open_tickets_by_site,
-    sla_breaches,
-    open_tickets_by_user,
-    tickets_waiting_on_user,
-)
-from services.ticket_service import TicketService
 from services.analytics_service import AnalyticsService
 from limiter import limiter
 
@@ -86,10 +77,6 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         finally:
             await db.close()
 
-
-
-def get_ticket_service(db: AsyncSession = Depends(get_db)) -> TicketService:
-    return TicketService(db)
 
 
 def get_analytics_service(db: AsyncSession = Depends(get_db)) -> AnalyticsService:
