@@ -29,6 +29,13 @@ from tools.site_tools import get_site, list_sites
 from tools.category_tools import list_categories
 from tools.status_tools import list_statuses
 from tools.message_tools import get_ticket_messages, post_ticket_message
+from tools.analysis_tools import (
+    tickets_by_status,
+    open_tickets_by_site,
+    sla_breaches,
+    open_tickets_by_user,
+    tickets_waiting_on_user,
+)
 from tools.ai_tools import ai_suggest_response
 from services.ticket_service import TicketService
 from services.analytics_service import AnalyticsService
@@ -62,7 +69,14 @@ logger = logging.getLogger(__name__)
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with SessionLocal() as db:
-        yield db
+
+
+
+        try:
+            yield db
+        finally:
+            await db.close()
+
 
 def get_ticket_service(db: AsyncSession = Depends(get_db)) -> TicketService:
     return TicketService(db)
@@ -281,37 +295,38 @@ def api_ai_suggest_response(ticket: TicketOut, context: str = "") -> dict:
 
 
 @router.get("/analytics/status")
-
-def api_tickets_by_status(db: Session = Depends(get_db)) -> list[tuple[int | None, int]]:
-
-    return tickets_by_status(db)
+async def api_tickets_by_status(
+    db: AsyncSession = Depends(get_db)
+) -> list[tuple[int | None, int]]:
+    return await tickets_by_status(db)
 
 
 @router.get("/analytics/open_by_site")
-
-def api_open_tickets_by_site(db: Session = Depends(get_db)) -> list[tuple[int | None, int]]:
-
-    return open_tickets_by_site(db)
+async def api_open_tickets_by_site(
+    db: AsyncSession = Depends(get_db)
+) -> list[tuple[int | None, int]]:
+    return await open_tickets_by_site(db)
 
 
 @router.get("/analytics/sla_breaches")
-
-def api_sla_breaches(sla_days: int = 2, db: Session = Depends(get_db)) -> dict:
-
-    return {"breaches": sla_breaches(db, sla_days)}
+async def api_sla_breaches(
+    sla_days: int = 2, db: AsyncSession = Depends(get_db)
+) -> dict:
+    breaches = await sla_breaches(db, sla_days)
+    return {"breaches": breaches}
 
 
 @router.get("/analytics/open_by_user")
-
-def api_open_tickets_by_user(db: Session = Depends(get_db)) -> list[tuple[str | None, int]]:
-
-    return open_tickets_by_user(db)
+async def api_open_tickets_by_user(
+    db: AsyncSession = Depends(get_db)
+) -> list[tuple[str | None, int]]:
+    return await open_tickets_by_user(db)
 
 
 @router.get("/analytics/waiting_on_user")
-
-def api_tickets_waiting_on_user(db: Session = Depends(get_db)) -> list[tuple[str | None, int]]:
-
-    return tickets_waiting_on_user(db)
+async def api_tickets_waiting_on_user(
+    db: AsyncSession = Depends(get_db)
+) -> list[tuple[str | None, int]]:
+    return await tickets_waiting_on_user(db)
 
 

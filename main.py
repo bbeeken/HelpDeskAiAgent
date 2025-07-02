@@ -2,9 +2,11 @@
 from fastapi import FastAPI, Request, Depends
 
 from fastapi.encoders import jsonable_encoder
-
 from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
+
+from sqlalchemy import text
+from db.mssql import SessionLocal
+
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -21,6 +23,9 @@ APP_VERSION = "0.1.0"
 # Record startup time to report uptime
 START_TIME = datetime.utcnow()
 from errors import ErrorResponse, NotFoundError, ValidationError, DatabaseError
+
+VERSION = "0.1.0"
+start_time = datetime.utcnow()
 
 
 app = FastAPI(title="Truck Stop MCP Helpdesk API")
@@ -68,6 +73,7 @@ async def handle_database(request: Request, exc: DatabaseError):
 
 
 @app.get("/health")
+
 async def health(db: AsyncSession = Depends(get_db)) -> dict:
     """Return basic service health information."""
     try:
@@ -78,4 +84,5 @@ async def health(db: AsyncSession = Depends(get_db)) -> dict:
 
     uptime = (datetime.utcnow() - START_TIME).total_seconds()
     return {"db": db_status, "uptime": uptime, "version": APP_VERSION}
+
 

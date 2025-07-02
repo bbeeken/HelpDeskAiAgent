@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from errors import DatabaseError
+from fastapi import HTTPException
 from db.models import TicketMessage
 from datetime import datetime
 import logging
@@ -12,14 +12,12 @@ logger = logging.getLogger(__name__)
 
 
 def get_ticket_messages(db: Session, ticket_id: int) -> list[TicketMessage]:
-
-    return (
+    query = (
         db.query(TicketMessage)
-
         .filter(TicketMessage.Ticket_ID == ticket_id)
         .order_by(TicketMessage.DateTimeStamp)
     )
-    return result.scalars().all()
+    return query.all()
 
 
 def post_ticket_message(
