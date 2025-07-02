@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -10,10 +10,18 @@ from db.mssql import SessionLocal
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from api.routes import router
+from api.routes import router, get_db
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 from limiter import limiter
 
 from datetime import datetime
+
+# Application version
+APP_VERSION = "0.1.0"
+
+# Record startup time to report uptime
+START_TIME = datetime.utcnow()
 from errors import ErrorResponse, NotFoundError, ValidationError, DatabaseError
 
 VERSION = "0.1.0"
@@ -65,14 +73,16 @@ async def handle_database(request: Request, exc: DatabaseError):
 
 
 @app.get("/health")
-async def health() -> dict:
-    """Simple health check endpoint."""
-    db_status = "ok"
+
+async def health(db: AsyncSession = Depends(get_db)) -> dict:
+    """Return basic service health information."""
     try:
-        async with SessionLocal() as session:
-            await session.execute(text("SELECT 1"))
+        await db.execute(text("SELECT 1"))
+        db_status = "ok"
     except Exception:
         db_status = "error"
-    uptime = (datetime.utcnow() - start_time).total_seconds()
-    return {"db": db_status, "uptime": uptime, "version": VERSION}
+
+    uptime = (datetime.utcnow() - START_TIME).total_seconds()
+    return {"db": db_status, "uptime": uptime, "version": APP_VERSION}
+
 

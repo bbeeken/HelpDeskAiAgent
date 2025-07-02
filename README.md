@@ -59,7 +59,7 @@ alembic upgrade head
 
 ### API Highlights
 
-- `GET /health` - health check returning uptime and version
+- `GET /health` - health check returning database status, uptime, and version
 - `POST /ticket` - create a ticket
 - `GET /tickets` - list tickets
 - `GET /tickets/search?q=term` - search tickets by subject or body
