@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 openai_client: openai.Client | None = None
 
 
+def set_client(client: openai.Client | None) -> None:
+    """Override the cached OpenAI client used by this module."""
+    global openai_client
+    openai_client = client
+
+
 def _get_client() -> openai.Client:
     """Return a reusable OpenAI client instance."""
     global openai_client
