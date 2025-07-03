@@ -28,7 +28,7 @@ from typing import Dict, List
 
 import logging
 import os
-import requests
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def _has_graph_creds() -> bool:
     return all([GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET, GRAPH_TENANT_ID])
 
 
-def _get_token() -> str:
+async def _get_token() -> str:
     url = f"https://login.microsoftonline.com/{GRAPH_TENANT_ID}/oauth2/v2.0/token"
     data = {
         "grant_type": "client_credentials",
@@ -53,25 +53,30 @@ def _get_token() -> str:
         "client_secret": GRAPH_CLIENT_SECRET,
         "scope": "https://graph.microsoft.com/.default",
     }
-    resp = requests.post(url, data=data, timeout=10)
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(url, data=data, timeout=10)
     resp.raise_for_status()
     return resp.json()["access_token"]
 
 
-def _graph_get(endpoint: str, token: str) -> dict:
+async def _graph_get(endpoint: str, token: str) -> dict:
     url = f"https://graph.microsoft.com/v1.0/{endpoint}"
-    resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=10)
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
     resp.raise_for_status()
     return resp.json()
 
 
-def get_user_by_email(email: str) -> Dict[str, str | None]:
+async def get_user_by_email(email: str) -> Dict[str, str | None]:
     if not _has_graph_creds():
         return {"email": email, "displayName": None, "id": None}
 
-
-    token = _get_token()
-    data = _graph_get(f"users/{email}", token)
+    token = await _get_token()
+    data = await _graph_get(f"users/{email}", token)
     return {
         "email": data.get("mail"),
         "displayName": data.get("displayName"),
@@ -80,12 +85,12 @@ def get_user_by_email(email: str) -> Dict[str, str | None]:
 
 
 
-def get_all_users_in_group() -> List[Dict[str, str | None]]:
+async def get_all_users_in_group() -> List[Dict[str, str | None]]:
     if not _has_graph_creds():
         return []
 
-    token = _get_token()
-    data = _graph_get(f"groups/{GROUP_ID}/members", token)
+    token = await _get_token()
+    data = await _graph_get(f"groups/{GROUP_ID}/members", token)
     return [
         {"email": u.get("mail"), "displayName": u.get("displayName"), "id": u.get("id")}
         for u in data.get("value", [])
@@ -93,9 +98,9 @@ def get_all_users_in_group() -> List[Dict[str, str | None]]:
     ]
 
 
-def resolve_user_display_name(identifier: str) -> str:
+async def resolve_user_display_name(identifier: str) -> str:
     logger.info("Resolving display name for %s", identifier)
-    user = get_user_by_email(identifier)
+    user = await get_user_by_email(identifier)
     return user.get("displayName") or identifier
 
 
