@@ -60,6 +60,7 @@ from schemas.basic import (
     TicketMessageOut,
 )
 
+
 from schemas.analytics import StatusCount, SiteOpenCount
 
 from db.models import (
