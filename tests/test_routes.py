@@ -1,6 +1,8 @@
 import pytest
 from httpx import AsyncClient
 from main import app
+from db.models import Asset, Vendor, Site
+from db.mssql import SessionLocal
 
 
 import pytest_asyncio
@@ -20,6 +22,33 @@ def _create_ticket(client: AsyncClient):
         "Ticket_Contact_Email": "tester@example.com",
     }
     return client.post("/ticket", json=payload)
+
+
+async def _add_asset(label: str = "Asset1") -> Asset:
+    async with SessionLocal() as db:
+        asset = Asset(Label=label)
+        db.add(asset)
+        await db.commit()
+        await db.refresh(asset)
+        return asset
+
+
+async def _add_vendor(name: str = "Vendor1") -> Vendor:
+    async with SessionLocal() as db:
+        vendor = Vendor(Name=name)
+        db.add(vendor)
+        await db.commit()
+        await db.refresh(vendor)
+        return vendor
+
+
+async def _add_site(label: str = "Site1") -> Site:
+    async with SessionLocal() as db:
+        site = Site(Label=label)
+        db.add(site)
+        await db.commit()
+        await db.refresh(site)
+        return site
 
 
 @pytest.mark.asyncio
@@ -79,3 +108,34 @@ async def test_update_ticket_invalid_field(client: AsyncClient):
 
     resp = await client.put(f"/ticket/{tid}", json={"BadField": "x"})
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_asset_vendor_site_routes(client: AsyncClient):
+    asset = await _add_asset()
+    vendor = await _add_vendor()
+    site = await _add_site()
+
+    resp = await client.get(f"/asset/{asset.ID}")
+    assert resp.status_code == 200
+    assert resp.json()["Label"] == asset.Label
+
+    resp = await client.get("/assets")
+    assert resp.status_code == 200
+    assert resp.json()[0]["ID"] == asset.ID
+
+    resp = await client.get(f"/vendor/{vendor.ID}")
+    assert resp.status_code == 200
+    assert resp.json()["Name"] == vendor.Name
+
+    resp = await client.get("/vendors")
+    assert resp.status_code == 200
+    assert resp.json()[0]["ID"] == vendor.ID
+
+    resp = await client.get(f"/site/{site.ID}")
+    assert resp.status_code == 200
+    assert resp.json()["Label"] == site.Label
+
+    resp = await client.get("/sites")
+    assert resp.status_code == 200
+    assert resp.json()[0]["ID"] == site.ID
