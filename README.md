@@ -136,3 +136,8 @@ LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
 - `GET /tickets/search?q=term` - search tickets by subject or body
 - `PUT /ticket/{id}` - update an existing ticket
 - `DELETE /ticket/{id}` - remove a ticket
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
