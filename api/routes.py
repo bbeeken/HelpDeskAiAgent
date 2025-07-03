@@ -104,10 +104,30 @@ async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> 
 )
 
 async def api_list_tickets(
-    skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
+    request: Request,
+    skip: int = 0,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
 ) -> PaginatedResponse[TicketExpandedOut]:
-    items = await list_tickets_expanded(db, skip, limit)
-    total = await db.scalar(select(func.count(VTicketMasterExpanded.Ticket_ID))) or 0
+    params = request.query_params
+    filters = {
+        k: v
+        for k, v in params.items()
+        if k not in {"skip", "limit", "sort"}
+    }
+    sort = params.getlist("sort") or None
+
+    items = await list_tickets_expanded(
+        db, skip, limit, filters=filters or None, sort=sort
+    )
+
+    count_query = select(func.count(VTicketMasterExpanded.Ticket_ID))
+    for key, value in filters.items():
+        if hasattr(VTicketMasterExpanded, key):
+            count_query = count_query.filter(
+                getattr(VTicketMasterExpanded, key) == value
+            )
+    total = await db.scalar(count_query) or 0
 
     ticket_out: list[TicketExpandedOut] = []
     for t in items:
@@ -122,10 +142,30 @@ async def api_list_tickets(
     response_model_by_alias=False,
 )
 async def api_list_tickets_expanded(
-    skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
+    request: Request,
+    skip: int = 0,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
 ) -> PaginatedResponse[TicketExpandedOut]:
-    items = await list_tickets_expanded(db, skip, limit)
-    total = await db.scalar(select(func.count(VTicketMasterExpanded.Ticket_ID))) or 0
+    params = request.query_params
+    filters = {
+        k: v
+        for k, v in params.items()
+        if k not in {"skip", "limit", "sort"}
+    }
+    sort = params.getlist("sort") or None
+
+    items = await list_tickets_expanded(
+        db, skip, limit, filters=filters or None, sort=sort
+    )
+
+    count_query = select(func.count(VTicketMasterExpanded.Ticket_ID))
+    for key, value in filters.items():
+        if hasattr(VTicketMasterExpanded, key):
+            count_query = count_query.filter(
+                getattr(VTicketMasterExpanded, key) == value
+            )
+    total = await db.scalar(count_query) or 0
 
     ticket_out: list[TicketExpandedOut] = []
     for t in items:

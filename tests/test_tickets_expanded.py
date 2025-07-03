@@ -89,3 +89,59 @@ def test_ticket_expanded_schema():
     obj = TicketExpandedOut(**data)
     assert obj.Ticket_ID == 1
     assert obj.status_label == "Open"
+
+
+@pytest.mark.asyncio
+async def test_ticket_filtering(client: AsyncClient):
+    await client.post(
+        "/ticket",
+        json={
+            "Subject": "Foo",
+            "Ticket_Body": "b",
+            "Ticket_Contact_Name": "n",
+            "Ticket_Contact_Email": "e@example.com",
+        },
+    )
+    await client.post(
+        "/ticket",
+        json={
+            "Subject": "Bar",
+            "Ticket_Body": "b",
+            "Ticket_Contact_Name": "n",
+            "Ticket_Contact_Email": "e@example.com",
+        },
+    )
+
+    resp = await client.get("/tickets", params={"Subject": "Foo"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["items"][0]["Subject"] == "Foo"
+
+
+@pytest.mark.asyncio
+async def test_ticket_sorting(client: AsyncClient):
+    first = await client.post(
+        "/ticket",
+        json={
+            "Subject": "First",
+            "Ticket_Body": "b",
+            "Ticket_Contact_Name": "n",
+            "Ticket_Contact_Email": "e@example.com",
+        },
+    )
+    second = await client.post(
+        "/ticket",
+        json={
+            "Subject": "Second",
+            "Ticket_Body": "b",
+            "Ticket_Contact_Name": "n",
+            "Ticket_Contact_Email": "e@example.com",
+        },
+    )
+
+    resp = await client.get("/tickets/expanded", params={"sort": "-Ticket_ID"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["items"][0]["Ticket_ID"] == second.json()["Ticket_ID"]
