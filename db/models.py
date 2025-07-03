@@ -81,3 +81,29 @@ class TicketStatus(Base):
     __tablename__ = "Ticket_Status"
     ID = Column(Integer, primary_key=True, index=True)
     Label = Column(String)
+
+
+class VTicketMasterExpanded(Base):
+    """Mapped view providing ticket details with related labels."""
+
+    __tablename__ = "V_Ticket_Master_Expanded"
+    __table_args__ = {"extend_existing": True}
+
+    Ticket_ID = Column(Integer, primary_key=True, index=True)
+    Subject = Column(String)
+    Ticket_Body = Column(Text)
+    Ticket_Status_ID = Column(Integer)
+    Ticket_Contact_Name = Column(String)
+    Ticket_Contact_Email = Column(String)
+    Asset_ID = Column(Integer)
+    Site_ID = Column(Integer)
+    Ticket_Category_ID = Column(Integer)
+    Created_Date = Column(DateTime)
+    Assigned_Name = Column(String)
+    Assigned_Email = Column(String)
+    Severity_ID = Column(Integer)
+    Assigned_Vendor_ID = Column(Integer)
+    Resolution = Column(Text)
+    Status_Label = Column(String)
+    Category_Label = Column(String)
+    Site_Label = Column(String)

@@ -107,3 +107,14 @@ class TicketOut(TicketIn):
                 "Created_Date": "2024-01-01T12:00:00Z",
             }
         }
+
+
+class TicketExpandedOut(TicketOut):
+    """Schema for the VTicketMasterExpanded view."""
+
+    Status_Label: Optional[str] = None
+    Category_Label: Optional[str] = None
+    Site_Label: Optional[str] = None
+
+    class Config:
+        orm_mode = True
