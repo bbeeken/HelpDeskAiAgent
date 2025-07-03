@@ -84,6 +84,15 @@ class TicketStatus(Base):
 
 
 
+class OnCallShift(Base):
+    __tablename__ = "OnCall_Shifts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String, nullable=False, index=True)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
+
+
 class ViewBase(DeclarativeBase):
     """Declarative base for database views."""
     pass

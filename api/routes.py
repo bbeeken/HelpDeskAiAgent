@@ -34,6 +34,7 @@ from tools.analysis_tools import (
     open_tickets_by_user,
     tickets_waiting_on_user,
 )
+from tools.oncall_tools import get_current_oncall, list_oncall_schedule
 from tools.ai_tools import ai_suggest_response
 from services.analytics_service import AnalyticsService
 from limiter import limiter
@@ -42,7 +43,9 @@ from limiter import limiter
 from pydantic import BaseModel
 from sqlalchemy import select, func
 
-from schemas.ticket import TicketCreate, TicketOut, TicketUpdate, TicketExpandedOut
+from schemas.ticket import TicketCreate, TicketOut, TicketUpdate
+from schemas.oncall import OnCallShiftOut
+
 from schemas.paginated import PaginatedResponse
 from db.models import (
     Asset,
@@ -312,3 +315,11 @@ async def api_tickets_waiting_on_user(
 ) -> list[tuple[str | None, int]]:
 
     return await tickets_waiting_on_user(db)
+
+
+@router.get("/oncall", response_model=OnCallShiftOut | None)
+async def api_get_oncall(db: AsyncSession = Depends(get_db)) -> Any:
+    return await get_current_oncall(db)
+
+
+
