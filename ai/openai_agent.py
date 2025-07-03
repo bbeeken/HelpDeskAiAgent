@@ -58,4 +58,3 @@ async def suggest_ticket_response(ticket: Dict[str, Any], context: str = "") -> 
     except OpenAIError as exc:
         logger.exception("OpenAI API error")
         return f"OpenAI API error: {exc}"
-

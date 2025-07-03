@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool
 from db.models import Base
 from sqlalchemy import text
-import pytest
 import pytest_asyncio
 
 # Use a StaticPool so the in-memory DB is shared across threads

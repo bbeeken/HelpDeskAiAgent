@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, UTC
 from main import app
 from db.models import OnCallShift
 from db.mssql import SessionLocal
-from tools.oncall_tools import get_current_oncall, list_oncall_schedule
+from tools.oncall_tools import list_oncall_schedule
 
 
 async def _add_shift(email: str, start: datetime, end: datetime) -> OnCallShift:
@@ -40,4 +40,3 @@ async def test_get_current_oncall_route():
         assert resp.status_code == 200
         data = resp.json()
         assert data["user_email"] == "active@example.com"
-

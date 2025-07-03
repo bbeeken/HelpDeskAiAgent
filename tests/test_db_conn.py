@@ -1,5 +1,4 @@
 import importlib
-import os
 import pytest
 
 import db.mssql as mssql

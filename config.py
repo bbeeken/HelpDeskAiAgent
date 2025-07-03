@@ -29,5 +29,3 @@ else:
     for name, value in vars(env_module).items():
         if name.isupper():
             globals()[name] = value
-
-

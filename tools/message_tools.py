@@ -47,4 +47,3 @@ async def post_ticket_message(
         raise HTTPException(status_code=500, detail=f"Failed to save message: {e}")
 
     return msg
-

@@ -1,4 +1,3 @@
-import pytest
 from fastapi.testclient import TestClient
 from fastapi import HTTPException
 from main import app
