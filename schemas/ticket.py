@@ -16,7 +16,7 @@ class TicketBase(BaseModel):
     Ticket_Category_ID: Optional[int] = None
     Assigned_Name: Optional[Annotated[str, Field(max_length=255)]] = None
     Assigned_Email: Optional[EmailStr] = None
-    Severity_ID: Optional[int] = None
+    Priority_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[Annotated[str, Field(max_length=2000)]] = None
 
@@ -57,7 +57,7 @@ class TicketUpdate(BaseModel):
     Ticket_Category_ID: Optional[int] = None
     Assigned_Name: Optional[str] = None
     Assigned_Email: Optional[EmailStr] = None
-    Severity_ID: Optional[int] = None
+    Priority_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[str] = None
 
@@ -77,7 +77,7 @@ class TicketIn(BaseModel):
     Created_Date: Optional[datetime] = None
     Assigned_Name: Optional[Annotated[str, Field(max_length=255)]] = None
     Assigned_Email: Optional[EmailStr] = None
-    Severity_ID: Optional[int] = None
+    Priority_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[Annotated[str, Field(max_length=2000)]] = None
 
@@ -123,6 +123,7 @@ class TicketExpandedOut(TicketOut):
     Category_Label: Optional[str] = None
 
     Assigned_Vendor_Name: Optional[str] = None
+    Priority_Level: Optional[str] = None
 
     @property
     def Status_Label(self) -> Optional[str]:

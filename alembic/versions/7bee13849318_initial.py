@@ -83,7 +83,7 @@ def upgrade() -> None:
     sa.Column('Created_Date', sa.DateTime(), nullable=True),
     sa.Column('Assigned_Name', sa.String(), nullable=True),
     sa.Column('Assigned_Email', sa.String(), nullable=True),
-    sa.Column('Severity_ID', sa.Integer(), nullable=True),
+    sa.Column('Priority_ID', sa.Integer(), nullable=True),
     sa.Column('Assigned_Vendor_ID', sa.Integer(), nullable=True),
     sa.Column('Resolution', sa.Text(), nullable=True),
     sa.PrimaryKeyConstraint('Ticket_ID')
