@@ -9,16 +9,16 @@ from config import OPENAI_API_KEY, OPENAI_MODEL_NAME, OPENAI_TIMEOUT
 logger = logging.getLogger(__name__)
 
 # Lazily created OpenAI client instance
-openai_client: openai.Client | None = None
+openai_client: openai.AsyncClient | None = None
 
 
-def set_client(client: openai.Client | None) -> None:
+def set_client(client: openai.AsyncClient | None) -> None:
     """Override the cached OpenAI client used by this module."""
     global openai_client
     openai_client = client
 
 
-def _get_client() -> openai.Client:
+def _get_client() -> openai.AsyncClient:
     """Return a reusable OpenAI client instance."""
     global openai_client
 
@@ -26,12 +26,12 @@ def _get_client() -> openai.Client:
         if not OPENAI_API_KEY:
             raise RuntimeError("OPENAI_API_KEY environment variable not set")
 
-        openai_client = openai.Client(api_key=OPENAI_API_KEY, timeout=OPENAI_TIMEOUT)
+        openai_client = openai.AsyncClient(api_key=OPENAI_API_KEY, timeout=OPENAI_TIMEOUT)
 
     return openai_client
 
 
-def suggest_ticket_response(ticket: Dict[str, Any], context: str = "") -> str:
+async def suggest_ticket_response(ticket: Dict[str, Any], context: str = "") -> str:
     """Generate a suggested response to a ticket using OpenAI."""
 
     client = _get_client()
@@ -44,7 +44,7 @@ def suggest_ticket_response(ticket: Dict[str, Any], context: str = "") -> str:
     )
 
     try:
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model=OPENAI_MODEL_NAME,
             messages=[{"role": "system", "content": prompt}],
         )

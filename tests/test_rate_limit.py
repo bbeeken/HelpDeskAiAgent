@@ -10,7 +10,7 @@ def _patch_openai(monkeypatch):
         class Chat:
             class Completions:
                 @staticmethod
-                def create(*args, **kwargs):
+                async def create(*args, **kwargs):
                     class Msg:
                         content = "ok"
 

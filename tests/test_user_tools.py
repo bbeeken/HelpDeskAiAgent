@@ -44,6 +44,7 @@ async def test_user_tools_graph_calls(monkeypatch):
         GRAPH_TENANT_ID="tenant",
     )
 
+
     class DummyResponse(SimpleNamespace):
         def raise_for_status(self):
             pass
@@ -52,15 +53,22 @@ async def test_user_tools_graph_calls(monkeypatch):
             return self.data
 
     class DummyClient:
+
         async def __aenter__(self):
             return self
 
         async def __aexit__(self, exc_type, exc, tb):
-            return False
+
+            pass
 
         async def post(self, url, data=None, timeout=None):
             assert "tenant" in url
-            return DummyResponse(status_code=200, data={"access_token": "tok"})
+            return SimpleNamespace(
+                status_code=200,
+                raise_for_status=lambda: None,
+                json=lambda: {"access_token": "tok"},
+            )
+
 
         async def get(self, url, headers=None, timeout=None):
             assert headers["Authorization"] == "Bearer tok"
@@ -68,9 +76,15 @@ async def test_user_tools_graph_calls(monkeypatch):
                 data = {"value": [{"mail": "a@b.com", "displayName": "A", "id": "1"}]}
             else:
                 data = {"mail": "u@e.com", "displayName": "U", "id": "2"}
-            return DummyResponse(status_code=200, data=data)
 
-    monkeypatch.setattr(ut.httpx, "AsyncClient", DummyClient)
+            return SimpleNamespace(
+                status_code=200,
+                raise_for_status=lambda: None,
+                json=lambda: data,
+            )
+
+    monkeypatch.setattr(ut.httpx, "AsyncClient", FakeAsyncClient)
+
 
     user = await ut.get_user_by_email("u@e.com")
     assert user == {"email": "u@e.com", "displayName": "U", "id": "2"}
