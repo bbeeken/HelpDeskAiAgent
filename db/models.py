@@ -114,6 +114,7 @@ class VTicketMasterExpanded(ViewBase):
     Ticket_Contact_Email = Column(String)
     Asset_ID = Column(Integer)
     Asset_Label = Column(String)
+    Site_ID = Column(Integer)
     Site_Label = Column(String)
     Ticket_Category_ID = Column(Integer)
     Ticket_Category_Label = Column(String)

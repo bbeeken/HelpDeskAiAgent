@@ -48,6 +48,7 @@ async def db_setup():
                    t.Ticket_Contact_Email,
                    t.Asset_ID,
                    a.Label AS Asset_Label,
+                   t.Site_ID,
                    s.Label AS Site_Label,
                    t.Ticket_Category_ID,
                    c.Label AS Ticket_Category_Label,
