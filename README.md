@@ -25,6 +25,15 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
    - `OPENAI_API_KEY` – API key used by the OpenAI integration.
    - `CONFIG_ENV` – which config to load: `dev`, `staging`, or `prod` (default `dev`).
 
+  Optional Microsoft Graph credentials enable real user lookups:
+
+   - `GRAPH_CLIENT_ID` – application (client) ID issued by Azure AD.
+   - `GRAPH_CLIENT_SECRET` – client secret associated with the app registration.
+   - `GRAPH_TENANT_ID` – tenant ID used when acquiring OAuth tokens.
+
+  When these variables are not provided, the Graph helper functions fall back
+  to stub implementations so tests can run without network access.
+
   They can be provided in the shell environment or in a `.env` file in the project root.
   A template called `.env.example` lists the required variables; copy it to `.env` and
   update the values for your environment. `config.py` automatically loads `.env` and
