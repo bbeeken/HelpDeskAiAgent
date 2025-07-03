@@ -111,7 +111,6 @@ async def api_list_tickets(
 
     ticket_out = [TicketExpandedOut.from_orm(t) for t in items]
     return PaginatedResponse[TicketExpandedOut](items=ticket_out, total=total, skip=skip, limit=limit)
-
 @router.get(
     "/tickets/expanded",
     response_model=PaginatedResponse[TicketExpandedOut],
