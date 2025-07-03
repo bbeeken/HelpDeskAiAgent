@@ -73,6 +73,19 @@ pip install -r requirements.txt
 pytest
 ```
 
+## Docker Compose
+
+Build the image and start the containers:
+
+```bash
+docker build -t helpdesk-agent .
+docker-compose up
+```
+
+Compose reads variables from `.env`. Copy `.env.example` to `.env` and set
+values for required options such as `DB_CONN_STRING`, `OPENAI_API_KEY`, and
+`CONFIG_ENV`. Optional Graph credentials may also be provided in this file.
+
 ## Database Migrations
 
 Alembic manages schema migrations. Common commands:
