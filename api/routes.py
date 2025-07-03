@@ -49,6 +49,7 @@ from schemas.ticket import (
 from schemas.oncall import OnCallShiftOut
 
 from schemas.paginated import PaginatedResponse
+
 from schemas.basic import (
     AssetOut,
     VendorOut,
@@ -58,6 +59,9 @@ from schemas.basic import (
     TicketAttachmentOut,
     TicketMessageOut,
 )
+
+from schemas.analytics import StatusCount, SiteOpenCount
+
 from db.models import (
     Ticket,
     VTicketMasterExpanded,
@@ -113,10 +117,30 @@ async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> 
 )
 
 async def api_list_tickets(
-    skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
+    request: Request,
+    skip: int = 0,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
 ) -> PaginatedResponse[TicketExpandedOut]:
-    items = await list_tickets_expanded(db, skip, limit)
-    total = await db.scalar(select(func.count(VTicketMasterExpanded.Ticket_ID))) or 0
+    params = request.query_params
+    filters = {
+        k: v
+        for k, v in params.items()
+        if k not in {"skip", "limit", "sort"}
+    }
+    sort = params.getlist("sort") or None
+
+    items = await list_tickets_expanded(
+        db, skip, limit, filters=filters or None, sort=sort
+    )
+
+    count_query = select(func.count(VTicketMasterExpanded.Ticket_ID))
+    for key, value in filters.items():
+        if hasattr(VTicketMasterExpanded, key):
+            count_query = count_query.filter(
+                getattr(VTicketMasterExpanded, key) == value
+            )
+    total = await db.scalar(count_query) or 0
 
     ticket_out: list[TicketExpandedOut] = []
     for t in items:
@@ -131,10 +155,30 @@ async def api_list_tickets(
     response_model_by_alias=False,
 )
 async def api_list_tickets_expanded(
-    skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
+    request: Request,
+    skip: int = 0,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
 ) -> PaginatedResponse[TicketExpandedOut]:
-    items = await list_tickets_expanded(db, skip, limit)
-    total = await db.scalar(select(func.count(VTicketMasterExpanded.Ticket_ID))) or 0
+    params = request.query_params
+    filters = {
+        k: v
+        for k, v in params.items()
+        if k not in {"skip", "limit", "sort"}
+    }
+    sort = params.getlist("sort") or None
+
+    items = await list_tickets_expanded(
+        db, skip, limit, filters=filters or None, sort=sort
+    )
+
+    count_query = select(func.count(VTicketMasterExpanded.Ticket_ID))
+    for key, value in filters.items():
+        if hasattr(VTicketMasterExpanded, key):
+            count_query = count_query.filter(
+                getattr(VTicketMasterExpanded, key) == value
+            )
+    total = await db.scalar(count_query) or 0
 
     ticket_out: list[TicketExpandedOut] = []
     for t in items:
@@ -278,19 +322,25 @@ async def api_ai_suggest_response(
 
 # Analysis endpoints
 
-@router.get("/analytics/status")
+@router.get("/analytics/status", response_model=list[StatusCount])
 async def api_tickets_by_status(
     db: AsyncSession = Depends(get_db),
-) -> list[tuple[int | None, int]]:
+) -> list[StatusCount]:
 
-    return await tickets_by_status(db)
+    return [
+        StatusCount(status_id=sid, status_label=label, count=count)
+        for sid, label, count in await tickets_by_status(db)
+    ]
 
-@router.get("/analytics/open_by_site")
+@router.get("/analytics/open_by_site", response_model=list[SiteOpenCount])
 async def api_open_tickets_by_site(
     db: AsyncSession = Depends(get_db),
-) -> list[tuple[int | None, int]]:
+) -> list[SiteOpenCount]:
 
-    return await open_tickets_by_site(db)
+    return [
+        SiteOpenCount(site_id=sid, site_label=label, count=count)
+        for sid, label, count in await open_tickets_by_site(db)
+    ]
 
 @router.get("/analytics/sla_breaches")
 async def api_sla_breaches(

@@ -5,43 +5,54 @@ from sqlalchemy import func, select
 
 import logging
 
-from db.models import Ticket
+from db.models import Ticket, TicketStatus, Site
 
 logger = logging.getLogger(__name__)
 
 
 
-async def tickets_by_status(db: AsyncSession) -> list[tuple[int | None, int]]:
+async def tickets_by_status(db: AsyncSession) -> list[tuple[int | None, str | None, int]]:
 
     """
-    Returns a list of tuples (status_id, count) for all tickets.
+    Returns a list of tuples (status_id, status_label, count)
+    for all tickets.
     """
 
 
     logger.info("Calculating tickets by status")
     result = await db.execute(
-        select(Ticket.Ticket_Status_ID, func.count(Ticket.Ticket_ID)).group_by(
-            Ticket.Ticket_Status_ID
+        select(
+            Ticket.Ticket_Status_ID,
+            TicketStatus.Label,
+            func.count(Ticket.Ticket_ID),
         )
+        .join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
+        .group_by(Ticket.Ticket_Status_ID, TicketStatus.Label)
     )
-    return [(row[0], row[1]) for row in result.all()]
+    return [(row[0], row[1], row[2]) for row in result.all()]
 
 
 
-async def open_tickets_by_site(db: AsyncSession) -> list[tuple[int | None, int]]:
+async def open_tickets_by_site(db: AsyncSession) -> list[tuple[int | None, str | None, int]]:
 
     """
-    Returns list of tuples (site_id, open_count) for tickets not closed (status != 3).
+    Returns list of tuples (site_id, site_label, open_count) for tickets
+    not closed (status != 3).
     """
 
 
     logger.info("Calculating open tickets by site")
     result = await db.execute(
-        select(Ticket.Site_ID, func.count(Ticket.Ticket_ID))
+        select(
+            Ticket.Site_ID,
+            Site.Label,
+            func.count(Ticket.Ticket_ID),
+        )
+        .join(Site, Ticket.Site_ID == Site.ID, isouter=True)
         .filter(Ticket.Ticket_Status_ID != 3)
-        .group_by(Ticket.Site_ID)
+        .group_by(Ticket.Site_ID, Site.Label)
     )
-    return [(row[0], row[1]) for row in result.all()]
+    return [(row[0], row[1], row[2]) for row in result.all()]
 
 
 

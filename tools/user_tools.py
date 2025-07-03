@@ -7,16 +7,10 @@ the rest of the code base can be written against a stable interface while the
 Graph integration is developed.
 
 ``GROUP_ID`` refers to the Truck Stop helpdesk security group and is used when
-fetching all members of that group.
-
-TODO:
-
-* Acquire an OAuth token using the client credentials flow via
-  ``https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token``.
-* Query ``GET https://graph.microsoft.com/v1.0/users/{email}`` to fetch a
-  single user.
-* Query ``GET https://graph.microsoft.com/v1.0/groups/{GROUP_ID}/members`` to
-  list all group users.
+fetching all members of that group.  When Microsoft Graph credentials are
+present the helpers perform real HTTP requests.  Otherwise they return simple
+stub data so the rest of the application and tests can run without network
+access.
 
 Environment variables ``GRAPH_CLIENT_ID``, ``GRAPH_CLIENT_SECRET`` and
 ``GRAPH_TENANT_ID`` must be provided for the real API calls.  When any of them
@@ -46,6 +40,13 @@ def _has_graph_creds() -> bool:
 
 
 async def _get_token() -> str:
+    """Return a Graph access token or an empty string when creds are missing."""
+
+    if not _has_graph_creds():
+        # In test/stub mode we short-circuit so no HTTP requests are made
+        logger.info("Graph credentials missing, returning stub token")
+        return ""
+
     url = f"https://login.microsoftonline.com/{GRAPH_TENANT_ID}/oauth2/v2.0/token"
     data = {
         "grant_type": "client_credentials",
@@ -53,6 +54,7 @@ async def _get_token() -> str:
         "client_secret": GRAPH_CLIENT_SECRET,
         "scope": "https://graph.microsoft.com/.default",
     }
+
     async with httpx.AsyncClient() as client:
         resp = await client.post(url, data=data, timeout=10)
 
@@ -62,10 +64,15 @@ async def _get_token() -> str:
 
 
 async def _graph_get(endpoint: str, token: str) -> dict:
+    """Perform a GET request to the Graph API or return an empty result."""
+
+    if not token:
+        logger.info("No Graph token provided, returning stub data for %s", endpoint)
+        return {}
+
     url = f"https://graph.microsoft.com/v1.0/{endpoint}"
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-
             url, headers={"Authorization": f"Bearer {token}"}, timeout=10
         )
         resp.raise_for_status()
@@ -74,11 +81,10 @@ async def _graph_get(endpoint: str, token: str) -> dict:
 
 
 async def get_user_by_email(email: str) -> Dict[str, str | None]:
-    if not _has_graph_creds():
+    token = await _get_token()
+    if not token:
         return {"email": email, "displayName": None, "id": None}
 
-
-    token = await _get_token()
     data = await _graph_get(f"users/{email}", token)
     return {
         "email": data.get("mail"),
@@ -89,15 +95,14 @@ async def get_user_by_email(email: str) -> Dict[str, str | None]:
 
 
 async def get_all_users_in_group() -> List[Dict[str, str | None]]:
-    if not _has_graph_creds():
+    token = await _get_token()
+    if not token:
         return []
 
-    token = await _get_token()
     data = await _graph_get(f"groups/{GROUP_ID}/members", token)
     return [
         {"email": u.get("mail"), "displayName": u.get("displayName"), "id": u.get("id")}
         for u in data.get("value", [])
-
     ]
 
 

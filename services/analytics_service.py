@@ -1,6 +1,6 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from db.models import Ticket
+from db.models import Ticket, TicketStatus, Site
 
 
 class AnalyticsService:
@@ -11,19 +11,28 @@ class AnalyticsService:
 
     async def tickets_by_status(self):
         result = await self.db.execute(
-            select(Ticket.Ticket_Status_ID, func.count(Ticket.Ticket_ID)).group_by(
-                Ticket.Ticket_Status_ID
+            select(
+                Ticket.Ticket_Status_ID,
+                TicketStatus.Label,
+                func.count(Ticket.Ticket_ID),
             )
+            .join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
+            .group_by(Ticket.Ticket_Status_ID, TicketStatus.Label)
         )
-        return [(row[0], row[1]) for row in result.all()]
+        return [(row[0], row[1], row[2]) for row in result.all()]
 
     async def open_tickets_by_site(self):
         result = await self.db.execute(
-            select(Ticket.Site_ID, func.count(Ticket.Ticket_ID))
+            select(
+                Ticket.Site_ID,
+                Site.Label,
+                func.count(Ticket.Ticket_ID),
+            )
+            .join(Site, Ticket.Site_ID == Site.ID, isouter=True)
             .filter(Ticket.Ticket_Status_ID != 3)
-            .group_by(Ticket.Site_ID)
+            .group_by(Ticket.Site_ID, Site.Label)
         )
-        return [(row[0], row[1]) for row in result.all()]
+        return [(row[0], row[1], row[2]) for row in result.all()]
 
     async def sla_breaches(self, sla_days: int = 2):
         from datetime import datetime, timedelta, UTC
