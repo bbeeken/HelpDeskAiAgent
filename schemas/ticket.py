@@ -107,3 +107,16 @@ class TicketOut(TicketIn):
                 "Created_Date": "2024-01-01T12:00:00Z",
             }
         }
+
+
+class TicketExpandedOut(TicketOut):
+    """Ticket output schema that includes related labels."""
+
+    Ticket_Status_Label: Optional[str] = None
+    Site_Label: Optional[str] = None
+    Asset_Label: Optional[str] = None
+    Ticket_Category_Label: Optional[str] = None
+    Assigned_Vendor_Name: Optional[str] = None
+
+    class Config:
+        orm_mode = True

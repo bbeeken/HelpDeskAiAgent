@@ -2,7 +2,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException
-from db.models import Ticket
+from db.models import Ticket, VTicketMasterExpanded
 
 
 class TicketService:
@@ -11,11 +11,11 @@ class TicketService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_ticket(self, ticket_id: int) -> Ticket | None:
-        return await self.db.get(Ticket, ticket_id)
+    async def get_ticket(self, ticket_id: int) -> VTicketMasterExpanded | None:
+        return await self.db.get(VTicketMasterExpanded, ticket_id)
 
-    async def list_tickets(self, skip: int = 0, limit: int = 10) -> list[Ticket]:
-        result = await self.db.execute(select(Ticket).offset(skip).limit(limit))
+    async def list_tickets(self, skip: int = 0, limit: int = 10) -> list[VTicketMasterExpanded]:
+        result = await self.db.execute(select(VTicketMasterExpanded).offset(skip).limit(limit))
         return list(result.scalars().all())
 
     async def create_ticket(self, ticket_obj: Ticket) -> Ticket:
@@ -55,11 +55,14 @@ class TicketService:
             await self.db.rollback()
             raise
 
-    async def search_tickets(self, query: str, limit: int = 10) -> list[Ticket]:
+    async def search_tickets(self, query: str, limit: int = 10) -> list[VTicketMasterExpanded]:
         like = f"%{query}%"
         result = await self.db.execute(
-            select(Ticket)
-            .filter((Ticket.Subject.ilike(like)) | (Ticket.Ticket_Body.ilike(like)))
+            select(VTicketMasterExpanded)
+            .filter(
+                (VTicketMasterExpanded.Subject.ilike(like))
+                | (VTicketMasterExpanded.Ticket_Body.ilike(like))
+            )
             .limit(limit)
         )
         return list(result.scalars().all())
