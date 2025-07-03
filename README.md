@@ -15,9 +15,21 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
 
    The application requires the following variables:
 
-   - `DB_CONN_STRING` – SQLAlchemy connection string for your database. Use an async driver such as `mssql+aioodbc://`; synchronous `mssql+pyodbc` connections raise `InvalidRequestError` with `create_async_engine`.
-   - `OPENAI_API_KEY` – API key used by the OpenAI integration.
-   - `CONFIG_ENV` – which config to load: `dev`, `staging`, or `prod` (default `dev`).
+  - `DB_CONN_STRING` – SQLAlchemy connection string for your database. Use an async driver such as `mssql+aioodbc://`; synchronous `mssql+pyodbc` connections raise `InvalidRequestError` with `create_async_engine`.
+  - `OPENAI_API_KEY` – API key used by the OpenAI integration.
+  - `CONFIG_ENV` – which config to load: `dev`, `staging`, or `prod` (default `dev`).
+
+  Example:
+
+  ```bash
+  DB_CONN_STRING="mssql+aioodbc://user:pass@192.168.1.10/dbname?driver=ODBC+Driver+18+for+SQL+Server"
+  ```
+
+  Variables must contain plain strings when loaded with `python-dotenv`; constructs like `${VAR// /+}` are not supported. For example:
+
+  ```bash
+  ODBC_DRIVER="ODBC Driver 18 for SQL Server"
+  ```
 
    They can be provided in the shell environment or in a `.env` file in the project root.
    `config.py` automatically loads `.env` and then imports `config_{CONFIG_ENV}.py`
