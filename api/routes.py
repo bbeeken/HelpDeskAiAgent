@@ -49,6 +49,15 @@ from schemas.ticket import (
 from schemas.oncall import OnCallShiftOut
 
 from schemas.paginated import PaginatedResponse
+from schemas.basic import (
+    AssetOut,
+    VendorOut,
+    SiteOut,
+    TicketCategoryOut,
+    TicketStatusOut,
+    TicketAttachmentOut,
+    TicketMessageOut,
+)
 from db.models import (
     Ticket,
     VTicketMasterExpanded,
@@ -181,8 +190,8 @@ async def api_delete_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) 
 
     return {"deleted": True}
 
-@router.get("/asset/{asset_id}")
-async def api_get_asset(asset_id: int, db: AsyncSession = Depends(get_db)) -> Any:
+@router.get("/asset/{asset_id}", response_model=AssetOut)
+async def api_get_asset(asset_id: int, db: AsyncSession = Depends(get_db)) -> AssetOut:
 
     asset = await get_asset(db, asset_id)
     if not asset:
@@ -191,14 +200,14 @@ async def api_get_asset(asset_id: int, db: AsyncSession = Depends(get_db)) -> An
 
     return asset
 
-@router.get("/assets")
+@router.get("/assets", response_model=List[AssetOut])
 async def api_list_assets(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
-) -> list[Any]:
+) -> list[AssetOut]:
     return await list_assets(db, skip, limit)
 
-@router.get("/vendor/{vendor_id}")
-async def api_get_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)) -> Any:
+@router.get("/vendor/{vendor_id}", response_model=VendorOut)
+async def api_get_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)) -> VendorOut:
 
     vendor = await get_vendor(db, vendor_id)
     if not vendor:
@@ -207,14 +216,14 @@ async def api_get_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)) -> 
 
     return vendor
 
-@router.get("/vendors")
+@router.get("/vendors", response_model=List[VendorOut])
 async def api_list_vendors(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
-) -> list[Any]:
+) -> list[VendorOut]:
     return await list_vendors(db, skip, limit)
 
-@router.get("/site/{site_id}")
-async def api_get_site(site_id: int, db: AsyncSession = Depends(get_db)) -> Any:
+@router.get("/site/{site_id}", response_model=SiteOut)
+async def api_get_site(site_id: int, db: AsyncSession = Depends(get_db)) -> SiteOut:
 
     site = await get_site(db, site_id)
     if not site:
@@ -223,38 +232,38 @@ async def api_get_site(site_id: int, db: AsyncSession = Depends(get_db)) -> Any:
 
     return site
 
-@router.get("/sites")
+@router.get("/sites", response_model=List[SiteOut])
 async def api_list_sites(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
-) -> list[Any]:
+) -> list[SiteOut]:
     return await list_sites(db, skip, limit)
 
-@router.get("/categories")
-async def api_list_categories(db: AsyncSession = Depends(get_db)) -> list[Any]:
+@router.get("/categories", response_model=List[TicketCategoryOut])
+async def api_list_categories(db: AsyncSession = Depends(get_db)) -> list[TicketCategoryOut]:
     return await list_categories(db)
 
-@router.get("/statuses")
-async def api_list_statuses(db: AsyncSession = Depends(get_db)) -> list[Any]:
+@router.get("/statuses", response_model=List[TicketStatusOut])
+async def api_list_statuses(db: AsyncSession = Depends(get_db)) -> list[TicketStatusOut]:
     return await list_statuses(db)
 
-@router.get("/ticket/{ticket_id}/attachments")
+@router.get("/ticket/{ticket_id}/attachments", response_model=List[TicketAttachmentOut])
 async def api_get_ticket_attachments(
     ticket_id: int, db: AsyncSession = Depends(get_db)
-) -> list[Any]:
+) -> list[TicketAttachmentOut]:
     return await get_ticket_attachments(db, ticket_id)
 
-@router.get("/ticket/{ticket_id}/messages")
+@router.get("/ticket/{ticket_id}/messages", response_model=List[TicketMessageOut])
 async def api_get_ticket_messages(
     ticket_id: int, db: AsyncSession = Depends(get_db)
-) -> list[Any]:
+) -> list[TicketMessageOut]:
     return await get_ticket_messages(db, ticket_id)
 
-@router.post("/ticket/{ticket_id}/messages")
+@router.post("/ticket/{ticket_id}/messages", response_model=TicketMessageOut)
 async def api_post_ticket_message(
     ticket_id: int,
     msg: MessageIn,
     db: AsyncSession = Depends(get_db),
-) -> Any:
+) -> TicketMessageOut:
     return await post_ticket_message(
         db, ticket_id, msg.message, msg.sender_code, msg.sender_name
     )
