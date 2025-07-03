@@ -20,6 +20,20 @@ async def get_ticket(db: AsyncSession, ticket_id: int) -> Ticket | None:
     return await db.get(Ticket, ticket_id)
 
 
+async def get_ticket_expanded(
+    db: AsyncSession, ticket_id: int
+) -> Mapping[str, Any] | None:
+    """Return a single ticket from the expanded view."""
+    result = await db.execute(
+        text(
+            "SELECT * FROM V_Ticket_Master_Expanded WHERE Ticket_ID = :tid LIMIT 1"
+        ),
+        {"tid": ticket_id},
+    )
+    row = result.fetchone()
+    return dict(row._mapping) if row else None
+
+
 async def list_tickets(
     db: AsyncSession, skip: int = 0, limit: int = 10
 ) -> Sequence[Ticket]:

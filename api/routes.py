@@ -11,6 +11,7 @@ from db.mssql import SessionLocal
 
 from tools.ticket_tools import (
     get_ticket,
+    get_ticket_expanded,
     list_tickets,
     list_tickets_expanded,
     create_ticket,
@@ -107,7 +108,7 @@ class MessageIn(BaseModel):
 
 @router.get("/ticket/{ticket_id}", response_model=TicketExpandedOut)
 async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketExpandedOut:
-    ticket = await get_ticket(db, ticket_id)
+    ticket = await get_ticket_expanded(db, ticket_id)
     if not ticket:
         logger.warning("Ticket %s not found", ticket_id)
         raise HTTPException(status_code=404, detail="Ticket not found")
