@@ -43,7 +43,7 @@ from limiter import limiter
 from pydantic import BaseModel
 from sqlalchemy import select, func
 
-from schemas.ticket import TicketCreate, TicketOut, TicketUpdate
+from schemas.ticket import TicketCreate, TicketOut, TicketUpdate, TicketExpandedOut
 from schemas.oncall import OnCallShiftOut
 
 from schemas.paginated import PaginatedResponse
@@ -268,11 +268,11 @@ async def api_post_ticket_message(
 
 @router.post("/ai/suggest_response")
 @limiter.limit("10/minute")
-def api_ai_suggest_response(
+async def api_ai_suggest_response(
     request: Request, ticket: TicketOut, context: str = ""
 ) -> dict:
 
-    return {"response": ai_suggest_response(ticket.dict(), context)}
+    return {"response": await ai_suggest_response(ticket.dict(), context)}
 
 
 # Analysis endpoints

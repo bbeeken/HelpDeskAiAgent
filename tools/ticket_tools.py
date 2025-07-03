@@ -28,6 +28,14 @@ async def list_tickets(db: AsyncSession, skip: int = 0, limit: int = 10) -> Sequ
     return result.scalars().all()
 
 
+async def list_tickets_expanded(
+    db: AsyncSession, skip: int = 0, limit: int = 10
+) -> Sequence[VTicketMasterExpanded]:
+    """Return a paginated list of tickets from the expanded view."""
+
+    return await list_tickets(db, skip, limit)
+
+
 async def create_ticket(db: AsyncSession, ticket_obj: Ticket) -> Ticket:
     db.add(ticket_obj)
     try:
