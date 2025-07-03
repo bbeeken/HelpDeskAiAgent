@@ -33,6 +33,10 @@ async def test_user_tools_stub(monkeypatch):
     assert await ut.get_all_users_in_group() == []
     assert await ut.resolve_user_display_name("x@example.com") == "x@example.com"
 
+    # internal helpers should short-circuit without HTTP requests
+    assert await ut._get_token() == ""
+    assert await ut._graph_get("users/x@example.com", "") == {}
+
 
 @pytest.mark.asyncio
 async def test_user_tools_graph_calls(monkeypatch):
@@ -88,6 +92,9 @@ async def test_user_tools_graph_calls(monkeypatch):
 
 
 
+    token = await ut._get_token()
+    assert token == "tok"
+
     user = await ut.get_user_by_email("u@e.com")
     assert user == {"email": "u@e.com", "displayName": "U", "id": "2"}
 
@@ -95,3 +102,10 @@ async def test_user_tools_graph_calls(monkeypatch):
     assert users == [{"email": "a@b.com", "displayName": "A", "id": "1"}]
 
     assert await ut.resolve_user_display_name("u@e.com") == "U"
+
+    # direct call to graph_get with token
+    assert await ut._graph_get("users/u@e.com", token) == {
+        "mail": "u@e.com",
+        "displayName": "U",
+        "id": "2",
+    }
