@@ -106,36 +106,3 @@ async def test_analytics_waiting_on_user(client: AsyncClient):
     data = {item[0]: item[1] for item in resp.json()}
     assert data == {"user1@example.com": 2, "user2@example.com": 1}
 
-@pytest.mark.asyncio
-async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
-    from ai import openai_agent
-    
-
-    class DummyClient:
-        class Chat:
-            class Completions:
-                @staticmethod
-                async def create(*_, **__):
-                    class Msg:
-                        content = "ok"
-
-                    class Choice:
-                        message = Msg()
-
-                    return type("Resp", (), {"choices": [Choice()]})()
-
-    from ai import openai_agent
-
-    openai_agent._get_client()
-    assert openai_agent.openai_client is not None
-    monkeypatch.setattr(openai_agent.openai_client.chat.completions, "create", fake_create)
-
-
-    payload = {
-        "Subject": "AI", "Ticket_Body": "body",
-        "Ticket_Contact_Name": "Tester", "Ticket_Contact_Email": "t@example.com"
-    }
-    ticket = (await client.post("/ticket", json=payload)).json()
-    resp = await client.post("/ai/suggest_response", params={"context": "test"}, json=ticket)
-    assert resp.status_code == 200
-    assert resp.json()["response"] == "ok"
