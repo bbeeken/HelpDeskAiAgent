@@ -2,6 +2,7 @@ import importlib
 from types import SimpleNamespace
 
 import pytest
+import pytest_asyncio
 
 
 def reload_module(monkeypatch, **env):
@@ -16,7 +17,8 @@ def reload_module(monkeypatch, **env):
     return importlib.reload(ut)
 
 
-def test_user_tools_stub(monkeypatch):
+@pytest.mark.asyncio
+async def test_user_tools_stub(monkeypatch):
     ut = reload_module(
         monkeypatch,
         GRAPH_CLIENT_ID=None,
@@ -24,16 +26,17 @@ def test_user_tools_stub(monkeypatch):
         GRAPH_TENANT_ID=None,
     )
 
-    assert ut.get_user_by_email("x@example.com") == {
+    assert await ut.get_user_by_email("x@example.com") == {
         "email": "x@example.com",
         "displayName": None,
         "id": None,
     }
-    assert ut.get_all_users_in_group() == []
-    assert ut.resolve_user_display_name("x@example.com") == "x@example.com"
+    assert await ut.get_all_users_in_group() == []
+    assert await ut.resolve_user_display_name("x@example.com") == "x@example.com"
 
 
-def test_user_tools_graph_calls(monkeypatch):
+@pytest.mark.asyncio
+async def test_user_tools_graph_calls(monkeypatch):
     ut = reload_module(
         monkeypatch,
         GRAPH_CLIENT_ID="id",
@@ -41,33 +44,39 @@ def test_user_tools_graph_calls(monkeypatch):
         GRAPH_TENANT_ID="tenant",
     )
 
-    def fake_post(url, data, timeout):
-        assert "tenant" in url
-        return SimpleNamespace(
-            status_code=200,
-            raise_for_status=lambda: None,
-            json=lambda: {"access_token": "tok"},
-        )
+    class FakeAsyncClient:
+        async def __aenter__(self):
+            return self
 
-    def fake_get(url, headers, timeout):
-        assert headers["Authorization"] == "Bearer tok"
-        if "groups" in url:
-            data = {"value": [{"mail": "a@b.com", "displayName": "A", "id": "1"}]}
-        else:
-            data = {"mail": "u@e.com", "displayName": "U", "id": "2"}
-        return SimpleNamespace(
-            status_code=200,
-            raise_for_status=lambda: None,
-            json=lambda: data,
-        )
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
 
-    monkeypatch.setattr(ut.requests, "post", fake_post)
-    monkeypatch.setattr(ut.requests, "get", fake_get)
+        async def post(self, url, data=None, timeout=None):
+            assert "tenant" in url
+            return SimpleNamespace(
+                status_code=200,
+                raise_for_status=lambda: None,
+                json=lambda: {"access_token": "tok"},
+            )
 
-    user = ut.get_user_by_email("u@e.com")
+        async def get(self, url, headers=None, timeout=None):
+            assert headers["Authorization"] == "Bearer tok"
+            if "groups" in url:
+                data = {"value": [{"mail": "a@b.com", "displayName": "A", "id": "1"}]}
+            else:
+                data = {"mail": "u@e.com", "displayName": "U", "id": "2"}
+            return SimpleNamespace(
+                status_code=200,
+                raise_for_status=lambda: None,
+                json=lambda: data,
+            )
+
+    monkeypatch.setattr(ut.httpx, "AsyncClient", FakeAsyncClient)
+
+    user = await ut.get_user_by_email("u@e.com")
     assert user == {"email": "u@e.com", "displayName": "U", "id": "2"}
 
-    users = ut.get_all_users_in_group()
+    users = await ut.get_all_users_in_group()
     assert users == [{"email": "a@b.com", "displayName": "A", "id": "1"}]
 
-    assert ut.resolve_user_display_name("u@e.com") == "U"
+    assert await ut.resolve_user_display_name("u@e.com") == "U"
