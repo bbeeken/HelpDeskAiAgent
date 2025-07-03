@@ -81,3 +81,12 @@ class TicketStatus(Base):
     __tablename__ = "Ticket_Status"
     ID = Column(Integer, primary_key=True, index=True)
     Label = Column(String)
+
+
+class OnCallShift(Base):
+    __tablename__ = "OnCall_Shifts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String, nullable=False, index=True)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
