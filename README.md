@@ -81,6 +81,10 @@ alembic revision --autogenerate -m "message"
 alembic upgrade head
 ```
 
+The revision `6d3242144893_create_ticket_expanded_view` adds the
+`V_Ticket_Master_Expanded` view. Expanded ticket queries rely on this
+view being present.
+
 ### API Highlights
 
 - `GET /health` - health check returning database status, uptime, and version
