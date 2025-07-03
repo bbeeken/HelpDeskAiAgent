@@ -44,11 +44,21 @@ async def test_user_tools_graph_calls(monkeypatch):
         GRAPH_TENANT_ID="tenant",
     )
 
-    class FakeAsyncClient:
+
+    class DummyResponse(SimpleNamespace):
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.data
+
+    class DummyClient:
+
         async def __aenter__(self):
             return self
 
         async def __aexit__(self, exc_type, exc, tb):
+
             pass
 
         async def post(self, url, data=None, timeout=None):
@@ -59,12 +69,14 @@ async def test_user_tools_graph_calls(monkeypatch):
                 json=lambda: {"access_token": "tok"},
             )
 
+
         async def get(self, url, headers=None, timeout=None):
             assert headers["Authorization"] == "Bearer tok"
             if "groups" in url:
                 data = {"value": [{"mail": "a@b.com", "displayName": "A", "id": "1"}]}
             else:
                 data = {"mail": "u@e.com", "displayName": "U", "id": "2"}
+
             return SimpleNamespace(
                 status_code=200,
                 raise_for_status=lambda: None,
@@ -72,6 +84,7 @@ async def test_user_tools_graph_calls(monkeypatch):
             )
 
     monkeypatch.setattr(ut.httpx, "AsyncClient", FakeAsyncClient)
+
 
     user = await ut.get_user_by_email("u@e.com")
     assert user == {"email": "u@e.com", "displayName": "U", "id": "2"}

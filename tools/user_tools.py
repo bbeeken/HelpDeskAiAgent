@@ -55,18 +55,22 @@ async def _get_token() -> str:
     }
     async with httpx.AsyncClient() as client:
         resp = await client.post(url, data=data, timeout=10)
+
         resp.raise_for_status()
         return resp.json()["access_token"]
+
 
 
 async def _graph_get(endpoint: str, token: str) -> dict:
     url = f"https://graph.microsoft.com/v1.0/{endpoint}"
     async with httpx.AsyncClient() as client:
         resp = await client.get(
+
             url, headers={"Authorization": f"Bearer {token}"}, timeout=10
         )
         resp.raise_for_status()
         return resp.json()
+
 
 
 async def get_user_by_email(email: str) -> Dict[str, str | None]:

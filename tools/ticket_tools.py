@@ -16,15 +16,24 @@ from db.models import Ticket, VTicketMasterExpanded
 logger = logging.getLogger(__name__)
 
 
-async def get_ticket(db: AsyncSession, ticket_id: int) -> VTicketMasterExpanded | None:
-    return await db.get(VTicketMasterExpanded, ticket_id)
+async def get_ticket(db: AsyncSession, ticket_id: int) -> Ticket | None:
+    return await db.get(Ticket, ticket_id)
 
 
-async def list_tickets(db: AsyncSession, skip: int = 0, limit: int = 10) -> Sequence[VTicketMasterExpanded]:
+async def list_tickets(
+    db: AsyncSession, skip: int = 0, limit: int = 10
+) -> Sequence[Ticket]:
+    result = await db.execute(select(Ticket).offset(skip).limit(limit))
+    return result.scalars().all()
+
+
+async def list_tickets_expanded(
+    db: AsyncSession, skip: int = 0, limit: int = 10
+) -> Sequence[VTicketMasterExpanded]:
+    """Return tickets from the expanded view."""
     result = await db.execute(
         select(VTicketMasterExpanded).offset(skip).limit(limit)
     )
-
     return result.scalars().all()
 
 
@@ -100,13 +109,14 @@ async def delete_ticket(db: AsyncSession, ticket_id: int) -> bool:
         raise
 
 
-async def search_tickets(db: AsyncSession, query: str, limit: int = 10) -> Sequence[VTicketMasterExpanded]:
+async def search_tickets(
+    db: AsyncSession, query: str, limit: int = 10
+) -> Sequence[Ticket]:
     like = f"%{query}%"
     logger.info("Searching tickets for '%s'", query)
     result = await db.execute(
-        select(VTicketMasterExpanded).filter(
-            (VTicketMasterExpanded.Subject.ilike(like)) | (VTicketMasterExpanded.Ticket_Body.ilike(like))
-        ).limit(limit)
-
+        select(Ticket)
+        .filter((Ticket.Subject.ilike(like)) | (Ticket.Ticket_Body.ilike(like)))
+        .limit(limit)
     )
     return result.scalars().all()
