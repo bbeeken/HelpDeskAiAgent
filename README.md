@@ -153,7 +153,23 @@ LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
 - `PUT /ticket/{id}` - update an existing ticket
 - `DELETE /ticket/{id}` - remove a ticket
 
+
+## Docker
+
+Build the image and start the stack with Docker Compose:
+
+```bash
+docker compose build
+docker compose up
+```
+
+The API listens on `http://localhost:8000`. The compose file reads environment
+values from `.env`. `DB_CONN_STRING` is set automatically to connect to the
+`postgres` container using the provided `POSTGRES_USER`, `POSTGRES_PASSWORD`, and
+`POSTGRES_DB` values.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
 
