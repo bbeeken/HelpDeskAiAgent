@@ -83,6 +83,12 @@ class TicketStatus(Base):
     Label = Column(String)
 
 
+class Priority(Base):
+    __tablename__ = "Priorities"
+    ID = Column(Integer, primary_key=True, index=True)
+    Level = Column(String)
+
+
 
 class OnCallShift(Base):
     __tablename__ = "OnCall_Shifts"

@@ -104,7 +104,11 @@ class MessageIn(BaseModel):
         }
 
 
-@router.get("/ticket/{ticket_id}", response_model=TicketExpandedOut)
+@router.get(
+    "/ticket/{ticket_id}",
+    response_model=TicketExpandedOut,
+    response_model_by_alias=False,
+)
 async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketExpandedOut:
     ticket = await get_ticket_expanded(db, ticket_id)
     if not ticket:
@@ -115,7 +119,11 @@ async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> 
 
 
 
-@router.get("/tickets", response_model=PaginatedResponse[TicketExpandedOut])
+@router.get(
+    "/tickets",
+    response_model=PaginatedResponse[TicketExpandedOut],
+    response_model_by_alias=False,
+)
 
 async def api_list_tickets(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
@@ -129,7 +137,11 @@ async def api_list_tickets(
 
 
 
-@router.get("/tickets/expanded", response_model=PaginatedResponse[TicketExpandedOut])
+@router.get(
+    "/tickets/expanded",
+    response_model=PaginatedResponse[TicketExpandedOut],
+    response_model_by_alias=False,
+)
 async def api_list_tickets_expanded(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
 ) -> PaginatedResponse[TicketExpandedOut]:
@@ -143,7 +155,11 @@ async def api_list_tickets_expanded(
 
 
 
-@router.get("/tickets/search", response_model=List[TicketExpandedOut])
+@router.get(
+    "/tickets/search",
+    response_model=List[TicketExpandedOut],
+    response_model_by_alias=False,
+)
 
 async def api_search_tickets(
     q: str, limit: int = 10, db: AsyncSession = Depends(get_db)

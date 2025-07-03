@@ -75,8 +75,8 @@ async def test_tickets_expanded_endpoint(client: AsyncClient):
     assert data["total"] == 1
     item = data["items"][0]
     assert item["Ticket_ID"] == tid
-    assert "Ticket_Status_Label" in item
-    assert "Ticket_Category_Label" in item
+    assert "status_label" in item
+    assert "category_label" in item
     assert "Site_Label" in item
     assert "Site_ID" in item
 
@@ -88,4 +88,4 @@ def test_ticket_expanded_schema():
     data = {"Ticket_ID": 1, "Subject": "s", "Ticket_Status_Label": "Open", "Site_ID": 1}
     obj = TicketExpandedOut(**data)
     assert obj.Ticket_ID == 1
-    assert obj.Ticket_Status_Label == "Open"
+    assert obj.status_label == "Open"
