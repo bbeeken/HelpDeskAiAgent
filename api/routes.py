@@ -10,13 +10,12 @@ from db.mssql import SessionLocal
 
 
 from tools.ticket_tools import (
-    get_ticket,
-    list_tickets,
+    get_ticket_expanded,
     list_tickets_expanded,
     create_ticket,
     update_ticket,
     delete_ticket,
-    search_tickets,
+    search_tickets_expanded,
 )
 
 
@@ -107,7 +106,7 @@ class MessageIn(BaseModel):
 
 @router.get("/ticket/{ticket_id}", response_model=TicketExpandedOut)
 async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketExpandedOut:
-    ticket = await get_ticket(db, ticket_id)
+    ticket = await get_ticket_expanded(db, ticket_id)
     if not ticket:
         logger.warning("Ticket %s not found", ticket_id)
         raise HTTPException(status_code=404, detail="Ticket not found")
@@ -121,8 +120,8 @@ async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> 
 async def api_list_tickets(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
 ) -> PaginatedResponse[TicketExpandedOut]:
-    items = await list_tickets(db, skip, limit)
-    total = await db.scalar(select(func.count(Ticket.Ticket_ID))) or 0
+    items = await list_tickets_expanded(db, skip, limit)
+    total = await db.scalar(select(func.count(VTicketMasterExpanded.Ticket_ID))) or 0
 
     ticket_out = [TicketExpandedOut.from_orm(t) for t in items]
     return PaginatedResponse[TicketExpandedOut](items=ticket_out, total=total, skip=skip, limit=limit)
@@ -137,16 +136,7 @@ async def api_list_tickets_expanded(
     items = await list_tickets_expanded(db, skip, limit)
     total = await db.scalar(select(func.count(VTicketMasterExpanded.Ticket_ID))) or 0
 
-    ticket_out = []
-    for t in items:
-        data = TicketExpandedOut(**t).dict()
-        if "Ticket_Status_Label" in data:
-            data["Status_Label"] = data.pop("Ticket_Status_Label")
-        if "Ticket_Category_Label" in data:
-            data["Category_Label"] = data.pop("Ticket_Category_Label")
-        ticket_out.append(data)
-
-
+    ticket_out = [TicketExpandedOut.from_orm(t) for t in items]
     return PaginatedResponse[TicketExpandedOut](
         items=ticket_out, total=total, skip=skip, limit=limit
     )
@@ -161,7 +151,7 @@ async def api_search_tickets(
 ) -> list[TicketExpandedOut]:
 
     logger.info("API search tickets query=%s limit=%s", q, limit)
-    results = await search_tickets(db, q, limit)
+    results = await search_tickets_expanded(db, q, limit)
     return [TicketExpandedOut.from_orm(r) for r in results]
 
 
