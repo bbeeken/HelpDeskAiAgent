@@ -13,4 +13,3 @@ async def get_ticket_attachments(db: AsyncSession, ticket_id: int) -> list[Ticke
         select(TicketAttachment).filter(TicketAttachment.Ticket_ID == ticket_id)
     )
     return list(result.scalars().all())
-

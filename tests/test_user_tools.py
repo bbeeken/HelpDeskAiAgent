@@ -2,7 +2,6 @@ import importlib
 from types import SimpleNamespace
 
 import pytest
-import pytest_asyncio
 
 
 def reload_module(monkeypatch, **env):

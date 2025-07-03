@@ -92,8 +92,3 @@ async def tickets_waiting_on_user(db: AsyncSession) -> list[tuple[str | None, in
         .group_by(Ticket.Ticket_Contact_Email)
     )
     return [(row[0], row[1]) for row in result.all()]
-
-
-
-
-

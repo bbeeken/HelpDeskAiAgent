@@ -62,4 +62,3 @@ async def test_search_tickets():
         await create_ticket(db, t)
         results = await search_tickets_expanded(db, "Network")
         assert results and results[0].Subject == "Network issue"
-

@@ -18,4 +18,3 @@ async def list_vendors(db: AsyncSession, skip: int = 0, limit: int = 10) -> list
         select(Vendor).order_by(Vendor.ID).offset(skip).limit(limit)
     )
     return list(result.scalars().all())
-

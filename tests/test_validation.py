@@ -21,4 +21,3 @@ def test_subject_too_long():
             Ticket_Contact_Name="Name",
             Ticket_Contact_Email="test@example.com",
         )
-

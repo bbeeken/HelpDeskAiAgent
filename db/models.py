@@ -134,4 +134,3 @@ class VTicketMasterExpanded(ViewBase):
     Assigned_Vendor_Name = Column(String)
     Resolution = Column(Text)
     Priority_Level = Column(String)
-

@@ -105,5 +105,3 @@ async def resolve_user_display_name(identifier: str) -> str:
     logger.info("Resolving display name for %s", identifier)
     user = await get_user_by_email(identifier)
     return user.get("displayName") or identifier
-
-

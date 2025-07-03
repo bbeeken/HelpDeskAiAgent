@@ -18,5 +18,3 @@ async def list_sites(db: AsyncSession, skip: int = 0, limit: int = 10) -> list[S
         select(Site).order_by(Site.ID).offset(skip).limit(limit)
     )
     return list(result.scalars().all())
-
-

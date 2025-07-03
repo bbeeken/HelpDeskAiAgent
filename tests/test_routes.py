@@ -79,4 +79,3 @@ async def test_update_ticket_invalid_field(client: AsyncClient):
 
     resp = await client.put(f"/ticket/{tid}", json={"BadField": "x"})
     assert resp.status_code == 422
-

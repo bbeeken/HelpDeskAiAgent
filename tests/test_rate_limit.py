@@ -46,4 +46,3 @@ def test_ai_suggest_response_rate_limit(monkeypatch):
     # 11th request is blocked
     r = client.post("/ai/suggest_response", json=ticket)
     assert r.status_code == 429
-

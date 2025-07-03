@@ -79,5 +79,3 @@ async def health(db: AsyncSession = Depends(get_db)) -> dict:
 
     uptime = (datetime.now(UTC) - START_TIME).total_seconds()
     return {"db": db_status, "uptime": uptime, "version": APP_VERSION}
-
-
