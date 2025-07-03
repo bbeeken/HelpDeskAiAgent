@@ -2,17 +2,19 @@ import pytest
 from ai import openai_agent
 
 
-def test_suggest_ticket_response_requires_key(monkeypatch):
+@pytest.mark.asyncio
+async def test_suggest_ticket_response_requires_key(monkeypatch):
 
     monkeypatch.setattr(openai_agent, "openai_client", None)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setattr(openai_agent, "OPENAI_API_KEY", None, raising=False)
 
     with pytest.raises(RuntimeError):
-        openai_agent.suggest_ticket_response({"Subject": "Test", "Ticket_Body": "body"})
+        await openai_agent.suggest_ticket_response({"Subject": "Test", "Ticket_Body": "body"})
 
 
-def test_client_initialized_once(monkeypatch):
+@pytest.mark.asyncio
+async def test_client_initialized_once(monkeypatch):
     """openai.Client should be instantiated only once."""
     monkeypatch.setenv("OPENAI_API_KEY", "abc")
 
@@ -25,8 +27,7 @@ def test_client_initialized_once(monkeypatch):
 
             class Chat:
                 class Completions:
-                    @staticmethod
-                    def create(*_, **__):
+                    async def create(*_, **__):
                         class Msg:
                             content = "ok"
 
@@ -42,12 +43,12 @@ def test_client_initialized_once(monkeypatch):
     import importlib
     import openai
 
-    monkeypatch.setattr(openai, "Client", DummyClient)
+    monkeypatch.setattr(openai, "AsyncClient", DummyClient)
     oa = importlib.reload(openai_agent)
 
     # Call multiple times; initialization should only happen once
-    assert oa.suggest_ticket_response({"Subject": "s", "Ticket_Body": "b"}) == "ok"
-    assert oa.suggest_ticket_response({"Subject": "s", "Ticket_Body": "b"}) == "ok"
+    assert await oa.suggest_ticket_response({"Subject": "s", "Ticket_Body": "b"}) == "ok"
+    assert await oa.suggest_ticket_response({"Subject": "s", "Ticket_Body": "b"}) == "ok"
     assert call_count == 1
 
     # Reload module back to default for other tests

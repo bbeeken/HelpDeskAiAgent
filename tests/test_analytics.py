@@ -16,7 +16,7 @@ os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
 import pytest_asyncio
 
 
-def fake_create(*args, **kwargs):
+async def fake_create(*args, **kwargs):
     """Return a dummy OpenAI chat completion response."""
     class Msg:
         content = "ok"
@@ -107,21 +107,6 @@ async def test_analytics_waiting_on_user(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
-    from ai import openai_agent
-
-    class DummyClient:
-        class Chat:
-            class Completions:
-                @staticmethod
-                def create(*_, **__):
-                    class Msg:
-                        content = "ok"
-
-                    class Choice:
-                        message = Msg()
-
-                    return type("Resp", (), {"choices": [Choice()]})()
-
     from ai import openai_agent
     openai_agent._get_client()
     assert openai_agent.openai_client is not None
