@@ -6,7 +6,6 @@ from httpx import AsyncClient
 from main import app
 from db.models import Ticket
 from db.mssql import SessionLocal
-from services.ticket_service import TicketService
 from tools.ticket_tools import create_ticket
 
 os.environ.setdefault("OPENAI_API_KEY", "test")
@@ -108,6 +107,7 @@ async def test_analytics_waiting_on_user(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
     from ai import openai_agent
+    
 
     class DummyClient:
         class Chat:
@@ -123,6 +123,7 @@ async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
                     return type("Resp", (), {"choices": [Choice()]})()
 
     from ai import openai_agent
+
     openai_agent._get_client()
     assert openai_agent.openai_client is not None
     monkeypatch.setattr(openai_agent.openai_client.chat.completions, "create", fake_create)

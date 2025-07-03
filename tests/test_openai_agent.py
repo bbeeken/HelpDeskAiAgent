@@ -27,7 +27,7 @@ async def test_client_initialized_once(monkeypatch):
 
             class Chat:
                 class Completions:
-                    @staticmethod
+
                     async def create(*_, **__):
                         class Msg:
                             content = "ok"
