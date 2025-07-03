@@ -69,7 +69,6 @@ async def test_user_tools_graph_calls(monkeypatch):
                 json=lambda: {"access_token": "tok"},
             )
 
-
         async def get(self, url, headers=None, timeout=None):
             assert headers["Authorization"] == "Bearer tok"
             if "groups" in url:
@@ -82,6 +81,8 @@ async def test_user_tools_graph_calls(monkeypatch):
                 raise_for_status=lambda: None,
                 json=lambda: data,
             )
+
+    FakeAsyncClient = DummyClient
 
     monkeypatch.setattr(ut.httpx, "AsyncClient", FakeAsyncClient)
 
