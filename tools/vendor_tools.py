@@ -14,6 +14,8 @@ async def get_vendor(db: AsyncSession, vendor_id: int) -> Vendor | None:
 
 
 async def list_vendors(db: AsyncSession, skip: int = 0, limit: int = 10) -> list[Vendor]:
-    result = await db.execute(select(Vendor).offset(skip).limit(limit))
+    result = await db.execute(
+        select(Vendor).order_by(Vendor.ID).offset(skip).limit(limit)
+    )
     return list(result.scalars().all())
 

@@ -27,7 +27,10 @@ async def list_tickets_expanded(
 ) -> Sequence[VTicketMasterExpanded]:
     """Return tickets with related labels from the expanded view."""
     result = await db.execute(
-        select(VTicketMasterExpanded).offset(skip).limit(limit)
+        select(VTicketMasterExpanded)
+        .order_by(VTicketMasterExpanded.Ticket_ID)
+        .offset(skip)
+        .limit(limit)
     )
     return result.scalars().all()
 
