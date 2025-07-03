@@ -31,6 +31,7 @@ async def list_tickets(db: AsyncSession, skip: int = 0, limit: int = 10) -> Sequ
 async def list_tickets_expanded(
     db: AsyncSession, skip: int = 0, limit: int = 10
 
+
 ) -> Sequence[VTicketMasterExpanded]:
     """Return tickets with related labels from the expanded view."""
 
@@ -42,6 +43,7 @@ async def list_tickets_expanded(
     )
 
     return [dict(row._mapping) for row in result]
+
 
 
 

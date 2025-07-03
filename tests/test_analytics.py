@@ -107,6 +107,23 @@ async def test_analytics_waiting_on_user(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
     from ai import openai_agent
+    
+
+    class DummyClient:
+        class Chat:
+            class Completions:
+                @staticmethod
+                async def create(*_, **__):
+                    class Msg:
+                        content = "ok"
+
+                    class Choice:
+                        message = Msg()
+
+                    return type("Resp", (), {"choices": [Choice()]})()
+
+    from ai import openai_agent
+
     openai_agent._get_client()
     assert openai_agent.openai_client is not None
     monkeypatch.setattr(openai_agent.openai_client.chat.completions, "create", fake_create)

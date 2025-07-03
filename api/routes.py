@@ -44,12 +44,14 @@ from pydantic import BaseModel
 from sqlalchemy import select, func
 
 
+
 from schemas.ticket import (
     TicketCreate,
     TicketOut,
     TicketUpdate,
     TicketExpandedOut,
 )
+
 
 from schemas.oncall import OnCallShiftOut
 
