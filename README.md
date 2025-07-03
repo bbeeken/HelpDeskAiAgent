@@ -81,6 +81,7 @@ alembic revision --autogenerate -m "message"
 alembic upgrade head
 ```
 
+
 ### V_Ticket_Master_Expanded
 
 The API uses the `V_Ticket_Master_Expanded` view to join tickets with
@@ -119,6 +120,7 @@ LEFT JOIN Sites s ON s.ID = t.Site_ID
 LEFT JOIN Ticket_Categories c ON c.ID = t.Ticket_Category_ID
 LEFT JOIN Vendors v ON v.ID = t.Assigned_Vendor_ID;
 ```
+
 
 ### API Highlights
 
