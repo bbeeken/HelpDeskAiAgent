@@ -19,7 +19,7 @@ async def get_ticket_messages(db: AsyncSession, ticket_id: int) -> list[TicketMe
         .filter(TicketMessage.Ticket_ID == ticket_id)
         .order_by(TicketMessage.DateTimeStamp)
     )
-    return result.scalars().all()
+    return list(result.scalars().all())
 
 
 async def post_ticket_message(

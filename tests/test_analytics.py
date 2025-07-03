@@ -124,6 +124,7 @@ async def test_ai_suggest_response(client: AsyncClient, monkeypatch):
 
     from ai import openai_agent
     openai_agent._get_client()
+    assert openai_agent.openai_client is not None
     monkeypatch.setattr(openai_agent.openai_client.chat.completions, "create", fake_create)
 
 

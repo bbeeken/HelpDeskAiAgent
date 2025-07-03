@@ -48,7 +48,8 @@ def suggest_ticket_response(ticket: Dict[str, Any], context: str = "") -> str:
             model=OPENAI_MODEL_NAME,
             messages=[{"role": "system", "content": prompt}],
         )
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        return content or ""
 
     except APITimeoutError:
         logger.exception("OpenAI request timed out")

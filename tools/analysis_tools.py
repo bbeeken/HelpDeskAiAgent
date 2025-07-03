@@ -59,7 +59,7 @@ async def sla_breaches(db: AsyncSession, sla_days: int = 2) -> int:
         .filter(Ticket.Created_Date < cutoff)
         .filter(Ticket.Ticket_Status_ID != 3)
     )
-    return result.scalar()
+    return result.scalar_one()
 
 
 
