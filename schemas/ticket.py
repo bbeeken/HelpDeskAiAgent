@@ -20,10 +20,12 @@ class TicketBase(BaseModel):
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[Annotated[str, Field(max_length=2000)]] = None
 
-    @validator("Ticket_Contact_Email", "Assigned_Email")
+    @validator("Ticket_Contact_Email", "Assigned_Email", pre=True)
     def validate_emails(cls, v):
         if v is None:
-            return v
+            return None
+        if isinstance(v, str) and (v == "" or v.lower() == "null"):
+            return None
         try:
             return validate_email(v, check_deliverability=False).email
         except EmailNotValidError as e:
@@ -81,10 +83,12 @@ class TicketIn(BaseModel):
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[Annotated[str, Field(max_length=2000)]] = None
 
-    @validator("Ticket_Contact_Email", "Assigned_Email")
+    @validator("Ticket_Contact_Email", "Assigned_Email", pre=True)
     def validate_emails(cls, v):
         if v is None:
-            return v
+            return None
+        if isinstance(v, str) and (v == "" or v.lower() == "null"):
+            return None
         try:
             return validate_email(v, check_deliverability=False).email
         except EmailNotValidError as e:
