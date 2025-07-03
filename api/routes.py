@@ -109,7 +109,12 @@ async def api_list_tickets(
     items = await list_tickets_expanded(db, skip, limit)
     total = await db.scalar(select(func.count(VTicketMasterExpanded.Ticket_ID))) or 0
 
-    ticket_out = [TicketExpandedOut.from_orm(t) for t in items]
+    ticket_out: list[TicketExpandedOut] = []
+    for t in items:
+        try:
+            ticket_out.append(TicketExpandedOut.from_orm(t))
+        except Exception as e:
+            logger.error("Invalid ticket %s: %s", getattr(t, "Ticket_ID", "?"), e)
     return PaginatedResponse[TicketExpandedOut](items=ticket_out, total=total, skip=skip, limit=limit)
 @router.get(
     "/tickets/expanded",
@@ -122,7 +127,12 @@ async def api_list_tickets_expanded(
     items = await list_tickets_expanded(db, skip, limit)
     total = await db.scalar(select(func.count(VTicketMasterExpanded.Ticket_ID))) or 0
 
-    ticket_out = [TicketExpandedOut.from_orm(t) for t in items]
+    ticket_out: list[TicketExpandedOut] = []
+    for t in items:
+        try:
+            ticket_out.append(TicketExpandedOut.from_orm(t))
+        except Exception as e:
+            logger.error("Invalid ticket %s: %s", getattr(t, "Ticket_ID", "?"), e)
     return PaginatedResponse[TicketExpandedOut](
         items=ticket_out, total=total, skip=skip, limit=limit
     )
