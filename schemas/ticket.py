@@ -118,6 +118,7 @@ class TicketExpandedOut(TicketOut):
     Ticket_Status_Label: Optional[str] = None
     Status_Label: Optional[str] = None
     Site_Label: Optional[str] = None
+    Site_ID: Optional[int] = None
     Asset_Label: Optional[str] = None
     Ticket_Category_Label: Optional[str] = None
     Category_Label: Optional[str] = None
