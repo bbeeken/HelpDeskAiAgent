@@ -114,8 +114,9 @@ async def api_list_tickets(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
 ) -> PaginatedResponse[TicketOut]:
     items = await list_tickets(db, skip, limit)
-    total = await db.scalar(select(func.count(Ticket.Ticket_ID)))
-    return PaginatedResponse[TicketOut](items=items, total=total, skip=skip, limit=limit)
+    total = await db.scalar(select(func.count(Ticket.Ticket_ID))) or 0
+    ticket_out = [TicketOut.from_orm(t) for t in items]
+    return PaginatedResponse[TicketOut](items=ticket_out, total=total, skip=skip, limit=limit)
 
 
 
@@ -128,7 +129,8 @@ async def api_search_tickets(
 
 ) -> list[Ticket]:
     logger.info("API search tickets query=%s limit=%s", q, limit)
-    return await search_tickets(db, q, limit)
+    results = await search_tickets(db, q, limit)
+    return list(results)
 
 
 

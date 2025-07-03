@@ -12,5 +12,5 @@ async def get_ticket_attachments(db: AsyncSession, ticket_id: int) -> list[Ticke
     result = await db.execute(
         select(TicketAttachment).filter(TicketAttachment.Ticket_ID == ticket_id)
     )
-    return result.scalars().all()
+    return list(result.scalars().all())
 

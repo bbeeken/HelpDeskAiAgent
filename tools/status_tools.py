@@ -10,6 +10,6 @@ logger = logging.getLogger(__name__)
 
 async def list_statuses(db: AsyncSession) -> list[TicketStatus]:
     result = await db.execute(select(TicketStatus))
-    return result.scalars().all()
+    return list(result.scalars().all())
 
 

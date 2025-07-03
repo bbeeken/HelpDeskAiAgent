@@ -14,9 +14,9 @@ class TicketService:
     async def get_ticket(self, ticket_id: int) -> Ticket | None:
         return await self.db.get(Ticket, ticket_id)
 
-    async def list_tickets(self, skip: int = 0, limit: int = 10):
+    async def list_tickets(self, skip: int = 0, limit: int = 10) -> list[Ticket]:
         result = await self.db.execute(select(Ticket).offset(skip).limit(limit))
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     async def create_ticket(self, ticket_obj: Ticket) -> Ticket:
         self.db.add(ticket_obj)
@@ -55,11 +55,11 @@ class TicketService:
             await self.db.rollback()
             raise
 
-    async def search_tickets(self, query: str, limit: int = 10):
+    async def search_tickets(self, query: str, limit: int = 10) -> list[Ticket]:
         like = f"%{query}%"
         result = await self.db.execute(
             select(Ticket)
             .filter((Ticket.Subject.ilike(like)) | (Ticket.Ticket_Body.ilike(like)))
             .limit(limit)
         )
-        return result.scalars().all()
+        return list(result.scalars().all())

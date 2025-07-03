@@ -15,6 +15,6 @@ async def get_site(db: AsyncSession, site_id: int) -> Site | None:
 
 async def list_sites(db: AsyncSession, skip: int = 0, limit: int = 10) -> list[Site]:
     result = await db.execute(select(Site).offset(skip).limit(limit))
-    return result.scalars().all()
+    return list(result.scalars().all())
 
 
