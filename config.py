@@ -17,9 +17,6 @@ load_dotenv()
 CONFIG_ENV = os.getenv("CONFIG_ENV", "dev")
 
 DB_CONN_STRING: str | None = os.getenv("DB_CONN_STRING")
-OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL_NAME: str = os.getenv("OPENAI_MODEL_NAME", "gpt-4o")
-OPENAI_TIMEOUT: int = int(os.getenv("OPENAI_TIMEOUT", "15"))
 
 try:
     env_module = importlib.import_module(f"config_{CONFIG_ENV}")

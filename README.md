@@ -22,7 +22,6 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     DB_CONN_STRING="mssql+aioodbc://user:pass@host/db?driver=ODBC+Driver+18+for+SQL+Server"
     ```
    The `driver` name must match an ODBC driver installed on the host machine.
-   - `OPENAI_API_KEY` – API key used by the OpenAI integration.
    - `CONFIG_ENV` – which config to load: `dev`, `staging`, or `prod` (default `dev`).
    - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
      lookups in `tools.user_tools`. When omitted, stub responses are returned.
@@ -42,8 +41,12 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
   A template called `.env.example` lists the required and optional variables; copy it to `.env` and
   update the values for your environment. `config.py` automatically loads `.env` and
   then imports `config_{CONFIG_ENV}.py` so the appropriate settings are applied at
-  startup. OpenAI model parameters such as model name and timeouts are defined in the
+
+  startup. Model parameters for the MCP server's LLM, such as name and timeouts, are defined in the
   selected config file. The Graph credentials are optional; without them, the Graph
+
+  startup. The Graph credentials are optional; without them, the Graph
+
   helper functions return stub data so tests and development work without network
   access.
 
@@ -69,6 +72,19 @@ Install the testing dependencies and run `pytest`:
 pip install -r requirements.txt
 pytest
 ```
+
+## Docker Compose
+
+Build the image and start the containers:
+
+```bash
+docker build -t helpdesk-agent .
+docker-compose up
+```
+
+Compose reads variables from `.env`. Copy `.env.example` to `.env` and set
+values for required options such as `DB_CONN_STRING`, `OPENAI_API_KEY`, and
+`CONFIG_ENV`. Optional Graph credentials may also be provided in this file.
 
 ## Database Migrations
 
@@ -136,3 +152,24 @@ LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
 - `GET /tickets/search?q=term` - search tickets by subject or body
 - `PUT /ticket/{id}` - update an existing ticket
 - `DELETE /ticket/{id}` - remove a ticket
+
+
+## Docker
+
+Build the image and start the stack with Docker Compose:
+
+```bash
+docker compose build
+docker compose up
+```
+
+The API listens on `http://localhost:8000`. The compose file reads environment
+values from `.env`. `DB_CONN_STRING` is set automatically to connect to the
+`postgres` container using the provided `POSTGRES_USER`, `POSTGRES_PASSWORD`, and
+`POSTGRES_DB` values.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+
