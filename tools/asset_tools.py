@@ -13,7 +13,9 @@ async def get_asset(db: AsyncSession, asset_id: int) -> Asset | None:
 
 
 async def list_assets(db: AsyncSession, skip: int = 0, limit: int = 10) -> list[Asset]:
-    result = await db.execute(select(Asset).offset(skip).limit(limit))
+    result = await db.execute(
+        select(Asset).order_by(Asset.ID).offset(skip).limit(limit)
+    )
     return list(result.scalars().all())
 
 
