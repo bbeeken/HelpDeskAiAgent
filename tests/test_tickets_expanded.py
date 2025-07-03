@@ -15,6 +15,7 @@ SELECT t.Ticket_ID,
        t.Ticket_Contact_Email,
        t.Asset_ID,
        a.Label AS Asset_Label,
+       t.Site_ID,
        s.Label AS Site_Label,
        t.Ticket_Category_ID,
        c.Label AS Ticket_Category_Label,
@@ -77,13 +78,14 @@ async def test_tickets_expanded_endpoint(client: AsyncClient):
     assert "Ticket_Status_Label" in item
     assert "Ticket_Category_Label" in item
     assert "Site_Label" in item
+    assert "Site_ID" in item
 
 
 from schemas.ticket import TicketExpandedOut
 
 
 def test_ticket_expanded_schema():
-    data = {"Ticket_ID": 1, "Subject": "s", "Ticket_Status_Label": "Open"}
+    data = {"Ticket_ID": 1, "Subject": "s", "Ticket_Status_Label": "Open", "Site_ID": 1}
     obj = TicketExpandedOut(**data)
     assert obj.Ticket_ID == 1
     assert obj.Ticket_Status_Label == "Open"
