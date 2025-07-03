@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import Ticket
+from db.models import Ticket, VTicketMasterExpanded
 
 logger = logging.getLogger(__name__)
 
