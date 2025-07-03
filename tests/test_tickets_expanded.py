@@ -19,7 +19,7 @@ DROP_VIEW_SQL = "DROP VIEW IF EXISTS V_Ticket_Master_Expanded"
 @pytest_asyncio.fixture(autouse=True)
 async def expanded_view(db_setup):
     async with engine.begin() as conn:
-        # SQLite requires DROP VIEW for existing views
+
         await conn.exec_driver_sql(DROP_VIEW_SQL)
         await conn.exec_driver_sql("DROP TABLE IF EXISTS V_Ticket_Master_Expanded")
         await conn.exec_driver_sql(CREATE_VIEW_SQL)

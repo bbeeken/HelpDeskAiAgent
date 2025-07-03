@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Sequence
+from typing import Sequence, Mapping, Any
 
 from sqlalchemy import select, text
 
@@ -30,15 +30,19 @@ async def list_tickets(db: AsyncSession, skip: int = 0, limit: int = 10) -> Sequ
 
 async def list_tickets_expanded(
     db: AsyncSession, skip: int = 0, limit: int = 10
+
 ) -> Sequence[VTicketMasterExpanded]:
     """Return tickets with related labels from the expanded view."""
+
     result = await db.execute(
         text(
             "SELECT * FROM V_Ticket_Master_Expanded LIMIT :limit OFFSET :skip"
         ),
         {"limit": limit, "skip": skip},
     )
-    return result.fetchall()
+
+    return [dict(row._mapping) for row in result]
+
 
 
 async def create_ticket(db: AsyncSession, ticket_obj: Ticket) -> Ticket:
@@ -58,7 +62,7 @@ async def update_ticket(db: AsyncSession, ticket_id: int, updates) -> Ticket | N
     if isinstance(updates, BaseModel):
         updates = updates.dict(exclude_unset=True)
 
-    # Retrieve the mutable Ticket row rather than the read-only expanded view
+
     ticket = await db.get(Ticket, ticket_id)
     if not ticket:
         return None
@@ -79,7 +83,7 @@ async def update_ticket(db: AsyncSession, ticket_id: int, updates) -> Ticket | N
 
 
 async def delete_ticket(db: AsyncSession, ticket_id: int) -> bool:
-    # Use the Ticket table for deletes
+
     ticket = await db.get(Ticket, ticket_id)
     if not ticket:
         return False
