@@ -49,6 +49,7 @@ from schemas.ticket import (
 from schemas.oncall import OnCallShiftOut
 
 from schemas.paginated import PaginatedResponse
+from schemas.analytics import StatusCount, SiteOpenCount
 from db.models import (
     Ticket,
     VTicketMasterExpanded,
@@ -309,19 +310,25 @@ async def api_ai_suggest_response(
 
 # Analysis endpoints
 
-@router.get("/analytics/status")
+@router.get("/analytics/status", response_model=list[StatusCount])
 async def api_tickets_by_status(
     db: AsyncSession = Depends(get_db),
-) -> list[tuple[int | None, int]]:
+) -> list[StatusCount]:
 
-    return await tickets_by_status(db)
+    return [
+        StatusCount(status_id=sid, status_label=label, count=count)
+        for sid, label, count in await tickets_by_status(db)
+    ]
 
-@router.get("/analytics/open_by_site")
+@router.get("/analytics/open_by_site", response_model=list[SiteOpenCount])
 async def api_open_tickets_by_site(
     db: AsyncSession = Depends(get_db),
-) -> list[tuple[int | None, int]]:
+) -> list[SiteOpenCount]:
 
-    return await open_tickets_by_site(db)
+    return [
+        SiteOpenCount(site_id=sid, site_label=label, count=count)
+        for sid, label, count in await open_tickets_by_site(db)
+    ]
 
 @router.get("/analytics/sla_breaches")
 async def api_sla_breaches(
