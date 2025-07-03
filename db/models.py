@@ -20,7 +20,7 @@ class Ticket(Base):
     Created_Date = Column(DateTime)
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
-    Severity_ID = Column(Integer)
+    Priority_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
     Resolution = Column(Text)
 
@@ -114,7 +114,6 @@ class VTicketMasterExpanded(ViewBase):
     Ticket_Contact_Email = Column(String)
     Asset_ID = Column(Integer)
     Asset_Label = Column(String)
-    Site_ID = Column(Integer)
     Site_Label = Column(String)
     Ticket_Category_ID = Column(Integer)
     Ticket_Category_Label = Column(String)
@@ -122,9 +121,10 @@ class VTicketMasterExpanded(ViewBase):
     Created_Date = Column(DateTime)
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
-    Severity_ID = Column(Integer)
+    Priority_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
 
     Assigned_Vendor_Name = Column(String)
     Resolution = Column(Text)
+    Priority_Level = Column(String)
 
