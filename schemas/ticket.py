@@ -109,15 +109,24 @@ class TicketOut(TicketIn):
         }
 
 
+
 class TicketExpandedOut(TicketOut):
 
     """Ticket output schema that includes related labels."""
 
-    Ticket_Status_Label: Optional[str] = None
+    Ticket_Status_Label: Optional[str] = Field(None, alias="Status_Label")
     Site_Label: Optional[str] = None
     Asset_Label: Optional[str] = None
-    Ticket_Category_Label: Optional[str] = None
+    Ticket_Category_Label: Optional[str] = Field(None, alias="Category_Label")
     Assigned_Vendor_Name: Optional[str] = None
+
+    @property
+    def Status_Label(self) -> Optional[str]:
+        return self.Ticket_Status_Label
+
+    @property
+    def Category_Label(self) -> Optional[str]:
+        return self.Ticket_Category_Label
 
 
     class Config:
