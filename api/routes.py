@@ -43,7 +43,12 @@ from limiter import limiter
 from pydantic import BaseModel
 from sqlalchemy import select, func
 
-from schemas.ticket import TicketCreate, TicketOut, TicketUpdate
+from schemas.ticket import (
+    TicketCreate,
+    TicketOut,
+    TicketUpdate,
+    TicketExpandedOut,
+)
 from schemas.oncall import OnCallShiftOut
 
 from schemas.paginated import PaginatedResponse
