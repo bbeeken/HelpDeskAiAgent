@@ -35,7 +35,7 @@ async def test_create_and_get_ticket(client: AsyncClient):
     assert data["total"] == 1
     item = data["items"][0]
     assert item["Ticket_ID"] == tid
-    assert "Ticket_Status_Label" in item
+    assert "status_label" in item
     assert data["skip"] == 0
     assert data["limit"] == 10
 
@@ -43,7 +43,7 @@ async def test_create_and_get_ticket(client: AsyncClient):
     assert get_resp.status_code == 200
     ticket_json = get_resp.json()
     assert ticket_json["Subject"] == "API test"
-    assert "Ticket_Status_Label" in ticket_json
+    assert "status_label" in ticket_json
 
 
 @pytest.mark.asyncio
