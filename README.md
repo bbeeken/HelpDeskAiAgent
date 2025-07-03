@@ -22,7 +22,6 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     DB_CONN_STRING="mssql+aioodbc://user:pass@host/db?driver=ODBC+Driver+18+for+SQL+Server"
     ```
    The `driver` name must match an ODBC driver installed on the host machine.
-   - `OPENAI_API_KEY` – API key used by the OpenAI integration.
    - `CONFIG_ENV` – which config to load: `dev`, `staging`, or `prod` (default `dev`).
    - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
      lookups in `tools.user_tools`. When omitted, stub responses are returned.
@@ -42,7 +41,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
   A template called `.env.example` lists the required and optional variables; copy it to `.env` and
   update the values for your environment. `config.py` automatically loads `.env` and
   then imports `config_{CONFIG_ENV}.py` so the appropriate settings are applied at
-  startup. OpenAI model parameters such as model name and timeouts are defined in the
+  startup. Model parameters for the MCP server's LLM, such as name and timeouts, are defined in the
   selected config file. The Graph credentials are optional; without them, the Graph
   helper functions return stub data so tests and development work without network
   access.
