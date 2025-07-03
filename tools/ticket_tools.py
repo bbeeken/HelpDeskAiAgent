@@ -1,23 +1,24 @@
 from __future__ import annotations
 
 import logging
-from typing import Sequence, Mapping, Any
+from typing import Sequence
 
-from sqlalchemy import select, text
-
+from sqlalchemy import select
 from fastapi import HTTPException
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import Ticket, VTicketMasterExpanded
-
+from db.models import Ticket
 
 logger = logging.getLogger(__name__)
 
 
-async def get_ticket(db: AsyncSession, ticket_id: int) -> Ticket | None:
-    return await db.get(Ticket, ticket_id)
+async def get_ticket_expanded(
+    db: AsyncSession, ticket_id: int
+) -> VTicketMasterExpanded | None:
+    """Return a ticket from the expanded view."""
+    return await db.get(VTicketMasterExpanded, ticket_id)
 
 
 async def get_ticket_expanded(
@@ -41,33 +42,32 @@ async def list_tickets(
     return result.scalars().all()
 
 
+
 async def list_tickets_expanded(
     db: AsyncSession, skip: int = 0, limit: int = 10
 ) -> Sequence[VTicketMasterExpanded]:
-    """Return tickets from the expanded view."""
+    """Return tickets with related labels from the expanded view."""
     result = await db.execute(
         select(VTicketMasterExpanded).offset(skip).limit(limit)
     )
     return result.scalars().all()
 
 
-async def list_tickets_expanded(
-    db: AsyncSession, skip: int = 0, limit: int = 10
-
-
+async def search_tickets_expanded(
+    db: AsyncSession, query: str, limit: int = 10
 ) -> Sequence[VTicketMasterExpanded]:
-    """Return tickets with related labels from the expanded view."""
+    """Search tickets in the expanded view by subject or body."""
+    like = f"%{query}%"
 
     result = await db.execute(
-        text(
-            "SELECT * FROM V_Ticket_Master_Expanded LIMIT :limit OFFSET :skip"
-        ),
-        {"limit": limit, "skip": skip},
+        select(VTicketMasterExpanded)
+        .filter(
+            (VTicketMasterExpanded.Subject.ilike(like))
+            | (VTicketMasterExpanded.Ticket_Body.ilike(like))
+        )
+        .limit(limit)
     )
-
-    return [dict(row._mapping) for row in result]
-
-
+    return result.scalars().all()
 
 
 async def create_ticket(db: AsyncSession, ticket_obj: Ticket) -> Ticket:
@@ -86,7 +86,6 @@ async def update_ticket(db: AsyncSession, ticket_id: int, updates) -> Ticket | N
     """Update a ticket with a mapping or Pydantic model."""
     if isinstance(updates, BaseModel):
         updates = updates.dict(exclude_unset=True)
-
 
     ticket = await db.get(Ticket, ticket_id)
     if not ticket:
@@ -108,7 +107,6 @@ async def update_ticket(db: AsyncSession, ticket_id: int, updates) -> Ticket | N
 
 
 async def delete_ticket(db: AsyncSession, ticket_id: int) -> bool:
-
     ticket = await db.get(Ticket, ticket_id)
     if not ticket:
         return False
@@ -121,16 +119,3 @@ async def delete_ticket(db: AsyncSession, ticket_id: int) -> bool:
         await db.rollback()
         logger.exception("Failed to delete ticket %s", ticket_id)
         raise
-
-
-async def search_tickets(
-    db: AsyncSession, query: str, limit: int = 10
-) -> Sequence[Ticket]:
-    like = f"%{query}%"
-    logger.info("Searching tickets for '%s'", query)
-    result = await db.execute(
-        select(Ticket)
-        .filter((Ticket.Subject.ilike(like)) | (Ticket.Ticket_Body.ilike(like)))
-        .limit(limit)
-    )
-    return result.scalars().all()
