@@ -6,6 +6,26 @@ from sqlalchemy.ext.asyncio import (
 from config import DB_CONN_STRING
 import logging
 import pyodbc
+
+
+print(pyodbc.drivers())
+
+engine_args: dict[str, object] = {}
+
+if DB_CONN_STRING and DB_CONN_STRING.startswith("mssql"):
+    from pathlib import Path
+
+    if not Path(".env").exists():
+        print("❌ .env file not found!")
+        print("Create one by copying .env.example:")
+        print("  cp .env.example .env")
+
+    if DB_CONN_STRING.startswith("mssql+pyodbc"):
+        logging.error("Synchronous driver detected in DB_CONN_STRING: %s", DB_CONN_STRING)
+        raise RuntimeError("Use an async SQLAlchemy driver such as 'mssql+aioodbc'.")
+
+    engine_args["fast_executemany"] = True
+
 from pathlib import Path
 
 engine_args = {}

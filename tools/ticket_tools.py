@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import Ticket, VTicketMasterExpanded
+from db.models import Ticket
 
 
 logger = logging.getLogger(__name__)
@@ -26,22 +26,11 @@ async def list_tickets(
     result = await db.execute(select(Ticket).offset(skip).limit(limit))
     return result.scalars().all()
 
-
-async def list_tickets_expanded(
-    db: AsyncSession, skip: int = 0, limit: int = 10
-) -> Sequence[VTicketMasterExpanded]:
-    """Return tickets from the expanded view."""
-    result = await db.execute(
-        select(VTicketMasterExpanded).offset(skip).limit(limit)
-    )
-    return result.scalars().all()
-
-
 async def list_tickets_expanded(
     db: AsyncSession, skip: int = 0, limit: int = 10
 
 
-) -> Sequence[VTicketMasterExpanded]:
+) -> Sequence[Mapping[str, Any]]:
     """Return tickets with related labels from the expanded view."""
 
     result = await db.execute(
