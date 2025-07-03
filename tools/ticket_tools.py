@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import logging
@@ -25,6 +24,7 @@ async def list_tickets(db: AsyncSession, skip: int = 0, limit: int = 10) -> Sequ
     result = await db.execute(
         select(VTicketMasterExpanded).offset(skip).limit(limit)
     )
+
     return result.scalars().all()
 
 
@@ -86,7 +86,6 @@ async def search_tickets(db: AsyncSession, query: str, limit: int = 10) -> Seque
         select(VTicketMasterExpanded).filter(
             (VTicketMasterExpanded.Subject.ilike(like)) | (VTicketMasterExpanded.Ticket_Body.ilike(like))
         ).limit(limit)
+
     )
     return result.scalars().all()
-
-

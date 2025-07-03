@@ -110,6 +110,7 @@ class TicketOut(TicketIn):
 
 
 class TicketExpandedOut(TicketOut):
+
     """Ticket output schema that includes related labels."""
 
     Ticket_Status_Label: Optional[str] = None
@@ -117,6 +118,7 @@ class TicketExpandedOut(TicketOut):
     Asset_Label: Optional[str] = None
     Ticket_Category_Label: Optional[str] = None
     Assigned_Vendor_Name: Optional[str] = None
+
 
     class Config:
         orm_mode = True
