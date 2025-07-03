@@ -109,9 +109,11 @@ class TicketOut(TicketIn):
         }
 
 
+
 class TicketExpandedOut(TicketOut):
 
     """Ticket output schema that includes related labels."""
+
 
     Ticket_Status_Label: Optional[str] = None
     Status_Label: Optional[str] = None
@@ -119,7 +121,16 @@ class TicketExpandedOut(TicketOut):
     Asset_Label: Optional[str] = None
     Ticket_Category_Label: Optional[str] = None
     Category_Label: Optional[str] = None
+
     Assigned_Vendor_Name: Optional[str] = None
+
+    @property
+    def Status_Label(self) -> Optional[str]:
+        return self.Ticket_Status_Label
+
+    @property
+    def Category_Label(self) -> Optional[str]:
+        return self.Ticket_Category_Label
 
 
     class Config:

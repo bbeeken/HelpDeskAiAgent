@@ -43,7 +43,14 @@ from limiter import limiter
 from pydantic import BaseModel
 from sqlalchemy import select, func
 
-from schemas.ticket import TicketCreate, TicketOut, TicketUpdate, TicketExpandedOut
+
+from schemas.ticket import (
+    TicketCreate,
+    TicketOut,
+    TicketUpdate,
+    TicketExpandedOut,
+)
+
 from schemas.oncall import OnCallShiftOut
 
 from schemas.paginated import PaginatedResponse
@@ -126,6 +133,7 @@ async def api_list_tickets_expanded(
 ) -> PaginatedResponse[TicketExpandedOut]:
     items = await list_tickets_expanded(db, skip, limit)
     total = await db.scalar(select(func.count(VTicketMasterExpanded.Ticket_ID))) or 0
+
     ticket_out = []
     for t in items:
         data = TicketExpandedOut(**t).dict()
@@ -134,6 +142,7 @@ async def api_list_tickets_expanded(
         if "Ticket_Category_Label" in data:
             data["Category_Label"] = data.pop("Ticket_Category_Label")
         ticket_out.append(data)
+
 
     return PaginatedResponse[TicketExpandedOut](
         items=ticket_out, total=total, skip=skip, limit=limit
@@ -276,11 +285,11 @@ async def api_post_ticket_message(
 
 @router.post("/ai/suggest_response")
 @limiter.limit("10/minute")
-def api_ai_suggest_response(
+async def api_ai_suggest_response(
     request: Request, ticket: TicketOut, context: str = ""
 ) -> dict:
 
-    return {"response": ai_suggest_response(ticket.dict(), context)}
+    return {"response": await ai_suggest_response(ticket.dict(), context)}
 
 
 # Analysis endpoints

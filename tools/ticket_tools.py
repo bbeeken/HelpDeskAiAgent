@@ -30,8 +30,9 @@ async def list_tickets(db: AsyncSession, skip: int = 0, limit: int = 10) -> Sequ
 
 async def list_tickets_expanded(
     db: AsyncSession, skip: int = 0, limit: int = 10
-) -> Sequence[Mapping[str, Any]]:
-    """Return tickets from the expanded view without relying on ORM mapping."""
+
+) -> Sequence[VTicketMasterExpanded]:
+    """Return tickets with related labels from the expanded view."""
 
     result = await db.execute(
         text(
@@ -39,7 +40,9 @@ async def list_tickets_expanded(
         ),
         {"limit": limit, "skip": skip},
     )
+
     return [dict(row._mapping) for row in result]
+
 
 
 async def create_ticket(db: AsyncSession, ticket_obj: Ticket) -> Ticket:
@@ -58,6 +61,7 @@ async def update_ticket(db: AsyncSession, ticket_id: int, updates) -> Ticket | N
     """Update a ticket with a mapping or Pydantic model."""
     if isinstance(updates, BaseModel):
         updates = updates.dict(exclude_unset=True)
+
 
     ticket = await db.get(Ticket, ticket_id)
     if not ticket:
@@ -79,6 +83,7 @@ async def update_ticket(db: AsyncSession, ticket_id: int, updates) -> Ticket | N
 
 
 async def delete_ticket(db: AsyncSession, ticket_id: int) -> bool:
+
     ticket = await db.get(Ticket, ticket_id)
     if not ticket:
         return False
