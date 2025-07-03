@@ -27,6 +27,17 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
    - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
      lookups in `tools.user_tools`. When omitted, stub responses are returned.
 
+
+  Optional Microsoft Graph credentials enable real user lookups:
+
+   - `GRAPH_CLIENT_ID` – application (client) ID issued by Azure AD.
+   - `GRAPH_CLIENT_SECRET` – client secret associated with the app registration.
+   - `GRAPH_TENANT_ID` – tenant ID used when acquiring OAuth tokens.
+
+  When these variables are not provided, the Graph helper functions fall back
+  to stub implementations so tests can run without network access.
+
+
   They can be provided in the shell environment or in a `.env` file in the project root.
   A template called `.env.example` lists the required and optional variables; copy it to `.env` and
   update the values for your environment. `config.py` automatically loads `.env` and
