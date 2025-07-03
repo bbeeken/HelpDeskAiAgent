@@ -82,9 +82,11 @@ async def test_user_tools_graph_calls(monkeypatch):
                 json=lambda: data,
             )
 
+
     FakeAsyncClient = DummyClient
 
     monkeypatch.setattr(ut.httpx, "AsyncClient", FakeAsyncClient)
+
 
 
     user = await ut.get_user_by_email("u@e.com")

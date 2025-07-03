@@ -9,7 +9,9 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
 from db.models import Ticket, VTicketMasterExpanded
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +21,7 @@ async def get_ticket_expanded(
 ) -> VTicketMasterExpanded | None:
     """Return a ticket from the expanded view."""
     return await db.get(VTicketMasterExpanded, ticket_id)
+
 
 
 async def list_tickets_expanded(
@@ -36,6 +39,7 @@ async def search_tickets_expanded(
 ) -> Sequence[VTicketMasterExpanded]:
     """Search tickets in the expanded view by subject or body."""
     like = f"%{query}%"
+
     result = await db.execute(
         select(VTicketMasterExpanded)
         .filter(
