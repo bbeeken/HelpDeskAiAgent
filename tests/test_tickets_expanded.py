@@ -3,6 +3,7 @@ from httpx import AsyncClient
 import pytest_asyncio
 from main import app
 from db.mssql import engine
+from db.models import VTicketMasterExpanded
 
 CREATE_VIEW_SQL = """
 CREATE VIEW IF NOT EXISTS V_Ticket_Master_Expanded AS
@@ -145,3 +146,16 @@ async def test_ticket_sorting(client: AsyncClient):
     assert resp.status_code == 200
     data = resp.json()
     assert data["items"][0]["Ticket_ID"] == second.json()["Ticket_ID"]
+
+
+def test_ticket_expanded_from_orm_blank_assigned_email():
+    ticket = VTicketMasterExpanded(
+        Ticket_ID=1,
+        Subject="s",
+        Ticket_Body="b",
+        Ticket_Contact_Name="n",
+        Ticket_Contact_Email="c@example.com",
+        Assigned_Email="",
+    )
+    obj = TicketExpandedOut.from_orm(ticket)
+    assert obj.Assigned_Email is None
