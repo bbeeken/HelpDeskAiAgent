@@ -1,31 +1,30 @@
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from config import DB_CONN_STRING
 import logging
 import pyodbc
-print(pyodbc.drivers())
-engine_args = {}
-if DB_CONN_STRING and DB_CONN_STRING.startswith("mssql"):import os
 from pathlib import Path
+
+engine_args = {}
+if DB_CONN_STRING and DB_CONN_STRING.startswith("mssql"):
+    import os
 
 # Check if .env exists
 if Path(".env").exists():
-    print("✓ .env file exists -"+ DB_CONN_STRING)
-    
-    # Check content
     with open(".env", "r") as f:
         content = f.read()
-        if "DB_CONN_STRING" in content:
-            print("✓ DB_CONN_STRING found in .env")
-        else:
-            print("❌ DB_CONN_STRING not found in .env")
+        if "DB_CONN_STRING" not in content:
+            logging.warning("DB_CONN_STRING not found in .env")
 else:
-    print("❌ .env file not found!")
-    print("Create one by copying .env.example:")
-    print("  cp .env.example .env")
+    logging.warning(".env file not found! Create one by copying .env.example")
     if DB_CONN_STRING.startswith("mssql+pyodbc"):
         logging.error("Synchronous driver detected in DB_CONN_STRING: %s", DB_CONN_STRING)
         raise RuntimeError("Use an async SQLAlchemy driver such as 'mssql+aioodbc'.")
-    engine_args["fast_executemany"] = True
+    if DB_CONN_STRING.startswith("mssql"):
+        engine_args["fast_executemany"] = True
 
 
 engine = create_async_engine(
