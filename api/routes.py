@@ -92,8 +92,8 @@ class MessageIn(BaseModel):
         }
 
 
-@router.get("/ticket/{ticket_id}", response_model=TicketOut)
-async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> Ticket:
+@router.get("/ticket/{ticket_id}", response_model=TicketExpandedOut)
+async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketExpandedOut:
     ticket = await get_ticket(db, ticket_id)
     if not ticket:
         logger.warning("Ticket %s not found", ticket_id)
@@ -102,16 +102,19 @@ async def api_get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> 
     return ticket
 
 
-@router.get("/tickets", response_model=PaginatedResponse[TicketOut])
+
+@router.get("/tickets", response_model=PaginatedResponse[TicketExpandedOut])
+
 async def api_list_tickets(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
-) -> PaginatedResponse[TicketOut]:
+) -> PaginatedResponse[TicketExpandedOut]:
     items = await list_tickets(db, skip, limit)
     total = await db.scalar(select(func.count(Ticket.Ticket_ID))) or 0
-    ticket_out = [TicketOut.from_orm(t) for t in items]
-    return PaginatedResponse[TicketOut](
-        items=ticket_out, total=total, skip=skip, limit=limit
-    )
+
+    ticket_out = [TicketExpandedOut.from_orm(t) for t in items]
+    return PaginatedResponse[TicketExpandedOut](items=ticket_out, total=total, skip=skip, limit=limit)
+
+
 
 
 @router.get("/tickets/expanded", response_model=PaginatedResponse[TicketExpandedOut])
@@ -126,13 +129,17 @@ async def api_list_tickets_expanded(
     )
 
 
-@router.get("/tickets/search", response_model=List[TicketOut])
+
+@router.get("/tickets/search", response_model=List[TicketExpandedOut])
+
 async def api_search_tickets(
     q: str, limit: int = 10, db: AsyncSession = Depends(get_db)
-) -> list[Ticket]:
+
+) -> list[TicketExpandedOut]:
+
     logger.info("API search tickets query=%s limit=%s", q, limit)
     results = await search_tickets(db, q, limit)
-    return list(results)
+    return [TicketExpandedOut.from_orm(r) for r in results]
 
 
 @router.post("/ticket", response_model=TicketOut)

@@ -110,11 +110,15 @@ class TicketOut(TicketIn):
 
 
 class TicketExpandedOut(TicketOut):
-    """Schema for the VTicketMasterExpanded view."""
 
-    Status_Label: Optional[str] = None
-    Category_Label: Optional[str] = None
+    """Ticket output schema that includes related labels."""
+
+    Ticket_Status_Label: Optional[str] = None
     Site_Label: Optional[str] = None
+    Asset_Label: Optional[str] = None
+    Ticket_Category_Label: Optional[str] = None
+    Assigned_Vendor_Name: Optional[str] = None
+
 
     class Config:
         orm_mode = True
