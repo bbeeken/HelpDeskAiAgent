@@ -29,7 +29,7 @@ async def _search_worker():
 async def _analytics_worker():
     async with httpx.AsyncClient(app=app, base_url="http://test") as ac:
         resp = await ac.get("/analytics/status")
-        return resp.json()[0][1]
+        return resp.json()[0]["count"]
 
 
 import pytest

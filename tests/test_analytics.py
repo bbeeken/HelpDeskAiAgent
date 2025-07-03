@@ -56,8 +56,9 @@ async def test_analytics_status(client: AsyncClient):
 
     resp = await client.get("/analytics/status")
     assert resp.status_code == 200
-    data = {item[0]: item[1] for item in resp.json()}
+    data = {item["status_id"]: item["count"] for item in resp.json()}
     assert data == {1: 2, 2: 1}
+    assert all("status_label" in item for item in resp.json())
 
 @pytest.mark.asyncio
 async def test_analytics_open_by_site(client: AsyncClient):
@@ -68,8 +69,9 @@ async def test_analytics_open_by_site(client: AsyncClient):
 
     resp = await client.get("/analytics/open_by_site")
     assert resp.status_code == 200
-    data = {item[0]: item[1] for item in resp.json()}
+    data = {item["site_id"]: item["count"] for item in resp.json()}
     assert data == {1: 2, 2: 1}
+    assert all("site_label" in item for item in resp.json())
 
 @pytest.mark.asyncio
 async def test_analytics_sla_breaches(client: AsyncClient):
