@@ -41,7 +41,12 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
   A template called `.env.example` lists the required and optional variables; copy it to `.env` and
   update the values for your environment. `config.py` automatically loads `.env` and
   then imports `config_{CONFIG_ENV}.py` so the appropriate settings are applied at
+
+  startup. Model parameters for the MCP server's LLM, such as name and timeouts, are defined in the
+  selected config file. The Graph credentials are optional; without them, the Graph
+
   startup. The Graph credentials are optional; without them, the Graph
+
   helper functions return stub data so tests and development work without network
   access.
 
