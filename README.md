@@ -91,6 +91,7 @@ fully populated ticket record.
 
 Create the view with SQL similar to the following:
 
+
 ```sql
 CREATE VIEW V_Ticket_Master_Expanded AS
 SELECT t.Ticket_ID,
@@ -127,6 +128,7 @@ LEFT JOIN Vendors v ON v.ID = t.Assigned_Vendor_ID;
 - `GET /health` - health check returning database status, uptime, and version
 - `POST /ticket` - create a ticket
 - `GET /tickets` - list tickets
+- `GET /tickets/expanded` - list tickets with related labels
 - `GET /tickets/search?q=term` - search tickets by subject or body
 - `PUT /ticket/{id}` - update an existing ticket
 - `DELETE /ticket/{id}` - remove a ticket
