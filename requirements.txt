@@ -2,7 +2,6 @@ fastapi==0.110.0
 uvicorn==0.35.0
 sqlalchemy==2.0.41
 pydantic==1.10.15
-pyodbc==5.2.0
 python-dotenv==1.1.1
 openai==1.93.0
 pytest==8.4.1
@@ -12,5 +11,5 @@ httpx<0.28
 mypy==1.16.1
 slowapi==0.1.9
 aiosqlite==0.21.0
-
 requests==2.32.3
+aioodbc==0.5.0
