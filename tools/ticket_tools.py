@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Sequence
+from typing import Any, Sequence
 
 from sqlalchemy import select
 from fastapi import HTTPException
@@ -23,15 +23,52 @@ async def get_ticket_expanded(
 
 
 async def list_tickets_expanded(
-    db: AsyncSession, skip: int = 0, limit: int = 10
+    db: AsyncSession,
+    skip: int = 0,
+    limit: int = 10,
+    filters: dict[str, Any] | None = None,
+    sort: str | list[str] | None = None,
 ) -> Sequence[VTicketMasterExpanded]:
     """Return tickets with related labels from the expanded view."""
-    result = await db.execute(
-        select(VTicketMasterExpanded)
-        .order_by(VTicketMasterExpanded.Ticket_ID)
-        .offset(skip)
-        .limit(limit)
-    )
+
+    query = select(VTicketMasterExpanded)
+
+    if filters:
+        for key, value in filters.items():
+            if hasattr(VTicketMasterExpanded, key):
+                query = query.filter(getattr(VTicketMasterExpanded, key) == value)
+
+    if sort:
+        if isinstance(sort, str):
+            sort = [sort]
+
+        order_columns = []
+        for s in sort:
+            direction = "asc"
+            column = s
+            if s.startswith("-"):
+                column = s[1:]
+                direction = "desc"
+            elif " " in s:
+                column, dir_part = s.rsplit(" ", 1)
+                if dir_part.lower() in {"asc", "desc"}:
+                    direction = dir_part.lower()
+            if hasattr(VTicketMasterExpanded, column):
+                attr = getattr(VTicketMasterExpanded, column)
+                order_columns.append(
+                    attr.desc() if direction == "desc" else attr.asc()
+                )
+        if order_columns:
+            query = query.order_by(*order_columns)
+    else:
+        query = query.order_by(VTicketMasterExpanded.Ticket_ID)
+
+    if skip:
+        query = query.offset(skip)
+    if limit:
+        query = query.limit(limit)
+
+    result = await db.execute(query)
     return result.scalars().all()
 
 

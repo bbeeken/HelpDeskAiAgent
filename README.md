@@ -129,8 +129,10 @@ LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
 
 - `GET /health` - health check returning database status, uptime, and version
 - `POST /ticket` - create a ticket
-- `GET /tickets` - list tickets
-- `GET /tickets/expanded` - list tickets with related labels
+- `GET /tickets` - list tickets. Supports dynamic query parameters to filter by
+  any column in `V_Ticket_Master_Expanded` and a `sort` parameter for ordering.
+- `GET /tickets/expanded` - list tickets with related labels. Accepts the same
+  filtering and sorting parameters as `/tickets`.
 - `GET /tickets/search?q=term` - search tickets by subject or body
 - `PUT /ticket/{id}` - update an existing ticket
 - `DELETE /ticket/{id}` - remove a ticket
