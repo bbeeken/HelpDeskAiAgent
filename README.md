@@ -81,11 +81,50 @@ alembic revision --autogenerate -m "message"
 alembic upgrade head
 ```
 
+The application also expects a view named `V_Ticket_Master_Expanded` to exist.
+This view joins the ticket table to related tables so that label columns are
+available (e.g., `Ticket_Status_Label`, `Asset_Label`). The initial Alembic
+migration only creates the base tables; you can create the view manually with
+SQL like:
+
+```sql
+CREATE VIEW V_Ticket_Master_Expanded AS
+SELECT t.Ticket_ID,
+       t.Subject,
+       t.Ticket_Body,
+       t.Ticket_Status_ID,
+       ts.Label AS Ticket_Status_Label,
+       t.Ticket_Contact_Name,
+       t.Ticket_Contact_Email,
+       t.Asset_ID,
+       a.Label AS Asset_Label,
+       t.Site_ID,
+       s.Label AS Site_Label,
+       t.Ticket_Category_ID,
+       c.Label AS Ticket_Category_Label,
+       t.Created_Date,
+       t.Assigned_Name,
+       t.Assigned_Email,
+       t.Severity_ID,
+       t.Assigned_Vendor_ID,
+       v.Name AS Assigned_Vendor_Name,
+       t.Resolution
+FROM Tickets_Master t
+LEFT JOIN Ticket_Status ts ON ts.ID = t.Ticket_Status_ID
+LEFT JOIN Assets a ON a.ID = t.Asset_ID
+LEFT JOIN Sites s ON s.ID = t.Site_ID
+LEFT JOIN Ticket_Categories c ON c.ID = t.Ticket_Category_ID
+LEFT JOIN Vendors v ON v.ID = t.Assigned_Vendor_ID;
+```
+
+Endpoints such as `/tickets/expanded` rely on this view being present.
+
 ### API Highlights
 
 - `GET /health` - health check returning database status, uptime, and version
 - `POST /ticket` - create a ticket
 - `GET /tickets` - list tickets
+- `GET /tickets/expanded` - list tickets with related labels
 - `GET /tickets/search?q=term` - search tickets by subject or body
 - `PUT /ticket/{id}` - update an existing ticket
 - `DELETE /ticket/{id}` - remove a ticket
