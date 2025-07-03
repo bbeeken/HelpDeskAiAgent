@@ -81,11 +81,16 @@ alembic revision --autogenerate -m "message"
 alembic upgrade head
 ```
 
-The application also expects a view named `V_Ticket_Master_Expanded` to exist.
-This view joins the ticket table to related tables so that label columns are
-available (e.g., `Ticket_Status_Label`, `Asset_Label`). The initial Alembic
-migration only creates the base tables; you can create the view manually with
-SQL like:
+
+### V_Ticket_Master_Expanded
+
+The API uses the `V_Ticket_Master_Expanded` view to join tickets with
+related labels such as status, asset, site, and vendor. Endpoints like
+`/tickets/expanded` and `/tickets/search` rely on this view to return a
+fully populated ticket record.
+
+Create the view with SQL similar to the following:
+
 
 ```sql
 CREATE VIEW V_Ticket_Master_Expanded AS
@@ -117,7 +122,6 @@ LEFT JOIN Ticket_Categories c ON c.ID = t.Ticket_Category_ID
 LEFT JOIN Vendors v ON v.ID = t.Assigned_Vendor_ID;
 ```
 
-Endpoints such as `/tickets/expanded` rely on this view being present.
 
 ### API Highlights
 
