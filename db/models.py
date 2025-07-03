@@ -83,6 +83,15 @@ class TicketStatus(Base):
     Label = Column(String)
 
 
+
+class OnCallShift(Base):
+    __tablename__ = "OnCall_Shifts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String, nullable=False, index=True)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
+
 class ViewBase(DeclarativeBase):
     """Declarative base for database views."""
     pass
@@ -113,3 +122,4 @@ class VTicketMasterExpanded(ViewBase):
     Assigned_Vendor_ID = Column(Integer)
     Assigned_Vendor_Name = Column(String)
     Resolution = Column(Text)
+
