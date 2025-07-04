@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from typing import Annotated
 from email_validator import validate_email, EmailNotValidError
 from typing import Optional
@@ -20,7 +20,7 @@ class TicketBase(BaseModel):
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[Annotated[str, Field(max_length=2000)]] = None
 
-    @validator("Ticket_Contact_Email", "Assigned_Email", pre=True)
+    @field_validator("Ticket_Contact_Email", "Assigned_Email", mode="before")
     def validate_emails(cls, v):
         if v is None:
             return None
@@ -35,8 +35,8 @@ class TicketBase(BaseModel):
 class TicketCreate(TicketBase):
     """Schema used when creating a new ticket."""
 
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "Subject": "Printer not working",
                 "Ticket_Body": "The office printer is jammed",
@@ -44,6 +44,7 @@ class TicketCreate(TicketBase):
                 "Ticket_Contact_Email": "jane@example.com",
             }
         }
+    )
 
 
 class TicketUpdate(BaseModel):
@@ -63,8 +64,7 @@ class TicketUpdate(BaseModel):
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[str] = None
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class TicketIn(BaseModel):
@@ -83,7 +83,7 @@ class TicketIn(BaseModel):
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[Annotated[str, Field(max_length=2000)]] = None
 
-    @validator("Ticket_Contact_Email", "Assigned_Email", pre=True)
+    @field_validator("Ticket_Contact_Email", "Assigned_Email", mode="before")
     def validate_emails(cls, v):
         if v is None:
             return None
@@ -98,9 +98,9 @@ class TicketIn(BaseModel):
 class TicketOut(TicketIn):
     Ticket_ID: int
 
-    class Config:
-        orm_mode = True
-        schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "Ticket_ID": 1,
                 "Subject": "Printer not working",
@@ -110,7 +110,8 @@ class TicketOut(TicketIn):
                 "Ticket_Contact_Email": "jane@example.com",
                 "Created_Date": "2024-01-01T12:00:00Z",
             }
-        }
+        },
+    )
 
 
 
@@ -127,6 +128,4 @@ class TicketExpandedOut(TicketOut):
     Assigned_Vendor_Name: Optional[str] = None
     Priority_Level: Optional[str] = None
 
-    class Config:
-        orm_mode = True
-        allow_population_by_field_name = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

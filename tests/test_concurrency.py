@@ -4,6 +4,7 @@ from db.mssql import SessionLocal
 from tools.ticket_tools import create_ticket
 import asyncio
 import httpx
+from httpx import ASGITransport
 from main import app
 
 
@@ -21,13 +22,15 @@ async def _add_sample_ticket():
 
 
 async def _search_worker():
-    async with httpx.AsyncClient(app=app, base_url="http://test") as ac:
+    transport = ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get("/tickets/search", params={"q": "Net"})
         return resp.json()[0]["Subject"]
 
 
 async def _analytics_worker():
-    async with httpx.AsyncClient(app=app, base_url="http://test") as ac:
+    transport = ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get("/analytics/status")
         return resp.json()[0]["count"]
 

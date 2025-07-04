@@ -1,5 +1,5 @@
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from main import app
 from db.models import Asset, Vendor, Site
 from db.mssql import SessionLocal
@@ -10,7 +10,8 @@ import pytest_asyncio
 
 @pytest_asyncio.fixture
 async def client():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
 
