@@ -35,6 +35,18 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
   update the values for your environment. `config.py` automatically loads `.env` and then looks for
   `config_env.py` to provide Python-level overrides when needed.
 
+3. **Python 3.12**
+
+   When running the application or tests on Python 3.12 you may need to disable
+   Pydantic's standard types shim:
+
+   ```bash
+   export PYDANTIC_DISABLE_STD_TYPES_SHIM=1
+   ```
+
+   Set this variable in your shell before starting the app or executing tests if
+   you encounter import errors related to builtin collections.
+
 ## Running the API
 
 Start the development server with Uvicorn:
