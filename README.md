@@ -63,19 +63,10 @@ docker-compose up
 ```
 
 Compose reads variables from `.env`. Copy `.env.example` to `.env` and set
-
-values for required options such as `DB_CONN_STRING` and `CONFIG_ENV`.
-Optional Graph credentials may also be provided in this file.
-
-
-values for required options such as `DB_CONN_STRING` and `CONFIG_ENV`.
-
 values for required options such as `DB_CONN_STRING` and `OPENAI_API_KEY`.
 Optional Graph credentials may also be provided in this file. Add any
 environment-specific Python overrides in a `config_env.py` file next to
 `config.py`.
-
-
 
 ## Database Migrations
 
