@@ -1,3 +1,4 @@
+"""Utilities for reading site information from the database."""
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select

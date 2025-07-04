@@ -1,3 +1,5 @@
+"""Simple command-line interface for the HelpDesk API."""
+
 import argparse
 import asyncio
 import json
