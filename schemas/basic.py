@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 
@@ -6,40 +6,35 @@ class AssetOut(BaseModel):
     ID: int
     Label: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VendorOut(BaseModel):
     ID: int
     Name: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SiteOut(BaseModel):
     ID: int
     Label: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TicketCategoryOut(BaseModel):
     ID: int
     Label: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TicketStatusOut(BaseModel):
     ID: int
     Label: str
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TicketAttachmentOut(BaseModel):
@@ -49,8 +44,7 @@ class TicketAttachmentOut(BaseModel):
     WebURl: str
     UploadDateTime: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TicketMessageOut(BaseModel):
@@ -61,5 +55,4 @@ class TicketMessageOut(BaseModel):
     SenderUserName: str
     DateTimeStamp: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

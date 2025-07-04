@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta, UTC
 
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from main import app
 from db.models import Ticket
 from db.mssql import SessionLocal
@@ -28,7 +28,8 @@ async def fake_create(*args, **kwargs):
 
 @pytest_asyncio.fixture
 async def client():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
 async def _add_ticket(**kwargs):

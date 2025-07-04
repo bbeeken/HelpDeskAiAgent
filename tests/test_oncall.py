@@ -1,5 +1,5 @@
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from datetime import datetime, timedelta, UTC
 
 from main import app
@@ -35,7 +35,8 @@ async def test_get_current_oncall_route():
     now = datetime.now(UTC)
     await _add_shift("active@example.com", now - timedelta(minutes=30), now + timedelta(minutes=30))
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get("/oncall")
         assert resp.status_code == 200
         data = resp.json()
