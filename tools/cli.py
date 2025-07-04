@@ -18,8 +18,10 @@ async def stream_response(_args: argparse.Namespace) -> None:
         async with client.stream("POST", "/ai/suggest_response/stream", json=ticket) as resp:
             resp.raise_for_status()
             async for chunk in resp.aiter_text():
-                sys.stdout.write(chunk)
-                sys.stdout.flush()
+                for line in chunk.splitlines():
+                    if line.startswith("data:"):
+                        sys.stdout.write(line.removeprefix("data:").strip())
+                        sys.stdout.flush()
 
 
 async def create_ticket(_args: argparse.Namespace) -> None:
