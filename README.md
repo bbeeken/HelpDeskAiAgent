@@ -7,7 +7,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
 1. **Install dependencies**
 
    ```bash
-   pip install -r requirements.txt
+   pip install -e .
    ```
 
    The requirements include `aioodbc` for async ODBC connections; `pyodbc` is no longer required.
@@ -61,7 +61,7 @@ uvicorn main:app --reload
 Install the testing dependencies and run `pytest`:
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 pytest
 ```
 
