@@ -331,7 +331,7 @@ async def api_ai_suggest_response_stream(
 
     async def _generate() -> AsyncGenerator[str, None]:
         async for chunk in ai_stream_response(ticket.dict(), context):
-            yield chunk
+            yield f"data: {chunk}\n\n"
 
     return StreamingResponse(_generate(), media_type="text/event-stream")
 
