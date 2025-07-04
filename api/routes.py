@@ -207,7 +207,7 @@ async def api_search_tickets(
 async def api_create_ticket(
     ticket: TicketCreate, db: AsyncSession = Depends(get_db)
 ) -> Ticket:
-    obj = Ticket(**ticket.dict(), Created_Date=datetime.now(UTC))
+    obj = Ticket(**ticket.model_dump(), Created_Date=datetime.now(UTC))
     logger.info("API create ticket")
     created = await create_ticket(db, obj)
     return created
@@ -316,7 +316,7 @@ async def api_ai_suggest_response(
     request: Request, ticket: TicketOut, context: str = ""
 ) -> dict:
 
-    return {"response": await ai_suggest_response(ticket.dict(), context)}
+    return {"response": await ai_suggest_response(ticket.model_dump(), context)}
 
 
 @router.post("/ai/suggest_response/stream")
@@ -326,7 +326,7 @@ async def api_ai_suggest_response_stream(
 ) -> StreamingResponse:
 
     async def _generate() -> AsyncGenerator[str, None]:
-        async for chunk in ai_stream_response(ticket.dict(), context):
+        async for chunk in ai_stream_response(ticket.model_dump(), context):
             yield f"data: {chunk}\n\n"
 
     return StreamingResponse(_generate(), media_type="text/event-stream")
