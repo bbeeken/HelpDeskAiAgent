@@ -1,5 +1,6 @@
 
 from fastapi import FastAPI, Request, Depends
+from fastapi_mcp import FastApiMCP
 
 import logging
 
@@ -36,6 +37,10 @@ app.add_exception_handler(
 )
 app.add_middleware(SlowAPIMiddleware)
 app.include_router(router)
+
+# Expose API operations via MCP
+app.state.mcp = FastApiMCP(app)
+app.state.mcp.mount()
 
 
 
