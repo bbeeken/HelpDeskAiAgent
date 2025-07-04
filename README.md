@@ -71,8 +71,8 @@ docker-compose up
 ```
 
 Compose reads variables from `.env`. Copy `.env.example` to `.env` and set
-values for required options such as `DB_CONN_STRING`, `OPENAI_API_KEY`, and
-`CONFIG_ENV`. Optional Graph credentials may also be provided in this file.
+values for required options such as `DB_CONN_STRING` and `CONFIG_ENV`.
+Optional Graph credentials may also be provided in this file.
 
 ## Database Migrations
 

@@ -14,7 +14,6 @@ async def client():
 
 @pytest.mark.asyncio
 async def test_ai_suggest_response_stream(client, monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     async def dummy_stream(ticket, context=""):
         yield "part1"
         yield "part2"
