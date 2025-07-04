@@ -87,7 +87,8 @@ related labels such as status, asset, site, and vendor. Endpoints like
 `/tickets/expanded` and `/tickets/search` rely on this view to return a
 fully populated ticket record.
 
-Create the view with SQL similar to the following:
+Create the view with SQL similar to the following (the full statement is also
+available in `db/sql.py` as `CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL`):
 
 
 ```sql
