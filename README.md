@@ -144,6 +144,25 @@ LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
 - `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
 
 
+## CLI
+
+`tools.cli` provides a small command-line interface to the API. Set `API_BASE_URL` to the server URL (default `http://localhost:8000`).
+
+Stream an AI-generated response:
+
+```bash
+echo '{"Ticket_ID":1,"Subject":"Subj","Ticket_Body":"Body","Ticket_Status_ID":1,"Ticket_Contact_Name":"Name","Ticket_Contact_Email":"a@example.com"}' | \
+python -m tools.cli stream-response
+```
+
+Create a ticket:
+
+```bash
+echo '{"Subject":"Subj","Ticket_Body":"Body","Ticket_Contact_Name":"Name","Ticket_Contact_Email":"a@example.com"}' | \
+python -m tools.cli create-ticket
+```
+
+
 ## Docker
 
 Build the image and start the stack with Docker Compose:
