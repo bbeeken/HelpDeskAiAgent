@@ -1,7 +1,6 @@
 import os
 
 # Provide defaults so importing the app doesn't fail
-os.environ.setdefault("OPENAI_API_KEY", "test")
 os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
 
 from main import app
