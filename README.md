@@ -34,6 +34,8 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
   - `GRAPH_TENANT_ID` – tenant ID used when acquiring OAuth tokens.
   - `MCP_URL` – optional FastMCP server URL used by AI helper functions
     (default `http://localhost:8080`).
+  - `MCP_STREAM_TIMEOUT` – timeout in seconds for streaming AI responses
+    (default `30`).
 
   When these variables are not provided, the Graph helper functions fall back
   to stub implementations so tests can run without network access.
@@ -154,6 +156,8 @@ LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
 - `GET /tickets/search?q=term` - search tickets by subject or body
 - `PUT /ticket/{id}` - update an existing ticket
 - `DELETE /ticket/{id}` - remove a ticket
+- `POST /ai/suggest_response` - generate an AI ticket reply
+- `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
 
 
 ## Docker
