@@ -1,5 +1,5 @@
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 import pytest_asyncio
 from main import app
 from db.mssql import engine
@@ -54,7 +54,8 @@ async def expanded_view(db_setup):
 
 @pytest_asyncio.fixture
 async def client():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
 

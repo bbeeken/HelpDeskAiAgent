@@ -30,8 +30,10 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
   Optional Microsoft Graph credentials enable real user lookups:
 
    - `GRAPH_CLIENT_ID` – application (client) ID issued by Azure AD.
-   - `GRAPH_CLIENT_SECRET` – client secret associated with the app registration.
-   - `GRAPH_TENANT_ID` – tenant ID used when acquiring OAuth tokens.
+  - `GRAPH_CLIENT_SECRET` – client secret associated with the app registration.
+  - `GRAPH_TENANT_ID` – tenant ID used when acquiring OAuth tokens.
+  - `MCP_URL` – optional FastMCP server URL used by AI helper functions
+    (default `http://localhost:8080`).
 
   When these variables are not provided, the Graph helper functions fall back
   to stub implementations so tests can run without network access.
