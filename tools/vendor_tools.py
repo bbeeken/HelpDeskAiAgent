@@ -1,4 +1,8 @@
+
+"""Helpers for retrieving and listing vendor records from the database."""
+
 """Helpers for listing vendor records."""
+
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
