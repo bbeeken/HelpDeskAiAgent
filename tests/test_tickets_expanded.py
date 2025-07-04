@@ -158,5 +158,5 @@ def test_ticket_expanded_from_orm_blank_assigned_email():
         Ticket_Contact_Email="c@example.com",
         Assigned_Email="",
     )
-    obj = TicketExpandedOut.from_orm(ticket)
+    obj = TicketExpandedOut.model_validate(ticket)
     assert obj.Assigned_Email is None
