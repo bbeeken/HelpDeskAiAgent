@@ -18,14 +18,10 @@ async def stream_response(_args: argparse.Namespace) -> None:
     ticket = json.load(sys.stdin)
 
     async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
-        async with client.stream("POST", "/ai/suggest_response/stream", json=ticket) as resp:
+        async with client.stream(
+            "POST", "/ai/suggest_response/stream", json=ticket
+        ) as resp:
             resp.raise_for_status()
-
-            async for chunk in resp.aiter_text():
-                for line in chunk.splitlines():
-                    if line.startswith("data:"):
-                        sys.stdout.write(line.removeprefix("data:").strip())
-                        sys.stdout.flush()
 
             async for event in EventSource(resp).aiter_sse():
                 sys.stdout.write(event.data)

@@ -106,7 +106,7 @@ async def create_ticket(db: AsyncSession, ticket_obj: Ticket) -> Ticket:
 async def update_ticket(db: AsyncSession, ticket_id: int, updates) -> Ticket | None:
     """Update a ticket with a mapping or Pydantic model."""
     if isinstance(updates, BaseModel):
-        updates = updates.dict(exclude_unset=True)
+        updates = updates.model_dump(exclude_unset=True)
 
     ticket = await db.get(Ticket, ticket_id)
     if not ticket:

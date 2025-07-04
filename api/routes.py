@@ -147,7 +147,7 @@ async def api_list_tickets(
     ticket_out: list[TicketExpandedOut] = []
     for t in items:
         try:
-            ticket_out.append(TicketExpandedOut.from_orm(t))
+            ticket_out.append(TicketExpandedOut.model_validate(t))
         except Exception as e:
             logger.error("Invalid ticket %s: %s", getattr(t, "Ticket_ID", "?"), e)
     return PaginatedResponse[TicketExpandedOut](items=ticket_out, total=total, skip=skip, limit=limit)
@@ -185,7 +185,7 @@ async def api_list_tickets_expanded(
     ticket_out: list[TicketExpandedOut] = []
     for t in items:
         try:
-            ticket_out.append(TicketExpandedOut.from_orm(t))
+            ticket_out.append(TicketExpandedOut.model_validate(t))
         except Exception as e:
             logger.error("Invalid ticket %s: %s", getattr(t, "Ticket_ID", "?"), e)
     return PaginatedResponse[TicketExpandedOut](
@@ -205,7 +205,7 @@ async def api_search_tickets(
 
     logger.info("API search tickets query=%s limit=%s", q, limit)
     results = await search_tickets_expanded(db, q, limit)
-    return [TicketExpandedOut.from_orm(r) for r in results]
+    return [TicketExpandedOut.model_validate(r) for r in results]
 
 @router.post("/ticket", response_model=TicketOut)
 async def api_create_ticket(
