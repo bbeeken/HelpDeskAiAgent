@@ -1,6 +1,11 @@
 
 from fastapi import FastAPI, Request, Depends
 
+import logging
+
+# Configure root logger so messages are output when running with uvicorn
+logging.basicConfig(level=logging.INFO)
+
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
