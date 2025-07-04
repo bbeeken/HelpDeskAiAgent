@@ -68,8 +68,6 @@ Optional Graph credentials may also be provided in this file. Add any
 environment-specific Python overrides in a `config_env.py` file next to
 `config.py`.
 
-
-
 ## Database Migrations
 
 Alembic manages schema migrations. Common commands:
