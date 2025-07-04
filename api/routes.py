@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,7 +33,7 @@ from tools.analysis_tools import (
     tickets_waiting_on_user,
 )
 from tools.oncall_tools import get_current_oncall
-from tools.ai_tools import ai_suggest_response
+from tools.ai_tools import ai_suggest_response, ai_stream_response
 from services.analytics_service import AnalyticsService
 from limiter import limiter
 
@@ -320,6 +321,19 @@ async def api_ai_suggest_response(
 ) -> dict:
 
     return {"response": await ai_suggest_response(ticket.dict(), context)}
+
+
+@router.post("/ai/suggest_response/stream")
+@limiter.limit("10/minute")
+async def api_ai_suggest_response_stream(
+    request: Request, ticket: TicketOut, context: str = ""
+) -> StreamingResponse:
+
+    async def _generate() -> AsyncGenerator[str, None]:
+        async for chunk in ai_stream_response(ticket.dict(), context):
+            yield chunk
+
+    return StreamingResponse(_generate(), media_type="text/event-stream")
 
 # Analysis endpoints
 

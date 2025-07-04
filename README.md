@@ -27,6 +27,8 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     lookups in `tools.user_tools`. When omitted, stub responses are returned.
   - `MCP_URL` – optional FastMCP server URL used by AI helper functions
     (default `http://localhost:8080`).
+  - `MCP_STREAM_TIMEOUT` – timeout in seconds for streaming AI responses
+    (default `30`).
 
 
   They can be provided in the shell environment or in a `.env` file in the project root.
@@ -138,6 +140,8 @@ LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
 - `GET /tickets/search?q=term` - search tickets by subject or body
 - `PUT /ticket/{id}` - update an existing ticket
 - `DELETE /ticket/{id}` - remove a ticket
+- `POST /ai/suggest_response` - generate an AI ticket reply
+- `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
 
 
 ## Docker
