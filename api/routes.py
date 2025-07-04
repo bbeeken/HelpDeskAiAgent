@@ -34,7 +34,6 @@ from tools.analysis_tools import (
 )
 from tools.oncall_tools import get_current_oncall
 from tools.ai_tools import ai_suggest_response, ai_stream_response
-from services.analytics_service import AnalyticsService
 from limiter import limiter
 
 from pydantic import BaseModel
@@ -81,9 +80,6 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             yield db
         finally:
             await db.close()
-
-def get_analytics_service(db: AsyncSession = Depends(get_db)) -> AnalyticsService:
-    return AnalyticsService(db)
 
 class MessageIn(BaseModel):
     message: str
