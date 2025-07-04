@@ -1,3 +1,5 @@
+"""Helpers for retrieving on-call shift information."""
+
 from __future__ import annotations
 
 from datetime import datetime, UTC

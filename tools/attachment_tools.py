@@ -1,4 +1,7 @@
-"""Helpers for retrieving ticket attachment records from the database."""
+
+
+"""Helpers for working with ticket attachments."""
+
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select

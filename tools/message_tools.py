@@ -1,3 +1,5 @@
+"""Database helpers for reading and posting ticket messages."""
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
