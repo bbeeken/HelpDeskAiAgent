@@ -1,3 +1,4 @@
+"""Utilities for listing ticket categories."""
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select

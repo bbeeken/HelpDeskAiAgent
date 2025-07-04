@@ -1,3 +1,5 @@
+"""Helper functions for interacting with the AI backend."""
+
 from typing import Any, AsyncGenerator, Dict
 import logging
 
