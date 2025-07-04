@@ -7,6 +7,7 @@ import os
 import sys
 
 import httpx
+from httpx_sse import EventSource
 
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
@@ -19,8 +20,8 @@ async def stream_response(_args: argparse.Namespace) -> None:
     async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
         async with client.stream("POST", "/ai/suggest_response/stream", json=ticket) as resp:
             resp.raise_for_status()
-            async for chunk in resp.aiter_text():
-                sys.stdout.write(chunk)
+            async for event in EventSource(resp).aiter_sse():
+                sys.stdout.write(event.data)
                 sys.stdout.flush()
 
 
