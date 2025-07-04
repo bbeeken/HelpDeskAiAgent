@@ -240,13 +240,14 @@ async def api_get_asset(asset_id: int, db: AsyncSession = Depends(get_db)) -> As
         logger.warning("Asset %s not found", asset_id)
         raise HTTPException(status_code=404, detail="Asset not found")
 
-    return asset
+    return AssetOut.model_validate(asset)
 
 @router.get("/assets", response_model=List[AssetOut])
 async def api_list_assets(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
 ) -> list[AssetOut]:
-    return await list_assets(db, skip, limit)
+    assets = await list_assets(db, skip, limit)
+    return [AssetOut.model_validate(a) for a in assets]
 
 @router.get("/vendor/{vendor_id}", response_model=VendorOut)
 async def api_get_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)) -> VendorOut:
@@ -256,13 +257,14 @@ async def api_get_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)) -> 
         logger.warning("Vendor %s not found", vendor_id)
         raise HTTPException(status_code=404, detail="Vendor not found")
 
-    return vendor
+    return VendorOut.model_validate(vendor)
 
 @router.get("/vendors", response_model=List[VendorOut])
 async def api_list_vendors(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
 ) -> list[VendorOut]:
-    return await list_vendors(db, skip, limit)
+    vendors = await list_vendors(db, skip, limit)
+    return [VendorOut.model_validate(v) for v in vendors]
 
 @router.get("/site/{site_id}", response_model=SiteOut)
 async def api_get_site(site_id: int, db: AsyncSession = Depends(get_db)) -> SiteOut:
@@ -272,33 +274,38 @@ async def api_get_site(site_id: int, db: AsyncSession = Depends(get_db)) -> Site
         logger.warning("Site %s not found", site_id)
         raise HTTPException(status_code=404, detail="Site not found")
 
-    return site
+    return SiteOut.model_validate(site)
 
 @router.get("/sites", response_model=List[SiteOut])
 async def api_list_sites(
     skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
 ) -> list[SiteOut]:
-    return await list_sites(db, skip, limit)
+    sites = await list_sites(db, skip, limit)
+    return [SiteOut.model_validate(s) for s in sites]
 
 @router.get("/categories", response_model=List[TicketCategoryOut])
 async def api_list_categories(db: AsyncSession = Depends(get_db)) -> list[TicketCategoryOut]:
-    return await list_categories(db)
+    cats = await list_categories(db)
+    return [TicketCategoryOut.model_validate(c) for c in cats]
 
 @router.get("/statuses", response_model=List[TicketStatusOut])
 async def api_list_statuses(db: AsyncSession = Depends(get_db)) -> list[TicketStatusOut]:
-    return await list_statuses(db)
+    statuses = await list_statuses(db)
+    return [TicketStatusOut.model_validate(s) for s in statuses]
 
 @router.get("/ticket/{ticket_id}/attachments", response_model=List[TicketAttachmentOut])
 async def api_get_ticket_attachments(
     ticket_id: int, db: AsyncSession = Depends(get_db)
 ) -> list[TicketAttachmentOut]:
-    return await get_ticket_attachments(db, ticket_id)
+    atts = await get_ticket_attachments(db, ticket_id)
+    return [TicketAttachmentOut.model_validate(a) for a in atts]
 
 @router.get("/ticket/{ticket_id}/messages", response_model=List[TicketMessageOut])
 async def api_get_ticket_messages(
     ticket_id: int, db: AsyncSession = Depends(get_db)
 ) -> list[TicketMessageOut]:
-    return await get_ticket_messages(db, ticket_id)
+    msgs = await get_ticket_messages(db, ticket_id)
+    return [TicketMessageOut.model_validate(m) for m in msgs]
 
 @router.post("/ticket/{ticket_id}/messages", response_model=TicketMessageOut)
 async def api_post_ticket_message(
@@ -306,9 +313,10 @@ async def api_post_ticket_message(
     msg: MessageIn,
     db: AsyncSession = Depends(get_db),
 ) -> TicketMessageOut:
-    return await post_ticket_message(
+    created = await post_ticket_message(
         db, ticket_id, msg.message, msg.sender_code, msg.sender_name
     )
+    return TicketMessageOut.model_validate(created)
 
 @router.post("/ai/suggest_response")
 @limiter.limit("10/minute")
