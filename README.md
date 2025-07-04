@@ -22,7 +22,6 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     DB_CONN_STRING="mssql+aioodbc://user:pass@host/db?driver=ODBC+Driver+18+for+SQL+Server"
     ```
    The `driver` name must match an ODBC driver installed on the host machine.
-  - `CONFIG_ENV` – which config to load: `dev`, `staging`, or `prod` (default `dev`).
   - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
     lookups in `tools.user_tools`. When omitted, stub responses are returned.
   - `MCP_URL` – optional FastMCP server URL used by AI helper functions
@@ -33,10 +32,8 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
 
   They can be provided in the shell environment or in a `.env` file in the project root.
   A template called `.env.example` lists the required and optional variables; copy it to `.env` and
-  update the values for your environment. `config.py` automatically loads `.env` and
-  then imports `config_{CONFIG_ENV}.py` so the appropriate settings are applied at
-  startup. Model parameters for the MCP server's LLM, such as name and timeouts, are defined in the
-  selected config file.
+  update the values for your environment. `config.py` automatically loads `.env` and then looks for
+  `config_env.py` to provide Python-level overrides when needed.
 
 ## Running the API
 
@@ -46,11 +43,6 @@ Start the development server with Uvicorn:
 uvicorn main:app --reload
 ```
 
-Select a configuration by setting `CONFIG_ENV`:
-
-```bash
-CONFIG_ENV=prod uvicorn main:app
-```
 
 ## Running tests
 
@@ -71,8 +63,12 @@ docker-compose up
 ```
 
 Compose reads variables from `.env`. Copy `.env.example` to `.env` and set
-values for required options such as `DB_CONN_STRING`, `OPENAI_API_KEY`, and
-`CONFIG_ENV`. Optional Graph credentials may also be provided in this file.
+values for required options such as `DB_CONN_STRING` and `OPENAI_API_KEY`.
+Optional Graph credentials may also be provided in this file. Add any
+environment-specific Python overrides in a `config_env.py` file next to
+`config.py`.
+
+
 
 ## Database Migrations
 
@@ -142,6 +138,25 @@ LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
 - `DELETE /ticket/{id}` - remove a ticket
 - `POST /ai/suggest_response` - generate an AI ticket reply
 - `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
+
+
+## CLI
+
+`tools.cli` provides a small command-line interface to the API. Set `API_BASE_URL` to the server URL (default `http://localhost:8000`).
+
+Stream an AI-generated response:
+
+```bash
+echo '{"Ticket_ID":1,"Subject":"Subj","Ticket_Body":"Body","Ticket_Status_ID":1,"Ticket_Contact_Name":"Name","Ticket_Contact_Email":"a@example.com"}' | \
+python -m tools.cli stream-response
+```
+
+Create a ticket:
+
+```bash
+echo '{"Subject":"Subj","Ticket_Body":"Body","Ticket_Contact_Name":"Name","Ticket_Contact_Email":"a@example.com"}' | \
+python -m tools.cli create-ticket
+```
 
 
 ## Docker

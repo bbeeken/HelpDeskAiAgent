@@ -1,3 +1,5 @@
+"""Database helpers for manipulating tickets."""
+
 from __future__ import annotations
 
 import logging

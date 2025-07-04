@@ -14,7 +14,6 @@ async def client():
 
 @pytest.mark.asyncio
 async def test_ai_suggest_response_stream(client, monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     async def dummy_stream(ticket, context=""):
         yield "part1"
         yield "part2"
@@ -35,4 +34,10 @@ async def test_ai_suggest_response_stream(client, monkeypatch):
         assert resp.status_code == 200
         chunks = [chunk async for chunk in resp.aiter_text()]
 
-    assert "part1part2" == "".join(chunks)
+    # verify SSE framing and plain text reconstruction
+    all_text = "".join(chunks)
+    lines = [line for line in all_text.splitlines() if line.startswith("data:")]
+    assert lines
+    assert all(line.startswith("data:") for line in lines)
+    text = "".join(line.removeprefix("data:").strip() for line in lines)
+    assert text == "part1part2"

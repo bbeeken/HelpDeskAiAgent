@@ -1,4 +1,4 @@
-
+"""Analytics helpers for summarizing ticket data."""
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
