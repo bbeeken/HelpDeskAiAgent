@@ -22,35 +22,19 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     DB_CONN_STRING="mssql+aioodbc://user:pass@host/db?driver=ODBC+Driver+18+for+SQL+Server"
     ```
    The `driver` name must match an ODBC driver installed on the host machine.
-   - `CONFIG_ENV` – which config to load: `dev`, `staging`, or `prod` (default `dev`).
-   - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
-     lookups in `tools.user_tools`. When omitted, stub responses are returned.
-
-
-  Optional Microsoft Graph credentials enable real user lookups:
-
-   - `GRAPH_CLIENT_ID` – application (client) ID issued by Azure AD.
-  - `GRAPH_CLIENT_SECRET` – client secret associated with the app registration.
-  - `GRAPH_TENANT_ID` – tenant ID used when acquiring OAuth tokens.
+  - `CONFIG_ENV` – which config to load: `dev`, `staging`, or `prod` (default `dev`).
+  - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
+    lookups in `tools.user_tools`. When omitted, stub responses are returned.
   - `MCP_URL` – optional FastMCP server URL used by AI helper functions
     (default `http://localhost:8080`).
-
-  When these variables are not provided, the Graph helper functions fall back
-  to stub implementations so tests can run without network access.
 
 
   They can be provided in the shell environment or in a `.env` file in the project root.
   A template called `.env.example` lists the required and optional variables; copy it to `.env` and
   update the values for your environment. `config.py` automatically loads `.env` and
   then imports `config_{CONFIG_ENV}.py` so the appropriate settings are applied at
-
   startup. Model parameters for the MCP server's LLM, such as name and timeouts, are defined in the
-  selected config file. The Graph credentials are optional; without them, the Graph
-
-  startup. The Graph credentials are optional; without them, the Graph
-
-  helper functions return stub data so tests and development work without network
-  access.
+  selected config file.
 
 ## Running the API
 
