@@ -4,6 +4,7 @@ import json
 import os
 
 import pytest
+import httpx
 from httpx import AsyncClient, ASGITransport
 from main import app
 
@@ -65,3 +66,46 @@ async def test_stream_response_cli(cli_setup, capsys, monkeypatch):
     await cli.stream_response(argparse.Namespace())
     out = capsys.readouterr().out
     assert out == "part1part2"
+
+
+@pytest.mark.asyncio
+async def test_create_ticket_cli_http_error(cli_setup, capsys, monkeypatch):
+    class FailingClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def post(self, *args, **kwargs):
+            raise httpx.HTTPError("fail")
+
+    monkeypatch.setattr(cli.httpx, "AsyncClient", lambda *a, **k: FailingClient())
+    monkeypatch.setattr(cli.sys, "stdin", io.StringIO("{}"))
+    await cli.create_ticket(argparse.Namespace())
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.asyncio
+async def test_stream_response_cli_http_error(cli_setup, capsys, monkeypatch):
+    class FailingClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        def stream(self, *args, **kwargs):
+            class FailingStream:
+                async def __aenter__(self_inner):
+                    raise httpx.HTTPError("fail")
+
+                async def __aexit__(self_inner, exc_type, exc, tb):
+                    pass
+
+            return FailingStream()
+
+    monkeypatch.setattr(cli.httpx, "AsyncClient", lambda *a, **k: FailingClient())
+    monkeypatch.setattr(cli.sys, "stdin", io.StringIO("{}"))
+    await cli.stream_response(argparse.Namespace())
+    assert capsys.readouterr().out == ""
