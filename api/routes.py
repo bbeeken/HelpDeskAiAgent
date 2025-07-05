@@ -267,7 +267,14 @@ async def api_search_tickets(
 
     logger.info("API search tickets query=%s limit=%s", q, limit)
     results = await search_tickets_expanded(db, q, limit)
-    return [TicketExpandedOut.model_validate(r) for r in results]
+    tickets: list[TicketExpandedOut] = []
+    for r in results:
+        try:
+            tickets.append(TicketExpandedOut.model_validate(r))
+        except Exception as e:  # pragma: no cover - log and skip invalid rows
+            logger.error("Invalid ticket %s: %s", getattr(r, "Ticket_ID", "?"), e)
+
+    return tickets
 
 @router.post("/ticket", response_model=TicketOut)
 async def api_create_ticket(
