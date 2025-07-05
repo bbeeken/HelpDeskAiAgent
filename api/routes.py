@@ -39,6 +39,7 @@ from tools.oncall_tools import get_current_oncall
 from tools.ai_tools import ai_suggest_response, ai_stream_response
 
 from limiter import limiter
+from pydantic import BaseModel
 
 from schemas.ticket import TicketCreate, TicketOut, TicketUpdate, TicketExpandedOut
 from schemas.oncall import OnCallShiftOut
@@ -254,4 +255,82 @@ async def api_get_ticket_attachments(ticket_id: int, db: AsyncSession = Depends(
 
 
 @router.get("/ticket/{ticket_id}/messages", response_model=List[TicketMessageOut])
-async def api_get_ticket_messages(ticket_
+async def api_get_ticket_messages(ticket_id: int, db: AsyncSession = Depends(get_db)) -> List[TicketMessageOut]:
+    msgs = await get_ticket_messages(db, ticket_id)
+    return [TicketMessageOut.model_validate(m) for m in msgs]
+
+
+@router.post("/ticket/{ticket_id}/messages", response_model=TicketMessageOut)
+async def api_post_ticket_message(
+    ticket_id: int,
+    msg: MessageIn,
+    db: AsyncSession = Depends(get_db),
+) -> TicketMessageOut:
+    created = await post_ticket_message(db, ticket_id, msg.message, msg.sender_code, msg.sender_name)
+    return TicketMessageOut.model_validate(created)
+
+
+@router.post("/ai/suggest_response")
+@limiter.limit("10/minute")
+async def api_ai_suggest_response(
+    request: Request, ticket: TicketOut, context: str = ""
+) -> dict:
+    return {"response": await ai_suggest_response(ticket.model_dump(), context)}
+
+
+@router.post("/ai/suggest_response/stream")
+@limiter.limit("10/minute")
+async def api_ai_suggest_response_stream(
+    request: Request, ticket: TicketOut, context: str = ""
+) -> StreamingResponse:
+    async def _generate() -> AsyncGenerator[str, None]:
+        async for chunk in ai_stream_response(ticket.model_dump(), context):
+            yield f"data: {chunk}\n\n"
+
+    return StreamingResponse(_generate(), media_type="text/event-stream")
+
+
+@router.get("/analytics/status", response_model=list[StatusCount])
+async def api_tickets_by_status(db: AsyncSession = Depends(get_db)) -> list[StatusCount]:
+    return await tickets_by_status(db)
+
+
+@router.get("/analytics/open_by_site", response_model=list[SiteOpenCount])
+async def api_open_tickets_by_site(db: AsyncSession = Depends(get_db)) -> list[SiteOpenCount]:
+    return await open_tickets_by_site(db)
+
+
+@router.get("/analytics/sla_breaches")
+async def api_sla_breaches(
+    request: Request,
+    sla_days: int = 2,
+    status_id: list[int] | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    params = request.query_params
+    filters = {k: v for k, v in params.items() if k not in {"sla_days", "status_id"}}
+    status_ids = status_id or [int(s) for s in params.getlist("status_id")]
+    if not status_ids:
+        status_ids = None
+    return {
+        "breaches": await sla_breaches(
+            db, sla_days, filters=filters or None, status_ids=status_ids
+        )
+    }
+
+
+@router.get("/analytics/open_by_user", response_model=list[UserOpenCount])
+async def api_open_tickets_by_user(db: AsyncSession = Depends(get_db)) -> list[tuple[str | None, int]]:
+    return await open_tickets_by_user(db)
+
+
+@router.get("/analytics/waiting_on_user", response_model=list[WaitingOnUserCount])
+async def api_tickets_waiting_on_user(db: AsyncSession = Depends(get_db)) -> list[tuple[str | None, int]]:
+    return await tickets_waiting_on_user(db)
+
+
+@router.get("/oncall", response_model=OnCallShiftOut | None)
+async def api_get_oncall(db: AsyncSession = Depends(get_db)) -> Any:
+    return await get_current_oncall(db)
+
+
