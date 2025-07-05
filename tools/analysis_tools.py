@@ -12,7 +12,10 @@ from schemas.analytics import (
     SiteOpenCount,
     UserOpenCount,
     WaitingOnUserCount,
+    TrendAnalysis,
 )
+from dataclasses import asdict
+from datetime import datetime, timedelta, UTC
 
 logger = logging.getLogger(__name__)
 
@@ -141,3 +144,89 @@ async def tickets_waiting_on_user(db: AsyncSession) -> list[WaitingOnUserCount]:
         WaitingOnUserCount(contact_email=row[0], count=row[1])
         for row in result.all()
     ]
+
+
+async def ticket_volume_trend(
+    db: AsyncSession, days: int = 7, now: datetime | None = None
+) -> TrendAnalysis:
+    """Compute percent change in ticket creation volume."""
+
+    if now is None:
+        now = datetime.now(UTC)
+
+    current_start = now - timedelta(days=days)
+    previous_start = now - timedelta(days=2 * days)
+
+    current_query = select(func.count(Ticket.Ticket_ID)).filter(
+        Ticket.Created_Date >= current_start
+    )
+    previous_query = (
+        select(func.count(Ticket.Ticket_ID))
+        .filter(Ticket.Created_Date >= previous_start)
+        .filter(Ticket.Created_Date < current_start)
+    )
+
+    current_count = await db.scalar(current_query) or 0
+    previous_count = await db.scalar(previous_query) or 0
+
+    if previous_count:
+        pct = ((current_count - previous_count) / previous_count) * 100
+    elif current_count:
+        pct = 100.0
+    else:
+        pct = 0.0
+
+    if current_count > previous_count:
+        direction = "up"
+    elif current_count < previous_count:
+        direction = "down"
+    else:
+        direction = "flat"
+
+    return TrendAnalysis(direction=direction, percent_change=pct, confidence=1.0)
+
+
+async def resolution_time_trend(
+    db: AsyncSession, days: int = 7, now: datetime | None = None
+) -> TrendAnalysis:
+    """Compare average resolution time for closed tickets."""
+
+    if now is None:
+        now = datetime.now(UTC)
+
+    current_start = now - timedelta(days=days)
+    previous_start = now - timedelta(days=2 * days)
+
+    async def _average(start: datetime, end: datetime | None) -> float:
+        query = select(Ticket.Created_Date).filter(Ticket.Ticket_Status_ID == 3)
+        query = query.filter(Ticket.Created_Date >= start)
+        if end is not None:
+            query = query.filter(Ticket.Created_Date < end)
+        rows = (await db.execute(query)).scalars().all()
+        if not rows:
+            return 0.0
+        durations = []
+        for d in rows:
+            if d.tzinfo is None:
+                d = d.replace(tzinfo=UTC)
+            durations.append((now - d).total_seconds())
+        return sum(durations) / len(durations)
+
+    current_avg = await _average(current_start, None)
+    previous_avg = await _average(previous_start, current_start)
+
+    if previous_avg:
+        pct = ((current_avg - previous_avg) / previous_avg) * 100
+    elif current_avg:
+        pct = 100.0
+    else:
+        pct = 0.0
+
+    if current_avg > previous_avg:
+        direction = "up"
+    elif current_avg < previous_avg:
+        direction = "down"
+    else:
+        direction = "flat"
+
+    return TrendAnalysis(direction=direction, percent_change=pct, confidence=1.0)

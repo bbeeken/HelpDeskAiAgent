@@ -31,6 +31,7 @@ __all__ = [
     'TicketStatusOut',
     'TicketAttachmentOut',
     'TicketMessageOut',
+    'TrendAnalysis',
 ]
 
 
@@ -40,6 +41,7 @@ from .analytics import (
     SiteOpenCount,
     UserOpenCount,
     WaitingOnUserCount,
+    TrendAnalysis,
 )
 
 

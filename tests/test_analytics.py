@@ -7,6 +7,7 @@ from main import app
 from db.models import Ticket
 from db.mssql import SessionLocal
 from tools.ticket_tools import create_ticket
+from tools.analysis_tools import ticket_volume_trend, resolution_time_trend
 
 os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
 
@@ -135,4 +136,44 @@ async def test_sla_breaches_with_filters(client: AsyncClient):
     )
     assert resp.status_code == 200
     assert resp.json() == {"breaches": 1}
+
+
+@pytest.mark.asyncio
+async def test_ticket_volume_trend():
+    now = datetime.now(UTC)
+    await _add_ticket(Created_Date=now - timedelta(days=2))
+    await _add_ticket(Created_Date=now - timedelta(days=3))
+    await _add_ticket(Created_Date=now - timedelta(days=8))
+
+    async with SessionLocal() as db:
+        trend = await ticket_volume_trend(db, days=7, now=now)
+
+    assert trend.direction == "up"
+    assert trend.percent_change > 0
+
+
+@pytest.mark.asyncio
+async def test_resolution_time_trend():
+    now = datetime.now(UTC)
+    await _add_ticket(Created_Date=now - timedelta(days=2), Ticket_Status_ID=3)
+    await _add_ticket(Created_Date=now - timedelta(days=3), Ticket_Status_ID=3)
+    await _add_ticket(Created_Date=now - timedelta(days=10), Ticket_Status_ID=3)
+    await _add_ticket(Created_Date=now - timedelta(days=12), Ticket_Status_ID=3)
+
+    async with SessionLocal() as db:
+        trend = await resolution_time_trend(db, days=7, now=now)
+
+    assert trend.direction == "down"
+    assert trend.percent_change < 0
+
+
+@pytest.mark.asyncio
+async def test_dashboard_route(client: AsyncClient):
+    await _add_ticket()
+
+    resp = await client.get("/analytics/dashboard")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "weekly_volume_trend" in data
+    assert "direction" in data["weekly_volume_trend"]
 

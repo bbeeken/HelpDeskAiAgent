@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from dataclasses import dataclass
 
 class StatusCount(BaseModel):
     status_id: Optional[int]
@@ -24,3 +25,12 @@ class WaitingOnUserCount(BaseModel):
 
     contact_email: Optional[str]
     count: int
+
+
+@dataclass
+class TrendAnalysis:
+    """Simple trend description for analytics graphs."""
+
+    direction: str
+    percent_change: float
+    confidence: float
