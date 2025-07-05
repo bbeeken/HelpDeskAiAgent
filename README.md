@@ -149,6 +149,8 @@ LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
 - `DELETE /ticket/{id}` - remove a ticket
 - `POST /ai/suggest_response` - generate an AI ticket reply
 - `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
+- Ticket body and resolution fields now accept large text values; the previous
+  2000-character limit has been removed.
 
 
 ## CLI
