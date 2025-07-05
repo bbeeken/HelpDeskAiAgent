@@ -27,7 +27,7 @@ class TicketBase(BaseModel):
         if isinstance(v, str) and (v == "" or v.lower() == "null"):
             return None
         try:
-            return validate_email(v, check_deliverability=False).email
+            return validate_email(v, check_deliverability=False).normalized
         except EmailNotValidError as e:
             raise ValueError(str(e))
 
@@ -90,7 +90,7 @@ class TicketIn(BaseModel):
         if isinstance(v, str) and (v == "" or v.lower() == "null"):
             return None
         try:
-            return validate_email(v, check_deliverability=False).email
+            return validate_email(v, check_deliverability=False).normalized
         except EmailNotValidError as e:
             raise ValueError(str(e))
 
