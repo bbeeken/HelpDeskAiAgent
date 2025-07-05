@@ -363,9 +363,23 @@ async def api_open_tickets_by_site(
 
 @router.get("/analytics/sla_breaches")
 async def api_sla_breaches(
-    sla_days: int = 2, db: AsyncSession = Depends(get_db)
+    request: Request,
+    sla_days: int = 2,
+    status_id: list[int] | None = None,
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
-    return {"breaches": await sla_breaches(db, sla_days)}
+    params = request.query_params
+    filters = {
+        k: v for k, v in params.items() if k not in {"sla_days", "status_id"}
+    }
+    status_ids = status_id or [int(s) for s in params.getlist("status_id")]
+    if not status_ids:
+        status_ids = None
+    return {
+        "breaches": await sla_breaches(
+            db, sla_days, filters=filters or None, status_ids=status_ids
+        )
+    }
 
 @router.get("/analytics/open_by_user")
 async def api_open_tickets_by_user(

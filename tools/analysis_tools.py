@@ -2,6 +2,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
+from typing import Any
 
 import logging
 
@@ -56,20 +57,37 @@ async def open_tickets_by_site(db: AsyncSession) -> list[tuple[int | None, str |
 
 
 
-async def sla_breaches(db: AsyncSession, sla_days: int = 2) -> int:
+async def sla_breaches(
+    db: AsyncSession,
+    sla_days: int = 2,
+    filters: dict[str, Any] | None = None,
+    status_ids: list[int] | None = None,
+) -> int:
 
-    """
-    Count tickets older than sla_days and not closed.
-    """
+    """Count tickets older than ``sla_days`` with optional filtering."""
     from datetime import datetime, timedelta, UTC
 
-    logger.info("Counting SLA breaches older than %s days", sla_days)
-    cutoff = datetime.now(UTC) - timedelta(days=sla_days)
-    result = await db.execute(
-        select(func.count(Ticket.Ticket_ID))
-        .filter(Ticket.Created_Date < cutoff)
-        .filter(Ticket.Ticket_Status_ID != 3)
+    logger.info(
+        "Counting SLA breaches older than %s days with filters=%s statuses=%s",
+        sla_days,
+        filters,
+        status_ids,
     )
+    cutoff = datetime.now(UTC) - timedelta(days=sla_days)
+
+    query = select(func.count(Ticket.Ticket_ID)).filter(Ticket.Created_Date < cutoff)
+
+    if status_ids is not None:
+        query = query.filter(Ticket.Ticket_Status_ID.in_(status_ids))
+    else:
+        query = query.filter(Ticket.Ticket_Status_ID != 3)
+
+    if filters:
+        for key, value in filters.items():
+            if hasattr(Ticket, key):
+                query = query.filter(getattr(Ticket, key) == value)
+
+    result = await db.execute(query)
     return result.scalar_one()
 
 
