@@ -136,3 +136,16 @@ async def test_sla_breaches_with_filters(client: AsyncClient):
     assert resp.status_code == 200
     assert resp.json() == {"breaches": 1}
 
+
+@pytest.mark.asyncio
+async def test_ticket_trend(client: AsyncClient):
+    now = datetime.now(UTC)
+    await _add_ticket(Created_Date=now - timedelta(days=2))
+    await _add_ticket(Created_Date=now - timedelta(days=1))
+    await _add_ticket(Created_Date=now - timedelta(days=1))
+
+    resp = await client.get("/analytics/trend", params={"days": 3})
+    assert resp.status_code == 200
+    data = {item["date"]: item["count"] for item in resp.json()}
+    assert data[(now - timedelta(days=2)).date().isoformat()] == 1
+    assert data[(now - timedelta(days=1)).date().isoformat()] == 2

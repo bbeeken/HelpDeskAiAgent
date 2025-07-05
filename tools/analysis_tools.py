@@ -12,6 +12,7 @@ from schemas.analytics import (
     SiteOpenCount,
     UserOpenCount,
     WaitingOnUserCount,
+    TrendCount,
 )
 
 logger = logging.getLogger(__name__)
@@ -141,3 +142,25 @@ async def tickets_waiting_on_user(db: AsyncSession) -> list[WaitingOnUserCount]:
         WaitingOnUserCount(contact_email=row[0], count=row[1])
         for row in result.all()
     ]
+
+
+async def ticket_trend(db: AsyncSession, days: int = 7) -> list[TrendCount]:
+    """Return ticket counts grouped by creation date."""
+    from datetime import datetime, timedelta, UTC, date as date_cls
+
+    start = datetime.now(UTC) - timedelta(days=days)
+    result = await db.execute(
+        select(func.date(Ticket.Created_Date), func.count(Ticket.Ticket_ID))
+        .filter(Ticket.Created_Date >= start)
+        .group_by(func.date(Ticket.Created_Date))
+        .order_by(func.date(Ticket.Created_Date))
+    )
+
+    trend: list[TrendCount] = []
+    for d, c in result.all():
+        if isinstance(d, str):
+            d = date_cls.fromisoformat(d)
+        elif isinstance(d, datetime):
+            d = d.date()
+        trend.append(TrendCount(date=d, count=c))
+    return trend
