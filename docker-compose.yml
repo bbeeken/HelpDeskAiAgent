@@ -2,15 +2,11 @@ version: "3.8"
 
 services:
   helpdeskmcpserver:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: bbeeken/helpdeskmcpcerver:latest
     env_file:
       - .env
-    # If you need to override or expose any ports:
     ports:
       - "8008:8008"
-    # (Optional) healthcheck on your SQL Server connectivity:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
       interval: 30s
