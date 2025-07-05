@@ -35,7 +35,15 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
   update the values for your environment. `config.py` automatically loads `.env` and then looks for
   `config_env.py` to provide Python-level overrides when needed.
 
-3. **Python 3.12**
+3. **Ticket text length**
+
+   Ticket bodies and resolutions may exceed 2000 characters. These fields are
+   stored unmodified in the database using `TEXT`/`nvarchar(max)` columns so
+   their full contents are preserved. There is no environment variable that
+   limits their length; however, your `DB_CONN_STRING` should point to a driver
+   and database that support these large text types.
+
+4. **Python 3.12**
 
    When running the application or tests on Python 3.12 you may need to disable
    Pydantic's standard types shim:
@@ -90,6 +98,10 @@ alembic revision --autogenerate -m "message"
 # apply migrations to the database
 alembic upgrade head
 ```
+
+Both the `Ticket_Body` and `Resolution` columns are defined using the SQL
+`TEXT` (or `nvarchar(max)`) type so lengthy content can be stored without
+truncation. Ensure any custom migrations preserve this unrestricted text type.
 
 
 ### V_Ticket_Master_Expanded
@@ -149,6 +161,8 @@ LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
 - `DELETE /ticket/{id}` - remove a ticket
 - `POST /ai/suggest_response` - generate an AI ticket reply
 - `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
+- Ticket body and resolution fields now accept large text values; the previous
+  2000-character limit has been removed.
 
 
 ## CLI
