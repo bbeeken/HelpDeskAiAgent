@@ -16,6 +16,16 @@ logger = logging.getLogger(__name__)
 
 
 async def get_ticket_messages(db: AsyncSession, ticket_id: int) -> list[TicketMessage]:
+    """Retrieve all messages for a ticket ordered chronologically.
+
+    Args:
+        db: Async SQLAlchemy session used for the query.
+        ticket_id: Identifier of the ticket whose messages are requested.
+
+    Returns:
+        A list of ``TicketMessage`` instances sorted by timestamp.
+    """
+
     result = await db.execute(
         select(TicketMessage)
         .filter(TicketMessage.Ticket_ID == ticket_id)
@@ -27,6 +37,18 @@ async def get_ticket_messages(db: AsyncSession, ticket_id: int) -> list[TicketMe
 async def post_ticket_message(
     db: AsyncSession, ticket_id: int, message: str, sender_code: str, sender_name: str
 ) -> TicketMessage:
+    """Persist a new message to a ticket.
+
+    Args:
+        db: Async SQLAlchemy session used for the insert.
+        ticket_id: Identifier of the ticket to post to.
+        message: Body text of the ticket message.
+        sender_code: User code of the sender.
+        sender_name: Display name of the sender.
+
+    Returns:
+        The saved ``TicketMessage`` instance.
+    """
 
     msg = TicketMessage(
         Ticket_ID=ticket_id,
