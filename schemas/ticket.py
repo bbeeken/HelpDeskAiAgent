@@ -20,6 +20,8 @@ class TicketBase(BaseModel):
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[Annotated[str, Field()]] = None
 
+    model_config = ConfigDict(str_max_length=None)
+
     @field_validator("Ticket_Contact_Email", "Assigned_Email", mode="before")
     def validate_emails(cls, v):
         if v is None:
@@ -36,6 +38,7 @@ class TicketCreate(TicketBase):
     """Schema used when creating a new ticket."""
 
     model_config = ConfigDict(
+        str_max_length=None,
         json_schema_extra={
             "example": {
                 "Subject": "Printer not working",
@@ -64,7 +67,7 @@ class TicketUpdate(BaseModel):
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[str] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_max_length=None)
 
 
 class TicketIn(BaseModel):
@@ -94,11 +97,14 @@ class TicketIn(BaseModel):
         except EmailNotValidError as e:
             raise ValueError(str(e))
 
+    model_config = ConfigDict(extra="forbid", str_max_length=None)
+
 
 class TicketOut(TicketIn):
     Ticket_ID: int
 
     model_config = ConfigDict(
+        str_max_length=None,
         from_attributes=True,
         json_schema_extra={
             "example": {
@@ -128,4 +134,4 @@ class TicketExpandedOut(TicketOut):
     Assigned_Vendor_Name: Optional[str] = None
     Priority_Level: Optional[str] = None
 
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, str_max_length=None)
