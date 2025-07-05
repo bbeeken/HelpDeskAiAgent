@@ -1,12 +1,13 @@
 # routers.py
 
 import logging
+import json
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -104,9 +105,7 @@ class MessageIn(BaseModel):
     sender_name: str = Field(..., example="John Doe")
 
 @ticket_router.get("/{ticket_id}", response_model=TicketExpandedOut)
-async def get_ticket(
-    ticket_id: int, db: AsyncSession = Depends(get_db)
-) -> TicketExpandedOut:
+async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketExpandedOut:
     ticket = await get_ticket_expanded(db, ticket_id)
     if not ticket:
         logger.warning("Ticket %s not found", ticket_id)
@@ -114,17 +113,17 @@ async def get_ticket(
     return TicketExpandedOut.model_validate(ticket)
 
 @ticket_router.post("", response_model=TicketOut)
-async def create_ticket_endpoint(
-    data: TicketCreate, db: AsyncSession = Depends(get_db)
-) -> TicketOut:
-    obj = data.model_copy()
-    obj["Created_Date"] = datetime.now(timezone.utc)
-    created = await create_ticket(db, obj)
+async def create_ticket_endpoint(data: TicketCreate, db: AsyncSession = Depends(get_db)) -> TicketOut:
+    payload = data.model_copy()
+    payload["Created_Date"] = datetime.now(timezone.utc)
+    created = await create_ticket(db, payload)
     return TicketOut.model_validate(created)
 
 @ticket_router.put("/{ticket_id}", response_model=TicketOut)
 async def update_ticket_endpoint(
-    ticket_id: int, updates: TicketUpdate, db: AsyncSession = Depends(get_db)
+    ticket_id: int,
+    updates: TicketUpdate,
+    db: AsyncSession = Depends(get_db)
 ) -> TicketOut:
     updated = await update_ticket(db, ticket_id, updates.model_dump(exclude_unset=True))
     if not updated:
@@ -133,33 +132,23 @@ async def update_ticket_endpoint(
     return TicketOut.model_validate(updated)
 
 @ticket_router.delete("/{ticket_id}", status_code=204)
-async def delete_ticket_endpoint(
-    ticket_id: int, db: AsyncSession = Depends(get_db)
-):
+async def delete_ticket_endpoint(ticket_id: int, db: AsyncSession = Depends(get_db)):
     success = await delete_ticket(db, ticket_id)
     if not success:
         logger.warning("Failed to delete ticket %s", ticket_id)
         raise HTTPException(status_code=404, detail="Ticket not found")
     return
 
-# Messages
 @ticket_router.get("/{ticket_id}/messages", response_model=List[TicketMessageOut])
-async def list_ticket_messages(
-    ticket_id: int, db: AsyncSession = Depends(get_db)
-) -> List[TicketMessageOut]:
+async def list_ticket_messages(ticket_id: int, db: AsyncSession = Depends(get_db)) -> List[TicketMessageOut]:
     msgs = await get_ticket_messages(db, ticket_id)
     return [TicketMessageOut.model_validate(m) for m in msgs]
 
 @ticket_router.post("/{ticket_id}/messages", response_model=TicketMessageOut)
-async def add_ticket_message(
-    ticket_id: int, msg: MessageIn, db: AsyncSession = Depends(get_db)
-) -> TicketMessageOut:
-    created = await post_ticket_message(
-        db, ticket_id, msg.message, msg.sender_code, msg.sender_name
-    )
+async def add_ticket_message(ticket_id: int, msg: MessageIn, db: AsyncSession = Depends(get_db)) -> TicketMessageOut:
+    created = await post_ticket_message(db, ticket_id, msg.message, msg.sender_code, msg.sender_name)
     return TicketMessageOut.model_validate(created)
 
-# Search
 @ticket_router.get("/search", response_model=List[TicketSearchOut])
 async def search_tickets(
     q: str = Query(..., min_length=1),
@@ -182,95 +171,76 @@ router.include_router(ticket_router)
 lookup_router = APIRouter(prefix="/lookup", tags=["lookup"])
 
 @lookup_router.get("/assets", response_model=List[AssetOut])
-async def list_assets_endpoint(
-    skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
-):
+async def list_assets_endpoint(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
     assets = await list_assets(db, skip, limit)
     return [AssetOut.model_validate(a) for a in assets]
 
 @lookup_router.get("/asset/{asset_id}", response_model=AssetOut)
-async def get_asset_endpoint(
-    asset_id: int, db: AsyncSession = Depends(get_db)
-):
+async def get_asset_endpoint(asset_id: int, db: AsyncSession = Depends(get_db)):
     a = await get_asset(db, asset_id)
     if not a:
         raise HTTPException(status_code=404, detail="Asset not found")
     return AssetOut.model_validate(a)
 
 @lookup_router.get("/vendors", response_model=List[VendorOut])
-async def list_vendors_endpoint(
-    skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
-):
+async def list_vendors_endpoint(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
     vs = await list_vendors(db, skip, limit)
     return [VendorOut.model_validate(v) for v in vs]
 
 @lookup_router.get("/vendor/{vendor_id}", response_model=VendorOut)
-async def get_vendor_endpoint(
-    vendor_id: int, db: AsyncSession = Depends(get_db)
-):
+async def get_vendor_endpoint(vendor_id: int, db: AsyncSession = Depends(get_db)):
     v = await get_vendor(db, vendor_id)
     if not v:
         raise HTTPException(status_code=404, detail="Vendor not found")
     return VendorOut.model_validate(v)
 
 @lookup_router.get("/sites", response_model=List[SiteOut])
-async def list_sites_endpoint(
-    skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)
-):
+async def list_sites_endpoint(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
     ss = await list_sites(db, skip, limit)
     return [SiteOut.model_validate(s) for s in ss]
 
-@lookup_router.get("/site/{site_id}", response_model=SiteOut])
-async def get_site_endpoint(
-    site_id: int, db: AsyncSession = Depends(get_db)
-):
+@lookup_router.get("/site/{site_id}", response_model=SiteOut)
+async def get_site_endpoint(site_id: int, db: AsyncSession = Depends(get_db)):
     s = await get_site(db, site_id)
     if not s:
         raise HTTPException(status_code=404, detail="Site not found")
     return SiteOut.model_validate(s)
 
 @lookup_router.get("/categories", response_model=List[TicketCategoryOut])
-async def list_categories_endpoint(
-    db: AsyncSession = Depends(get_db)
-):
+async def list_categories_endpoint(db: AsyncSession = Depends(get_db)):
     cats = await list_categories(db)
     return [TicketCategoryOut.model_validate(c) for c in cats]
 
 @lookup_router.get("/statuses", response_model=List[TicketStatusOut])
-async def list_statuses_endpoint(
-    db: AsyncSession = Depends(get_db)
-):
+async def list_statuses_endpoint(db: AsyncSession = Depends(get_db)):
     st = await list_statuses(db)
     return [TicketStatusOut.model_validate(s) for s in st]
 
+@lookup_router.get("/ticket/{ticket_id}/attachments", response_model=List[TicketAttachmentOut])
+async def api_get_ticket_attachments(ticket_id: int, db: AsyncSession = Depends(get_db)) -> List[TicketAttachmentOut]:
+    atts = await get_ticket_attachments(db, ticket_id)
+    return [TicketAttachmentOut.model_validate(a) for a in atts]
+
 router.include_router(lookup_router)
 
-# ─── Analytics Sub-Router ────────────────────────────────────────────────────
+# ─── Analytics Sub-Router ─────────────────────────────────────────────────────
 
 analytics_router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 @analytics_router.get("/status", response_model=List[StatusCount])
-async def tickets_by_status_endpoint(
-    db: AsyncSession = Depends(get_db)
-) -> List[StatusCount]:
+async def tickets_by_status_endpoint(db: AsyncSession = Depends(get_db)) -> List[StatusCount]:
     return await tickets_by_status(db)
 
 @analytics_router.get("/open_by_site", response_model=List[SiteOpenCount])
-async def open_by_site_endpoint(
-    db: AsyncSession = Depends(get_db)
-) -> List[SiteOpenCount]:
+async def open_by_site_endpoint(db: AsyncSession = Depends(get_db)) -> List[SiteOpenCount]:
     return await open_tickets_by_site(db)
 
 @analytics_router.get("/open_by_user", response_model=List[UserOpenCount])
-async def open_by_user_endpoint(
-    db: AsyncSession = Depends(get_db)
-) -> List[UserOpenCount]:
+async def open_by_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[UserOpenCount]:
     return await open_tickets_by_user(db)
 
 @analytics_router.get("/waiting_on_user", response_model=List[WaitingOnUserCount])
-async def waiting_on_user_endpoint(
-    db: AsyncSession = Depends(get_db)
-) -> List[WaitingOnUserCount]:
+async def waiting_on_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[WaitingOnUserCount]:
     return await tickets_waiting_on_user(db)
 
 @analytics_router.get("/sla_breaches")
@@ -291,45 +261,47 @@ async def sla_breaches_endpoint(
 
 router.include_router(analytics_router)
 
-# ─── AI Sub-Router ───────────────────────────────────────────────────────────
+# ─── AI Sub-Router ─────────────────────────────────────────────────────────────
 
 ai_router = APIRouter(prefix="/ai", tags=["ai"])
 
-@ai_router.post("/suggest_response")
+@ai_router.post("/suggest_response", response_model=dict)
 @limiter.limit("10/minute")
-async def suggest_response(
-    ticket: TicketOut, context: str = ""
-) -> Dict[str, str]:
-    resp = await ai_suggest_response(ticket.model_dump(), context)
-    return {"response": resp}
+async def api_ai_suggest_response_route(ticket: dict) -> dict:
+    try:
+        result = await ai_suggest_response(ticket)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return result
 
 @ai_router.post("/suggest_response/stream")
 @limiter.limit("10/minute")
-async def suggest_response_stream(
-    ticket: TicketOut, context: str = ""
-) -> StreamingResponse:
-    async def gen() -> AsyncGenerator[str, None]:
-        async for chunk in ai_stream_response(ticket.model_dump(), context):
-            yield f"data: {chunk}\n\n"
-    return StreamingResponse(gen(), media_type="text/event-stream")
+async def api_ai_suggest_response_stream(ticket: dict) -> StreamingResponse:
+    # validate input first
+    try:
+        TicketOut.model_validate(ticket)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    async def _generate() -> AsyncGenerator[str, None]:
+        async for chunk in ai_stream_response(ticket):
+            yield f"data: {json.dumps(chunk)}\n\n"
+
+    return StreamingResponse(_generate(), media_type="text/event-stream")
 
 router.include_router(ai_router)
 
-# ─── On-Call Endpoint ─────────────────────────────────────────────────────────
+# ─── On-Call Endpoint ──────────────────────────────────────────────────────────
 
 @router.get("/oncall", response_model=Optional[OnCallShiftOut], tags=["oncall"])
-async def get_oncall_shift(
-    db: AsyncSession = Depends(get_db)
-) -> Optional[OnCallShiftOut]:
-    return await get_current_oncall(db)
+async def api_get_current_oncall(db: AsyncSession = Depends(get_db)) -> Optional[OnCallShiftOut]:
+    shift = await get_current_oncall(db)
+    if not shift:
+        raise HTTPException(status_code=404, detail="On-call shift not found")
+    return OnCallShiftOut.model_validate(shift)
 
 # ─── Application Factory ──────────────────────────────────────────────────────
 
 def register_routes(app: FastAPI) -> None:
     """Include all routers on the FastAPI app."""
     app.include_router(router)
-
-# Example of instantiation:
-# from fastapi import FastAPI
-# app = FastAPI()
-# register_routes(app)
