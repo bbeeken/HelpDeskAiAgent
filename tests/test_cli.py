@@ -48,8 +48,8 @@ async def test_stream_response_cli(cli_setup, capsys, monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     async def dummy_stream(ticket, context=""):
-        yield "part1"
-        yield "part2"
+        yield {"content": "part1", "model_used": "x", "generated_at": "now"}
+        yield {"content": "part2", "model_used": "x", "generated_at": "now"}
 
     monkeypatch.setattr("tools.ai_tools.ai_stream_response", dummy_stream)
     monkeypatch.setattr("api.routes.ai_stream_response", dummy_stream)

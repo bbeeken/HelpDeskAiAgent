@@ -1,6 +1,8 @@
 from typing import Any, AsyncGenerator, List
+import json
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, ValidationError
 from fastapi.responses import StreamingResponse
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -254,4 +256,87 @@ async def api_get_ticket_attachments(ticket_id: int, db: AsyncSession = Depends(
 
 
 @router.get("/ticket/{ticket_id}/messages", response_model=List[TicketMessageOut])
-async def api_get_ticket_messages(ticket_
+async def api_get_ticket_messages(
+    ticket_id: int, db: AsyncSession = Depends(get_db)
+) -> List[TicketMessageOut]:
+    msgs = await get_ticket_messages(db, ticket_id)
+    return [TicketMessageOut.model_validate(m) for m in msgs]
+
+
+@router.post("/ticket/{ticket_id}/messages", response_model=TicketMessageOut)
+async def api_post_ticket_messages(
+    ticket_id: int, message: MessageIn, db: AsyncSession = Depends(get_db)
+) -> TicketMessageOut:
+    msg = await post_ticket_message(
+        db, ticket_id, message.message, message.sender_code, message.sender_name
+    )
+    return TicketMessageOut.model_validate(msg)
+
+
+@router.get("/analytics/status", response_model=List[StatusCount])
+async def api_analytics_status(db: AsyncSession = Depends(get_db)) -> List[StatusCount]:
+    return await tickets_by_status(db)
+
+
+@router.get("/analytics/open_by_site", response_model=List[SiteOpenCount])
+async def api_analytics_open_by_site(db: AsyncSession = Depends(get_db)) -> List[SiteOpenCount]:
+    return await open_tickets_by_site(db)
+
+
+@router.get("/analytics/sla_breaches")
+async def api_analytics_sla_breaches(
+    request: Request,
+    sla_days: int = 2,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    filters = {
+        k: v
+        for k, v in request.query_params.items()
+        if k not in {"sla_days", "status_id"}
+    }
+    status_ids = [int(s) for s in request.query_params.getlist("status_id")]
+    if not status_ids:
+        status_ids = None
+    count = await sla_breaches(db, sla_days, filters or None, status_ids)
+    return {"breaches": count}
+
+
+@router.get("/analytics/open_by_user", response_model=List[UserOpenCount])
+async def api_analytics_open_by_user(db: AsyncSession = Depends(get_db)) -> List[UserOpenCount]:
+    return await open_tickets_by_user(db)
+
+
+@router.get("/analytics/waiting_on_user", response_model=List[WaitingOnUserCount])
+async def api_analytics_waiting_on_user(db: AsyncSession = Depends(get_db)) -> List[WaitingOnUserCount]:
+    return await tickets_waiting_on_user(db)
+
+
+@router.get("/oncall", response_model=OnCallShiftOut)
+async def api_get_current_oncall(db: AsyncSession = Depends(get_db)) -> OnCallShiftOut:
+    shift = await get_current_oncall(db)
+    if not shift:
+        raise HTTPException(status_code=404, detail="On-call shift not found")
+    return OnCallShiftOut.model_validate(shift)
+
+
+@router.post("/ai/suggest_response", response_model=dict)
+async def api_ai_suggest_response_route(ticket: dict) -> dict:
+    try:
+        result = await ai_suggest_response(ticket)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return result
+
+
+@router.post("/ai/suggest_response/stream")
+async def api_ai_suggest_response_stream(ticket: dict) -> StreamingResponse:
+    try:
+        TicketOut.model_validate(ticket)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    async def _generate() -> AsyncGenerator[str, None]:
+        async for chunk in ai_stream_response(ticket):
+            yield f"data: {json.dumps(chunk)}\n\n"
+
+    return StreamingResponse(_generate(), media_type="text/event-stream")
