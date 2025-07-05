@@ -38,4 +38,6 @@ async def test_search_skips_oversized_ticket_body():
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1
-        assert data[0]["Ticket_ID"] == valid_id
+        item = data[0]
+        assert item["Ticket_ID"] == valid_id
+        assert set(["Ticket_ID", "Subject", "body_preview", "status_label", "priority_level"]) <= item.keys()

@@ -28,7 +28,12 @@ async def stream_response(_args: argparse.Namespace) -> None:
                 resp.raise_for_status()
 
                 async for event in EventSource(resp).aiter_sse():
-                    sys.stdout.write(event.data)
+                    try:
+                        data = json.loads(event.data)
+                    except json.JSONDecodeError:
+                        data = {"content": event.data}
+
+                    sys.stdout.write(data.get("content", ""))
                     sys.stdout.flush()
         except httpx.HTTPError as exc:
             logger.exception("HTTP error in stream_response: %s", exc)
