@@ -1,5 +1,7 @@
 from typing import Any, AsyncGenerator, List
 
+from pydantic import BaseModel
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
@@ -41,6 +43,7 @@ from tools.ai_tools import ai_suggest_response, ai_stream_response
 from limiter import limiter
 
 from schemas.ticket import TicketCreate, TicketOut, TicketUpdate, TicketExpandedOut
+from schemas.search import TicketSearchOut
 from schemas.oncall import OnCallShiftOut
 from schemas.paginated import PaginatedResponse
 from schemas.basic import (
@@ -148,17 +151,19 @@ async def api_list_tickets_expanded(
     return PaginatedResponse[TicketExpandedOut](items=ticket_out, total=total, skip=skip, limit=limit)
 
 
-@router.get("/tickets/search", response_model=List[TicketExpandedOut], response_model_by_alias=False)
-async def api_search_tickets(q: str, limit: int = 10, db: AsyncSession = Depends(get_db)) -> List[TicketExpandedOut]:
+@router.get("/tickets/search", response_model=List[TicketSearchOut], response_model_by_alias=False)
+async def api_search_tickets(
+    q: str, limit: int = 10, db: AsyncSession = Depends(get_db)
+) -> List[TicketSearchOut]:
     logger.info("API search tickets query=%s limit=%s", q, limit)
     results = await search_tickets_expanded(db, q, limit)
 
-    tickets = []
+    tickets: list[TicketSearchOut] = []
     for r in results:
         try:
-            tickets.append(TicketExpandedOut.model_validate(r))
+            tickets.append(TicketSearchOut(**r))
         except Exception as e:
-            logger.error("Invalid ticket %s: %s", getattr(r, "Ticket_ID", "?"), e)
+            logger.error("Invalid search ticket %s: %s", r.get("Ticket_ID", "?"), e)
 
     return tickets
 
@@ -254,4 +259,17 @@ async def api_get_ticket_attachments(ticket_id: int, db: AsyncSession = Depends(
 
 
 @router.get("/ticket/{ticket_id}/messages", response_model=List[TicketMessageOut])
-async def api_get_ticket_messages(ticket_
+async def api_get_ticket_messages(ticket_id: int, db: AsyncSession = Depends(get_db)) -> List[TicketMessageOut]:
+    """Return all messages for a ticket."""
+    messages = await get_ticket_messages(db, ticket_id)
+    return [TicketMessageOut.model_validate(m) for m in messages]
+
+
+@router.post("/ticket/{ticket_id}/messages", response_model=TicketMessageOut)
+async def api_post_ticket_message(
+    ticket_id: int, message: MessageIn, db: AsyncSession = Depends(get_db)
+) -> TicketMessageOut:
+    msg = await post_ticket_message(
+        db, ticket_id, message.message, message.sender_code, message.sender_name
+    )
+    return TicketMessageOut.model_validate(msg)
