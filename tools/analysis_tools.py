@@ -6,16 +6,22 @@ from sqlalchemy import func, select
 import logging
 
 from db.models import Ticket, TicketStatus, Site
+from schemas.analytics import (
+    StatusCount,
+    SiteOpenCount,
+    UserOpenCount,
+    WaitingOnUserCount,
+)
 
 logger = logging.getLogger(__name__)
 
 
 
-async def tickets_by_status(db: AsyncSession) -> list[tuple[int | None, str | None, int]]:
+async def tickets_by_status(db: AsyncSession) -> list[StatusCount]:
+    """Return counts of tickets grouped by status.
 
-    """
-    Returns a list of tuples (status_id, status_label, count)
-    for all tickets.
+    Each :class:`StatusCount` contains ``status_id``, ``status_label`` and
+    ``count`` fields.
     """
 
 
@@ -29,15 +35,18 @@ async def tickets_by_status(db: AsyncSession) -> list[tuple[int | None, str | No
         .join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
         .group_by(Ticket.Ticket_Status_ID, TicketStatus.Label)
     )
-    return [(row[0], row[1], row[2]) for row in result.all()]
+    return [
+        StatusCount(status_id=row[0], status_label=row[1], count=row[2])
+        for row in result.all()
+    ]
 
 
 
-async def open_tickets_by_site(db: AsyncSession) -> list[tuple[int | None, str | None, int]]:
+async def open_tickets_by_site(db: AsyncSession) -> list[SiteOpenCount]:
+    """Return open ticket counts grouped by site.
 
-    """
-    Returns list of tuples (site_id, site_label, open_count) for tickets
-    not closed (status != 3).
+    Each :class:`SiteOpenCount` contains ``site_id``, ``site_label`` and
+    ``count`` fields for tickets not closed (status != 3).
     """
 
 
@@ -52,7 +61,10 @@ async def open_tickets_by_site(db: AsyncSession) -> list[tuple[int | None, str |
         .filter(Ticket.Ticket_Status_ID != 3)
         .group_by(Ticket.Site_ID, Site.Label)
     )
-    return [(row[0], row[1], row[2]) for row in result.all()]
+    return [
+        SiteOpenCount(site_id=row[0], site_label=row[1], count=row[2])
+        for row in result.all()
+    ]
 
 
 
@@ -74,10 +86,11 @@ async def sla_breaches(db: AsyncSession, sla_days: int = 2) -> int:
 
 
 
-async def open_tickets_by_user(db: AsyncSession) -> list[tuple[str | None, int]]:
+async def open_tickets_by_user(db: AsyncSession) -> list[UserOpenCount]:
+    """Return open ticket counts grouped by assigned technician.
 
-    """
-    Returns list of tuples (assigned_email, open_count) for tickets not closed.
+    Each :class:`UserOpenCount` contains ``assigned_email`` and ``count``
+    fields for tickets not closed.
     """
 
 
@@ -87,13 +100,17 @@ async def open_tickets_by_user(db: AsyncSession) -> list[tuple[str | None, int]]
         .filter(Ticket.Ticket_Status_ID != 3)
         .group_by(Ticket.Assigned_Email)
     )
-    return [(row[0], row[1]) for row in result.all()]
+    return [
+        UserOpenCount(assigned_email=row[0], count=row[1])
+        for row in result.all()
+    ]
 
 
-async def tickets_waiting_on_user(db: AsyncSession) -> list[tuple[str | None, int]]:
+async def tickets_waiting_on_user(db: AsyncSession) -> list[WaitingOnUserCount]:
+    """Return counts of tickets awaiting a user response.
 
-    """
-    Returns list of tuples (contact_email, waiting_count) for tickets awaiting contact reply (status == 4).
+    Each :class:`WaitingOnUserCount` contains ``contact_email`` and ``count``
+    fields for tickets where status is ``4``.
     """
 
     logger.info("Calculating tickets waiting on user")
@@ -102,4 +119,7 @@ async def tickets_waiting_on_user(db: AsyncSession) -> list[tuple[str | None, in
         .filter(Ticket.Ticket_Status_ID == 4)
         .group_by(Ticket.Ticket_Contact_Email)
     )
-    return [(row[0], row[1]) for row in result.all()]
+    return [
+        WaitingOnUserCount(contact_email=row[0], count=row[1])
+        for row in result.all()
+    ]
