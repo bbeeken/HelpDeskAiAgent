@@ -274,6 +274,7 @@ async def api_search_tickets(
     results = await search_tickets_expanded(db, q, limit)
 
 
+
     tickets: list[TicketExpandedOut] = []
     for r in results:
         try:
@@ -282,6 +283,7 @@ async def api_search_tickets(
             logger.error("Invalid ticket %s: %s", getattr(r, "Ticket_ID", "?"), e)
 
     return tickets
+
 
 
 @router.post("/ticket", response_model=TicketOut)
