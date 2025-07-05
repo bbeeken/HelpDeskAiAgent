@@ -1,9 +1,3 @@
-# ai_tools.py
-
-"""
-Helper functions and classes for interacting with the MCP AI backend.
-"""
-
 import logging
 import re
 from enum import Enum
@@ -11,8 +5,8 @@ from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from pydantic import BaseModel, Field, ValidationError
-
 from fastmcp import Client
+
 from schemas.ticket import TicketOut
 from ai.mcp_agent import (
     suggest_ticket_response as mcp_suggest_response,
@@ -82,7 +76,6 @@ class AITools:
         return issues
 
     def _evaluate_quality(self, response: str, subject: str) -> AIResponseQuality:
-        # simple relevance: overlap of subject words
         subj_tokens = set(subject.lower().split())
         resp_tokens = set(response.lower().split())
         overlap = len(subj_tokens & resp_tokens)
@@ -109,7 +102,7 @@ class AITools:
             "You are an expert IT helpdesk technician.",
             f"Tone: {tone.value}",
             f"Max tokens: {max_tokens}",
-            "",
+            "",  # newline
             f"Subject: {ticket.subject}",
             f"Description: {ticket.ticket_body}",
         ]
@@ -128,37 +121,24 @@ class AITools:
         include_next_steps: bool = True,
         extra_instructions: Optional[str] = None
     ) -> Dict[str, Any]:
-        """
-        Generate a one-shot AI response for a ticket.
-
-        Returns a dict with:
-          - content: the response text
-          - tone: echo of the tone used
-          - quality: AIResponseQuality metrics
-          - generated_at: ISO timestamp
-          - model_used: name of backend
-          - safety_issues: list (empty if none)
-        """
-        # Validate
         try:
             ticket = TicketOut.model_validate(raw_ticket)
         except ValidationError as e:
             logger.error("Invalid ticket payload: %s", e)
             raise
 
-        prompt = self._build_prompt(ticket, tone, max_tokens, include_next_steps, extra_instructions)
+        prompt = self._build_prompt(
+            ticket, tone, max_tokens, include_next_steps, extra_instructions
+        )
         issues = self._check_safety(prompt)
         if issues:
-            return {
-                "error": "unsafe_content",
-                "safety_issues": issues
-            }
+            return {"error": "unsafe_content", "safety_issues": issues}
 
         client = self._ensure_client()
         async with client:
             try:
                 text = await mcp_suggest_response(ticket.model_dump(), prompt)
-            except Exception as e:
+            except Exception:
                 logger.exception("MCP suggest failed")
                 text = ""
 
@@ -180,19 +160,15 @@ class AITools:
         include_next_steps: bool = True,
         extra_instructions: Optional[str] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        """
-        Stream chunks of a ticket response. Each yielded dict contains:
-          - content: chunk text
-          - generated_at: ISO timestamp for chunk
-          - model_used: backend name
-        """
         try:
             ticket = TicketOut.model_validate(raw_ticket)
         except ValidationError:
             logger.error("Invalid ticket payload for streaming.")
             return
 
-        prompt = self._build_prompt(ticket, tone, max_tokens, include_next_steps, extra_instructions)
+        prompt = self._build_prompt(
+            ticket, tone, max_tokens, include_next_steps, extra_instructions
+        )
         issues = self._check_safety(prompt)
         if issues:
             yield {"error": "unsafe_content", "safety_issues": issues}
@@ -201,18 +177,26 @@ class AITools:
         client = self._ensure_client()
         async with client:
             try:
-                async for chunk in client.stream_tool(
-                    "suggest_ticket_response",
-                    {"prompt": prompt, "max_tokens": max_tokens},
-                    timeout=self.timeout
+                async for chunk in mcp_stream_ticket_response(
+                    ticket.model_dump(), prompt
                 ):
-                    text = getattr(chunk, "data", None) or getattr(chunk, "content", "")
-                    yield {
-                        "content": text,
-                        "generated_at": datetime.now(timezone.utc).isoformat(),
-                        "model_used": "mcp_agent"
-                    }
+                    yield {"content": chunk}
             except Exception:
                 logger.exception("MCP stream failed")
 
-__all__ = ["AITools", "ResponseTone", "AIResponseQuality"]
+
+def ai_suggest_response(ticket: Dict[str, Any], context: str = "") -> Any:
+    """Legacy helper: return suggested response text only."""
+    return mcp_suggest_response(ticket, context)
+
+
+async def ai_stream_response(ticket: Dict[str, Any], context: str = "") -> AsyncGenerator[str, None]:
+    """Legacy helper: stream response chunks as plain strings."""
+    async for chunk in mcp_stream_ticket_response(ticket, context):
+        yield chunk
+
+
+__all__ = [
+    "AITools", "ResponseTone", "AIResponseQuality",
+    "ai_suggest_response", "ai_stream_response"
+]
