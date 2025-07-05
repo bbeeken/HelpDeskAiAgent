@@ -8,11 +8,9 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.mssql import SessionLocal
-from db.models import VTicketMasterExpanded
 from limiter import limiter
 
 # Tools
@@ -21,7 +19,6 @@ from tools.ticket_tools import (
     update_ticket,
     delete_ticket,
     get_ticket_expanded,
-    list_tickets_expanded,
     search_tickets_expanded,
 )
 from tools.asset_tools import get_asset, list_assets
@@ -54,7 +51,6 @@ from schemas.basic import (
     TicketCategoryOut,
 )
 from schemas.oncall import OnCallShiftOut
-from schemas.paginated import PaginatedResponse
 from schemas.analytic import (
     SiteOpenCount,
     StatusCount,
@@ -85,17 +81,11 @@ def extract_filters(
         if key not in exclude
     }
 
-def pagination_params(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1, le=100),
-) -> Dict[str, int]:
-    return {"skip": skip, "limit": limit}
-
 # ─── Main Router & Sub-Routers ─────────────────────────────────────────────────
 
 router = APIRouter()
 
-# ─── Tickets Sub-Router ───────────────────────────────────────────────────────
+# ─── Tickets Sub-Router ────────────────────────────────────────────────────────
 
 ticket_router = APIRouter(prefix="/ticket", tags=["tickets"])
 
@@ -217,13 +207,13 @@ async def list_statuses_endpoint(db: AsyncSession = Depends(get_db)):
     return [TicketStatusOut.model_validate(s) for s in st]
 
 @lookup_router.get("/ticket/{ticket_id}/attachments", response_model=List[TicketAttachmentOut])
-async def api_get_ticket_attachments(ticket_id: int, db: AsyncSession = Depends(get_db)) -> List[TicketAttachmentOut]:
+async def get_ticket_attachments_endpoint(ticket_id: int, db: AsyncSession = Depends(get_db)) -> List[TicketAttachmentOut]:
     atts = await get_ticket_attachments(db, ticket_id)
     return [TicketAttachmentOut.model_validate(a) for a in atts]
 
 router.include_router(lookup_router)
 
-# ─── Analytics Sub-Router ─────────────────────────────────────────────────────
+# ─── Analytics Sub-Router ────────────────────────────────────────────────────
 
 analytics_router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -261,27 +251,27 @@ async def sla_breaches_endpoint(
 
 router.include_router(analytics_router)
 
-# ─── AI Sub-Router ─────────────────────────────────────────────────────────────
+# ─── AI Sub-Router ───────────────────────────────────────────────────────────
 
 ai_router = APIRouter(prefix="/ai", tags=["ai"])
 
 @ai_router.post("/suggest_response", response_model=dict)
 @limiter.limit("10/minute")
-async def api_ai_suggest_response_route(ticket: dict) -> dict:
+async def suggest_response(ticket: dict) -> dict:
     try:
         result = await ai_suggest_response(ticket)
     except ValidationError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail=str(exc))
     return result
 
 @ai_router.post("/suggest_response/stream")
 @limiter.limit("10/minute")
-async def api_ai_suggest_response_stream(ticket: dict) -> StreamingResponse:
-    # validate input first
+async def suggest_response_stream(ticket: dict) -> StreamingResponse:
+    # validate input before streaming
     try:
         TicketOut.model_validate(ticket)
     except ValidationError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail=str(exc))
 
     async def _generate() -> AsyncGenerator[str, None]:
         async for chunk in ai_stream_response(ticket):
@@ -291,10 +281,10 @@ async def api_ai_suggest_response_stream(ticket: dict) -> StreamingResponse:
 
 router.include_router(ai_router)
 
-# ─── On-Call Endpoint ──────────────────────────────────────────────────────────
+# ─── On-Call Endpoint ────────────────────────────────────────────────────────
 
 @router.get("/oncall", response_model=Optional[OnCallShiftOut], tags=["oncall"])
-async def api_get_current_oncall(db: AsyncSession = Depends(get_db)) -> Optional[OnCallShiftOut]:
+async def get_current_oncall_endpoint(db: AsyncSession = Depends(get_db)) -> Optional[OnCallShiftOut]:
     shift = await get_current_oncall(db)
     if not shift:
         raise HTTPException(status_code=404, detail="On-call shift not found")
