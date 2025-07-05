@@ -7,7 +7,7 @@ from datetime import datetime
 
 class TicketBase(BaseModel):
     Subject: Annotated[str, Field(max_length=255)]
-    Ticket_Body: Annotated[str, Field(max_length=2000)]
+    Ticket_Body: Annotated[str, Field()]
     Ticket_Status_ID: Optional[int] = 1
     Ticket_Contact_Name: Annotated[str, Field(max_length=255)]
     Ticket_Contact_Email: EmailStr
@@ -18,7 +18,7 @@ class TicketBase(BaseModel):
     Assigned_Email: Optional[EmailStr] = None
     Priority_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
-    Resolution: Optional[Annotated[str, Field(max_length=2000)]] = None
+    Resolution: Optional[Annotated[str, Field()]] = None
 
     @field_validator("Ticket_Contact_Email", "Assigned_Email", mode="before")
     def validate_emails(cls, v):
@@ -27,7 +27,7 @@ class TicketBase(BaseModel):
         if isinstance(v, str) and (v == "" or v.lower() == "null"):
             return None
         try:
-            return validate_email(v, check_deliverability=False).email
+            return validate_email(v, check_deliverability=False).normalized
         except EmailNotValidError as e:
             raise ValueError(str(e))
 
@@ -69,7 +69,7 @@ class TicketUpdate(BaseModel):
 
 class TicketIn(BaseModel):
     Subject: Optional[Annotated[str, Field(max_length=255)]] = None
-    Ticket_Body: Optional[Annotated[str, Field(max_length=2000)]] = None
+    Ticket_Body: Optional[Annotated[str, Field()]] = None
     Ticket_Status_ID: Optional[int] = None
     Ticket_Contact_Name: Optional[Annotated[str, Field(max_length=255)]] = None
     Ticket_Contact_Email: Optional[EmailStr] = None
@@ -81,7 +81,7 @@ class TicketIn(BaseModel):
     Assigned_Email: Optional[EmailStr] = None
     Priority_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
-    Resolution: Optional[Annotated[str, Field(max_length=2000)]] = None
+    Resolution: Optional[Annotated[str, Field()]] = None
 
     @field_validator("Ticket_Contact_Email", "Assigned_Email", mode="before")
     def validate_emails(cls, v):
@@ -90,7 +90,7 @@ class TicketIn(BaseModel):
         if isinstance(v, str) and (v == "" or v.lower() == "null"):
             return None
         try:
-            return validate_email(v, check_deliverability=False).email
+            return validate_email(v, check_deliverability=False).normalized
         except EmailNotValidError as e:
             raise ValueError(str(e))
 

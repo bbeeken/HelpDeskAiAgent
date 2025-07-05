@@ -61,7 +61,12 @@ from schemas.basic import (
 )
 
 
-from schemas.analytics import StatusCount, SiteOpenCount
+from schemas.analytics import (
+    StatusCount,
+    SiteOpenCount,
+    UserOpenCount,
+    WaitingOnUserCount,
+)
 
 from db.models import (
     Ticket,
@@ -267,15 +272,17 @@ async def api_search_tickets(
 
     logger.info("API search tickets query=%s limit=%s", q, limit)
     results = await search_tickets_expanded(db, q, limit)
-    ticket_out: list[TicketExpandedOut] = []
+
+
+    tickets: list[TicketExpandedOut] = []
     for r in results:
         try:
-            ticket_out.append(TicketExpandedOut.model_validate(r))
-        except Exception as e:
-            logger.error(
-                "Invalid ticket %s: %s", getattr(r, "Ticket_ID", "?"), e
-            )
-    return ticket_out
+            tickets.append(TicketExpandedOut.model_validate(r))
+        except Exception as e:  # pragma: no cover - log and skip invalid rows
+            logger.error("Invalid ticket %s: %s", getattr(r, "Ticket_ID", "?"), e)
+
+    return tickets
+
 
 @router.post("/ticket", response_model=TicketOut)
 async def api_create_ticket(
@@ -666,10 +673,7 @@ async def api_tickets_by_status(
         Aggregated counts per status value.
     """
 
-    return [
-        StatusCount(status_id=sid, status_label=label, count=count)
-        for sid, label, count in await tickets_by_status(db)
-    ]
+    return await tickets_by_status(db)
 
 @router.get("/analytics/open_by_site", response_model=list[SiteOpenCount])
 async def api_open_tickets_by_site(
@@ -688,15 +692,17 @@ async def api_open_tickets_by_site(
         Count of open tickets for each site.
     """
 
-    return [
-        SiteOpenCount(site_id=sid, site_label=label, count=count)
-        for sid, label, count in await open_tickets_by_site(db)
-    ]
+    return await open_tickets_by_site(db)
 
 @router.get("/analytics/sla_breaches")
 async def api_sla_breaches(
-    sla_days: int = 2, db: AsyncSession = Depends(get_db)
+    request: Request,
+    sla_days: int = 2,
+    status_id: list[int] | None = None,
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
+
+
     """Count tickets older than the SLA threshold.
 
     Parameters
@@ -713,9 +719,11 @@ async def api_sla_breaches(
     """
     return {"breaches": await sla_breaches(db, sla_days)}
 
-@router.get("/analytics/open_by_user")
+
+@router.get("/analytics/open_by_user", response_model=list[UserOpenCount])
 async def api_open_tickets_by_user(
     db: AsyncSession = Depends(get_db),
+
 ) -> list[tuple[str | None, int]]:
     """List open ticket counts grouped by assigned user.
 
@@ -730,11 +738,13 @@ async def api_open_tickets_by_user(
         Tuples of user email and open ticket count.
     """
 
+
     return await open_tickets_by_user(db)
 
-@router.get("/analytics/waiting_on_user")
+@router.get("/analytics/waiting_on_user", response_model=list[WaitingOnUserCount])
 async def api_tickets_waiting_on_user(
     db: AsyncSession = Depends(get_db),
+
 ) -> list[tuple[str | None, int]]:
     """Count tickets waiting for user response.
 
@@ -748,6 +758,7 @@ async def api_tickets_waiting_on_user(
     list[tuple[str | None, int]]
         Tuples of contact email and waiting ticket count.
     """
+
 
     return await tickets_waiting_on_user(db)
 

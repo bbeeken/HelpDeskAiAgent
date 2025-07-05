@@ -21,3 +21,16 @@ def test_subject_too_long():
             Ticket_Contact_Name="Name",
             Ticket_Contact_Email="test@example.com",
         )
+
+
+def test_long_body_allowed():
+    long_text = "x" * 3000
+    obj = TicketCreate(
+        Subject="Test",
+        Ticket_Body=long_text,
+        Ticket_Contact_Name="Name",
+        Ticket_Contact_Email="test@example.com",
+        Resolution=long_text,
+    )
+    assert obj.Ticket_Body == long_text
+    assert obj.Resolution == long_text
