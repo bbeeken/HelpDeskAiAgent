@@ -28,6 +28,15 @@ async def _init_models():
 import asyncio
 asyncio.get_event_loop().run_until_complete(_init_models())
 
+from main import app
+from asgi_lifespan import LifespanManager
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def app_lifespan():
+    async with LifespanManager(app):
+        yield
+
 
 @pytest_asyncio.fixture(autouse=True)
 async def db_setup():
