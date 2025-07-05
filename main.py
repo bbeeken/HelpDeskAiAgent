@@ -8,6 +8,7 @@ import logging
 
 # Configure root logger so messages are output when running with uvicorn
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -78,6 +79,19 @@ async def handle_database(request: Request, exc: DatabaseError):
         error_code=exc.error_code,
         message=exc.message,
         details=exc.details,
+        timestamp=datetime.now(UTC),
+    )
+    return JSONResponse(status_code=500, content=jsonable_encoder(resp))
+
+
+@app.exception_handler(Exception)
+async def handle_unexpected(request: Request, exc: Exception):
+    """Convert unexpected errors to JSON with traceback logging."""
+    logger.exception("Unhandled exception during request")
+    resp = ErrorResponse(
+        error_code="UNEXPECTED_ERROR",
+        message=str(exc) or "Internal server error",
+        details=None,
         timestamp=datetime.now(UTC),
     )
     return JSONResponse(status_code=500, content=jsonable_encoder(resp))
