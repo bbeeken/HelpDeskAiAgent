@@ -91,7 +91,7 @@ async def test_analytics_open_by_user(client: AsyncClient):
 
     resp = await client.get("/analytics/open_by_user")
     assert resp.status_code == 200
-    data = {item[0]: item[1] for item in resp.json()}
+    data = {item["assigned_email"]: item["count"] for item in resp.json()}
     assert data == {"tech@example.com": 2, "other@example.com": 1}
 
 @pytest.mark.asyncio
@@ -103,7 +103,7 @@ async def test_analytics_waiting_on_user(client: AsyncClient):
 
     resp = await client.get("/analytics/waiting_on_user")
     assert resp.status_code == 200
-    data = {item[0]: item[1] for item in resp.json()}
+    data = {item["contact_email"]: item["count"] for item in resp.json()}
     assert data == {"user1@example.com": 2, "user2@example.com": 1}
 
 
