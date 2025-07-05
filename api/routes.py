@@ -273,6 +273,7 @@ async def api_search_tickets(
     logger.info("API search tickets query=%s limit=%s", q, limit)
     results = await search_tickets_expanded(db, q, limit)
 
+
     tickets: list[TicketExpandedOut] = []
     for r in results:
         try:
