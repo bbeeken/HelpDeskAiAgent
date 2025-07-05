@@ -76,8 +76,14 @@ async def list_tickets_expanded(
 
 async def search_tickets_expanded(
     db: AsyncSession, query: str, limit: int = 10
-) -> Sequence[VTicketMasterExpanded]:
-    """Search tickets in the expanded view by subject or body."""
+) -> list[dict[str, Any]]:
+    """Search tickets in the expanded view by subject or body.
+
+    Results include only a subset of fields and skip tickets with very large
+    bodies. Each dictionary contains ``Ticket_ID``, ``Subject``, a ``body_preview``
+    truncated to 200 characters, ``status_label`` and ``priority_level``.
+    """
+
     like = f"%{query}%"
 
     result = await db.execute(
@@ -88,7 +94,23 @@ async def search_tickets_expanded(
         )
         .limit(limit)
     )
-    return result.scalars().all()
+
+    summaries: list[dict[str, Any]] = []
+    for row in result.scalars().all():
+        body = row.Ticket_Body or ""
+        if len(body) > 2000:
+            continue
+        summaries.append(
+            {
+                "Ticket_ID": row.Ticket_ID,
+                "Subject": row.Subject,
+                "body_preview": body[:200],
+                "status_label": row.Ticket_Status_Label,
+                "priority_level": row.Priority_Level,
+            }
+        )
+
+    return summaries
 
 
 async def create_ticket(db: AsyncSession, ticket_obj: Ticket) -> Ticket:
