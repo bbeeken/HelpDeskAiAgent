@@ -6,6 +6,8 @@ from db.mssql import engine, SessionLocal
 from datetime import datetime, UTC
 from tools.ticket_tools import create_ticket, search_tickets_expanded
 from db.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
+from httpx import AsyncClient, ASGITransport
+from main import app
 
 os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
 
@@ -31,3 +33,23 @@ async def test_search_tickets():
         await create_ticket(db, t)
         results = await search_tickets_expanded(db, "Network")
         assert results and results[0].Subject == "Network issue"
+
+
+@pytest.mark.asyncio
+async def test_search_endpoint_skips_invalid_ticket():
+    async with SessionLocal() as db:
+        bad = Ticket(
+            Subject="Bad",
+            Ticket_Body="x" * 2001,
+            Ticket_Contact_Name="n",
+            Ticket_Contact_Email="e@example.com",
+            Created_Date=datetime.now(UTC),
+            Ticket_Status_ID=1,
+        )
+        await create_ticket(db, bad)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get("/tickets/search", params={"q": "Bad"})
+        assert resp.status_code == 200
+        assert resp.json() == []
