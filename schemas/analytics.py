@@ -10,3 +10,17 @@ class SiteOpenCount(BaseModel):
     site_id: Optional[int]
     site_label: Optional[str]
     count: int
+
+
+class UserOpenCount(BaseModel):
+    """Open ticket count grouped by assigned technician."""
+
+    assigned_email: Optional[str]
+    count: int
+
+
+class WaitingOnUserCount(BaseModel):
+    """Count of tickets waiting on a contact reply."""
+
+    contact_email: Optional[str]
+    count: int

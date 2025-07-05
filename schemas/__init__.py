@@ -35,6 +35,11 @@ __all__ = [
 
 
 
-from .analytics import StatusCount, SiteOpenCount
+from .analytics import (
+    StatusCount,
+    SiteOpenCount,
+    UserOpenCount,
+    WaitingOnUserCount,
+)
 
 
