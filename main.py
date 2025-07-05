@@ -5,9 +5,8 @@ from fastapi_mcp import FastApiMCP
 
 
 import logging
-
-# Configure root logger so messages are output when running with uvicorn
-logging.basicConfig(level=logging.INFO)
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
 
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -27,16 +26,53 @@ import asyncio
 import json
 import typing
 
+
+# Correlation ID context variable for log records
+_correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="-")
+
+
+class CorrelationIdFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:  # type: ignore[override]
+        record.correlation_id = _correlation_id_var.get()
+        return True
+
 # Application version
 APP_VERSION = "0.1.0"
 
 # Record startup time to report uptime
 START_TIME = datetime.now(UTC)
 from errors import ErrorResponse, NotFoundError, ValidationError, DatabaseError
+from db.models import Base
+from db.mssql import engine
 
 
 app = FastAPI(title="Truck Stop MCP Helpdesk API")
-app.state.limiter = limiter
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Configure logging and initialize application components."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(correlation_id)s - %(name)s - %(message)s",
+    )
+    logging.getLogger().addFilter(CorrelationIdFilter())
+
+    app.state.limiter = limiter
+    app.state.mcp = FastApiMCP(app)
+    app.state.mcp.mount()
+
+    global START_TIME
+    START_TIME = datetime.now(UTC)
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    yield
+
+
+app = FastAPI(title="Truck Stop MCP Helpdesk API", lifespan=lifespan)
+
 app.add_exception_handler(
     RateLimitExceeded,
     lambda request, exc: JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"}),
@@ -44,9 +80,17 @@ app.add_exception_handler(
 app.add_middleware(SlowAPIMiddleware)
 app.include_router(router)
 
-# Expose API operations via MCP
-app.state.mcp = FastApiMCP(app)
-app.state.mcp.mount()
+
+@app.middleware("http")
+async def add_correlation_id(request: Request, call_next):
+    correlation_id = request.headers.get("X-Request-ID", uuid.uuid4().hex)
+    token = _correlation_id_var.set(correlation_id)
+    try:
+        response = await call_next(request)
+    finally:
+        _correlation_id_var.reset(token)
+    response.headers["X-Request-ID"] = correlation_id
+    return response
 
 
 
