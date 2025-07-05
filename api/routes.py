@@ -36,6 +36,7 @@ from tools.analysis_tools import (
     open_tickets_by_user,
     sla_breaches,
     tickets_waiting_on_user,
+    ticket_trend,
 )
 from tools.ai_tools import ai_suggest_response, ai_stream_response
 from tools.oncall_tools import get_current_oncall
@@ -57,7 +58,7 @@ from schemas.basic import (
     TicketAttachmentOut,
     TicketMessageOut,
 )
-from schemas.analytics import StatusCount, SiteOpenCount, UserOpenCount, WaitingOnUserCount
+from schemas.analytics import StatusCount, SiteOpenCount, UserOpenCount, WaitingOnUserCount, TrendCount
 from schemas.oncall import OnCallShiftOut
 from schemas.paginated import PaginatedResponse
 
@@ -98,9 +99,6 @@ class MessageIn(BaseModel):
 
 @ticket_router.get("/{ticket_id}", response_model=TicketExpandedOut)
 async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketExpandedOut:
-    """
-    Retrieve a single ticket by ID, with all related fields expanded.
-    """
     ticket = await get_ticket_expanded(db, ticket_id)
     if not ticket:
         logger.warning("Ticket %s not found", ticket_id)
@@ -114,21 +112,16 @@ async def list_tickets(
     limit: int = Query(10, ge=1),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedResponse[TicketExpandedOut]:
-    """
-    List tickets with pagination, sorting, and arbitrary filters.
-    """
     filters = extract_filters(request)
     sort = request.query_params.getlist("sort") or None
-
     items = await list_tickets_expanded(db, skip, limit, filters=filters or None, sort=sort)
-
     count_q = select(func.count(VTicketMasterExpanded.Ticket_ID))
     for k, v in filters.items():
         if hasattr(VTicketMasterExpanded, k):
             count_q = count_q.filter(getattr(VTicketMasterExpanded, k) == v)
     total = await db.scalar(count_q) or 0
 
-    validated = []
+    validated: List[TicketExpandedOut] = []
     for t in items:
         try:
             validated.append(TicketExpandedOut.model_validate(t))
@@ -143,12 +136,9 @@ async def search_tickets(
     limit: int = Query(10, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ) -> List[TicketSearchOut]:
-    """
-    Search ticket subjects and bodies for text `q`, returning summary results.
-    """
     logger.info("Searching tickets for '%s' (limit=%d)", q, limit)
     results = await search_tickets_expanded(db, q, limit)
-    validated = []
+    validated: List[TicketSearchOut] = []
     for r in results:
         try:
             validated.append(TicketSearchOut.model_validate(r))
@@ -160,9 +150,6 @@ async def search_tickets(
 async def create_ticket_endpoint(
     ticket: TicketCreate, db: AsyncSession = Depends(get_db)
 ) -> TicketOut:
-    """
-    Create a new ticket. Automatically sets `Created_Date` to now (UTC).
-    """
     payload = ticket.model_dump()
     payload["Created_Date"] = datetime.now(timezone.utc)
     created = await create_ticket(db, payload)
@@ -174,9 +161,6 @@ async def update_ticket_endpoint(
     updates: TicketUpdate,
     db: AsyncSession = Depends(get_db),
 ) -> TicketOut:
-    """
-    Update fields on an existing ticket.
-    """
     updated = await update_ticket(db, ticket_id, updates.model_dump(exclude_unset=True))
     if not updated:
         logger.warning("Ticket %s not found or no changes applied", ticket_id)
@@ -185,9 +169,6 @@ async def update_ticket_endpoint(
 
 @ticket_router.delete("/{ticket_id}", status_code=204)
 async def delete_ticket_endpoint(ticket_id: int, db: AsyncSession = Depends(get_db)):
-    """
-    Remove a ticket by its ID.
-    """
     success = await delete_ticket(db, ticket_id)
     if not success:
         logger.warning("Ticket %s not found for deletion", ticket_id)
@@ -195,9 +176,6 @@ async def delete_ticket_endpoint(ticket_id: int, db: AsyncSession = Depends(get_
 
 @ticket_router.get("/{ticket_id}/messages", response_model=List[TicketMessageOut])
 async def list_ticket_messages(ticket_id: int, db: AsyncSession = Depends(get_db)) -> List[TicketMessageOut]:
-    """
-    List all messages posted to a ticket, chronologically.
-    """
     msgs = await get_ticket_messages(db, ticket_id)
     return [TicketMessageOut.model_validate(m) for m in msgs]
 
@@ -207,9 +185,6 @@ async def add_ticket_message(
     msg: MessageIn,
     db: AsyncSession = Depends(get_db),
 ) -> TicketMessageOut:
-    """
-    Add a new message to a ticket.
-    """
     created = await post_ticket_message(db, ticket_id, msg.message, msg.sender_code, msg.sender_name)
     return TicketMessageOut.model_validate(created)
 
@@ -284,30 +259,18 @@ analytics_router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 @analytics_router.get("/status", response_model=List[StatusCount])
 async def tickets_by_status_endpoint(db: AsyncSession = Depends(get_db)) -> List[StatusCount]:
-    """
-    Count tickets grouped by status.
-    """
     return await tickets_by_status(db)
 
 @analytics_router.get("/open_by_site", response_model=List[SiteOpenCount])
 async def open_by_site_endpoint(db: AsyncSession = Depends(get_db)) -> List[SiteOpenCount]:
-    """
-    Summarize number of open tickets per site.
-    """
     return await open_tickets_by_site(db)
 
 @analytics_router.get("/open_by_user", response_model=List[UserOpenCount])
 async def open_by_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[UserOpenCount]:
-    """
-    Summarize number of open tickets per assigned user.
-    """
     return await open_tickets_by_user(db)
 
 @analytics_router.get("/waiting_on_user", response_model=List[WaitingOnUserCount])
 async def waiting_on_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[WaitingOnUserCount]:
-    """
-    Count tickets currently waiting on user response.
-    """
     return await tickets_waiting_on_user(db)
 
 @analytics_router.get("/sla_breaches")
@@ -317,12 +280,13 @@ async def sla_breaches_endpoint(
     status_id: Optional[List[int]] = Query(None),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, int]:
-    """
-    Count tickets older than `sla_days`, optionally filtered by status.
-    """
     filters = extract_filters(request)
     breaches = await sla_breaches(db, sla_days, filters=filters or None, status_ids=status_id or None)
     return {"breaches": breaches}
+
+@analytics_router.get("/trend", response_model=List[TrendCount])
+async def ticket_trend_endpoint(days: int = Query(7, ge=1), db: AsyncSession = Depends(get_db)) -> List[TrendCount]:
+    return await ticket_trend(db, days)
 
 # ─── AI Sub-Router ───────────────────────────────────────────────────────────
 ai_router = APIRouter(prefix="/ai", tags=["ai"])
@@ -330,9 +294,6 @@ ai_router = APIRouter(prefix="/ai", tags=["ai"])
 @ai_router.post("/suggest_response", response_model=Dict[str, str])
 @limiter.limit("10/minute")
 async def suggest_response(ticket: TicketOut) -> Dict[str, str]:
-    """
-    Return a one‐off AI‐generated reply suggestion for a ticket.
-    """
     try:
         return {"response": await ai_suggest_response(ticket.model_dump(), "")}
     except ValidationError as exc:
@@ -341,9 +302,6 @@ async def suggest_response(ticket: TicketOut) -> Dict[str, str]:
 @ai_router.post("/suggest_response/stream")
 @limiter.limit("10/minute")
 async def suggest_response_stream(ticket: TicketOut) -> StreamingResponse:
-    """
-    Stream an AI‐generated reply suggestion (SSE) for a ticket.
-    """
     ticket.model_validate(ticket.model_dump())
     async def _gen() -> AsyncGenerator[str, None]:
         async for chunk in ai_stream_response(ticket.model_dump(), ""):
@@ -355,19 +313,11 @@ oncall_router = APIRouter(prefix="/oncall", tags=["oncall"])
 
 @oncall_router.get("", response_model=Optional[OnCallShiftOut])
 async def get_oncall_shift(db: AsyncSession = Depends(get_db)) -> Optional[OnCallShiftOut]:
-    """
-    Retrieve the currently active on-call shift, if any.
-    """
     shift = await get_current_oncall(db)
-    if shift is None:
-        return None
-    return OnCallShiftOut.model_validate(shift)
+    return OnCallShiftOut.model_validate(shift) if shift else None
 
 # ─── Application Registration ─────────────────────────────────────────────────
 def register_routes(app: FastAPI) -> None:
-    """
-    Include all sub-routers on the given FastAPI app.
-    """
     app.include_router(ticket_router)
     app.include_router(lookup_router)
     app.include_router(analytics_router)
