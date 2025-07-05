@@ -64,7 +64,6 @@ from schemas.paginated import PaginatedResponse
 logger = logging.getLogger(__name__)
 
 # ─── Database Dependency ──────────────────────────────────────────────────────
-
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Yield a SQLAlchemy AsyncSession, ensuring proper cleanup.
@@ -76,7 +75,6 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 # ─── Utility ──────────────────────────────────────────────────────────────────
-
 def extract_filters(
     request: Request,
     exclude: List[str] = ("skip", "limit", "sort", "sla_days", "status_id")
@@ -91,7 +89,6 @@ def extract_filters(
     }
 
 # ─── Tickets Sub-Router ───────────────────────────────────────────────────────
-
 ticket_router = APIRouter(prefix="/ticket", tags=["tickets"])
 
 class MessageIn(BaseModel):
@@ -99,11 +96,7 @@ class MessageIn(BaseModel):
     sender_code: str = Field(..., example="USR123")
     sender_name: str = Field(..., example="John Doe")
 
-@ticket_router.get(
-    "/{ticket_id}",
-    response_model=TicketExpandedOut,
-    response_model_by_alias=False,
-)
+@ticket_router.get("/{ticket_id}", response_model=TicketExpandedOut)
 async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketExpandedOut:
     """
     Retrieve a single ticket by ID, with all related fields expanded.
@@ -114,11 +107,7 @@ async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> Tick
         raise HTTPException(status_code=404, detail="Ticket not found")
     return TicketExpandedOut.model_validate(ticket)
 
-@ticket_router.get(
-    "",
-    response_model=PaginatedResponse[TicketExpandedOut],
-    response_model_by_alias=False,
-)
+@ticket_router.get("", response_model=PaginatedResponse[TicketExpandedOut])
 async def list_tickets(
     request: Request,
     skip: int = Query(0, ge=0),
@@ -127,39 +116,28 @@ async def list_tickets(
 ) -> PaginatedResponse[TicketExpandedOut]:
     """
     List tickets with pagination, sorting, and arbitrary filters.
-
-    - `skip`: number of records to skip  
-    - `limit`: max number of records to return  
-    - other query params are treated as column filters  
-    - `sort` may be repeated to specify ordering
     """
-    filters = extract_filters(request, exclude=("skip", "limit", "sort"))
+    filters = extract_filters(request)
     sort = request.query_params.getlist("sort") or None
 
-    # fetch items
     items = await list_tickets_expanded(db, skip, limit, filters=filters or None, sort=sort)
 
-    # count total matching
     count_q = select(func.count(VTicketMasterExpanded.Ticket_ID))
     for k, v in filters.items():
         if hasattr(VTicketMasterExpanded, k):
             count_q = count_q.filter(getattr(VTicketMasterExpanded, k) == v)
     total = await db.scalar(count_q) or 0
 
-    # validate output
     validated = []
     for t in items:
         try:
             validated.append(TicketExpandedOut.model_validate(t))
         except ValidationError as exc:
             logger.error("Invalid ticket %s: %s", getattr(t, "Ticket_ID", "?"), exc)
+
     return PaginatedResponse(items=validated, total=total, skip=skip, limit=limit)
 
-@ticket_router.get(
-    "/search",
-    response_model=List[TicketSearchOut],
-    response_model_by_alias=False,
-)
+@ticket_router.get("/search", response_model=List[TicketSearchOut])
 async def search_tickets(
     q: str = Query(..., min_length=1),
     limit: int = Query(10, ge=1, le=100),
@@ -197,7 +175,7 @@ async def update_ticket_endpoint(
     db: AsyncSession = Depends(get_db),
 ) -> TicketOut:
     """
-    Update fields on an existing ticket. Only provided fields are changed.
+    Update fields on an existing ticket.
     """
     updated = await update_ticket(db, ticket_id, updates.model_dump(exclude_unset=True))
     if not updated:
@@ -215,11 +193,7 @@ async def delete_ticket_endpoint(ticket_id: int, db: AsyncSession = Depends(get_
         logger.warning("Ticket %s not found for deletion", ticket_id)
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-@ticket_router.get(
-    "/{ticket_id}/messages",
-    response_model=List[TicketMessageOut],
-    response_model_by_alias=False,
-)
+@ticket_router.get("/{ticket_id}/messages", response_model=List[TicketMessageOut])
 async def list_ticket_messages(ticket_id: int, db: AsyncSession = Depends(get_db)) -> List[TicketMessageOut]:
     """
     List all messages posted to a ticket, chronologically.
@@ -227,24 +201,19 @@ async def list_ticket_messages(ticket_id: int, db: AsyncSession = Depends(get_db
     msgs = await get_ticket_messages(db, ticket_id)
     return [TicketMessageOut.model_validate(m) for m in msgs]
 
-@ticket_router.post(
-    "/{ticket_id}/messages",
-    response_model=TicketMessageOut,
-    response_model_by_alias=False,
-)
+@ticket_router.post("/{ticket_id}/messages", response_model=TicketMessageOut)
 async def add_ticket_message(
     ticket_id: int,
     msg: MessageIn,
     db: AsyncSession = Depends(get_db),
 ) -> TicketMessageOut:
     """
-    Add a new message to a ticket, specifying sender details.
+    Add a new message to a ticket.
     """
     created = await post_ticket_message(db, ticket_id, msg.message, msg.sender_code, msg.sender_name)
     return TicketMessageOut.model_validate(created)
 
 # ─── Lookup Sub-Router ────────────────────────────────────────────────────────
-
 lookup_router = APIRouter(prefix="/lookup", tags=["lookup"])
 
 @lookup_router.get("/assets", response_model=List[AssetOut])
@@ -305,17 +274,12 @@ async def list_statuses_endpoint(db: AsyncSession = Depends(get_db)) -> List[Tic
     stats = await list_statuses(db)
     return [TicketStatusOut.model_validate(s) for s in stats]
 
-@lookup_router.get(
-    "/ticket/{ticket_id}/attachments",
-    response_model=List[TicketAttachmentOut],
-    response_model_by_alias=False,
-)
+@lookup_router.get("/ticket/{ticket_id}/attachments", response_model=List[TicketAttachmentOut])
 async def get_ticket_attachments_endpoint(ticket_id: int, db: AsyncSession = Depends(get_db)) -> List[TicketAttachmentOut]:
     atts = await get_ticket_attachments(db, ticket_id)
     return [TicketAttachmentOut.model_validate(a) for a in atts]
 
 # ─── Analytics Sub-Router ────────────────────────────────────────────────────
-
 analytics_router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 @analytics_router.get("/status", response_model=List[StatusCount])
@@ -357,16 +321,10 @@ async def sla_breaches_endpoint(
     Count tickets older than `sla_days`, optionally filtered by status.
     """
     filters = extract_filters(request)
-    breaches = await sla_breaches(
-        db,
-        sla_days,
-        filters=filters or None,
-        status_ids=status_id or None,
-    )
+    breaches = await sla_breaches(db, sla_days, filters=filters or None, status_ids=status_id or None)
     return {"breaches": breaches}
 
 # ─── AI Sub-Router ───────────────────────────────────────────────────────────
-
 ai_router = APIRouter(prefix="/ai", tags=["ai"])
 
 @ai_router.post("/suggest_response", response_model=Dict[str, str])
@@ -386,7 +344,6 @@ async def suggest_response_stream(ticket: TicketOut) -> StreamingResponse:
     """
     Stream an AI‐generated reply suggestion (SSE) for a ticket.
     """
-    # validate input
     ticket.model_validate(ticket.model_dump())
     async def _gen() -> AsyncGenerator[str, None]:
         async for chunk in ai_stream_response(ticket.model_dump(), ""):
@@ -394,7 +351,6 @@ async def suggest_response_stream(ticket: TicketOut) -> StreamingResponse:
     return StreamingResponse(_gen(), media_type="text/event-stream")
 
 # ─── On-Call Sub-Router ───────────────────────────────────────────────────────
-
 oncall_router = APIRouter(prefix="/oncall", tags=["oncall"])
 
 @oncall_router.get("", response_model=Optional[OnCallShiftOut])
@@ -408,7 +364,6 @@ async def get_oncall_shift(db: AsyncSession = Depends(get_db)) -> Optional[OnCal
     return OnCallShiftOut.model_validate(shift)
 
 # ─── Application Registration ─────────────────────────────────────────────────
-
 def register_routes(app: FastAPI) -> None:
     """
     Include all sub-routers on the given FastAPI app.
