@@ -686,8 +686,13 @@ async def api_open_tickets_by_site(
 
 @router.get("/analytics/sla_breaches")
 async def api_sla_breaches(
-    sla_days: int = 2, db: AsyncSession = Depends(get_db)
+    request: Request,
+    sla_days: int = 2,
+    status_id: list[int] | None = None,
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
+
+
     """Count tickets older than the SLA threshold.
 
     Parameters
@@ -703,6 +708,7 @@ async def api_sla_breaches(
         ``{"breaches": int}`` with the number of tickets exceeding the SLA.
     """
     return {"breaches": await sla_breaches(db, sla_days)}
+
 
 @router.get("/analytics/open_by_user", response_model=list[UserOpenCount])
 async def api_open_tickets_by_user(
