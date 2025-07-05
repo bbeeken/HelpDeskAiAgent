@@ -169,6 +169,26 @@ echo '{"Subject":"Subj","Ticket_Body":"Body","Ticket_Contact_Name":"Name","Ticke
 python -m tools.cli create-ticket
 ```
 
+## MCP Streaming Interface
+
+Connect to the built-in FastMCP endpoint to send JSON-RPC commands over HTTP.
+
+1. **Open a session** by requesting `GET /mcp`. The response contains a `session_id` used for subsequent calls.
+2. **Send messages** to `/mcp/messages/?session_id=<id>` using the JSON-RPC payload.
+
+Example:
+
+```bash
+# Retrieve a session ID
+curl http://localhost:8000/mcp
+# => {"session_id": "abc123"}
+
+# Send a command
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "ping", "params": {}}' \
+  http://localhost:8000/mcp/messages/?session_id=abc123
+```
+
 
 ## Docker
 

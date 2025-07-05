@@ -1,8 +1,9 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
 from main import app
-from db.models import Asset, Vendor, Site
+from db.models import Asset, Vendor, Site, TicketAttachment
 from db.mssql import SessionLocal
+from datetime import datetime, UTC
 
 
 import pytest_asyncio
@@ -140,3 +141,61 @@ async def test_asset_vendor_site_routes(client: AsyncClient):
     resp = await client.get("/sites")
     assert resp.status_code == 200
     assert resp.json()[0]["ID"] == site.ID
+
+
+@pytest_asyncio.fixture
+async def ticket_attachments(client: AsyncClient):
+    resp = await _create_ticket(client)
+    assert resp.status_code == 200
+    tid = resp.json()["Ticket_ID"]
+    now = datetime.now(UTC)
+    async with SessionLocal() as db:
+        att1 = TicketAttachment(
+            Ticket_ID=tid,
+            Name="file1.txt",
+            WebURl="http://example.com/file1.txt",
+            UploadDateTime=now,
+        )
+        att2 = TicketAttachment(
+            Ticket_ID=tid,
+            Name="file2.txt",
+            WebURl="http://example.com/file2.txt",
+            UploadDateTime=now,
+        )
+        db.add_all([att1, att2])
+        await db.commit()
+        await db.refresh(att1)
+        await db.refresh(att2)
+    return tid, [att1, att2]
+
+
+@pytest.mark.asyncio
+async def test_ticket_attachments_endpoint(
+    client: AsyncClient, ticket_attachments
+):
+    tid, created = ticket_attachments
+    resp = await client.get(f"/ticket/{tid}/attachments")
+    assert resp.status_code == 200
+    data = sorted(resp.json(), key=lambda d: d["ID"])
+    expected = sorted(
+        [
+            {
+                "ID": att.ID,
+                "Ticket_ID": tid,
+                "Name": att.Name,
+                "WebURl": att.WebURl,
+            }
+            for att in created
+        ],
+        key=lambda d: d["ID"],
+    )
+    result = [
+        {
+            "ID": item["ID"],
+            "Ticket_ID": item["Ticket_ID"],
+            "Name": item["Name"],
+            "WebURl": item["WebURl"],
+        }
+        for item in data
+    ]
+    assert result == expected

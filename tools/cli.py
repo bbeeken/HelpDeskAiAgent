@@ -8,6 +8,9 @@ import sys
 
 import httpx
 from httpx_sse import EventSource
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
@@ -18,14 +21,18 @@ async def stream_response(_args: argparse.Namespace) -> None:
     ticket = json.load(sys.stdin)
 
     async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
-        async with client.stream(
-            "POST", "/ai/suggest_response/stream", json=ticket
-        ) as resp:
-            resp.raise_for_status()
+        try:
+            async with client.stream(
+                "POST", "/ai/suggest_response/stream", json=ticket
+            ) as resp:
+                resp.raise_for_status()
 
-            async for event in EventSource(resp).aiter_sse():
-                sys.stdout.write(event.data)
-                sys.stdout.flush()
+                async for event in EventSource(resp).aiter_sse():
+                    sys.stdout.write(event.data)
+                    sys.stdout.flush()
+        except httpx.HTTPError as exc:
+            logger.exception("HTTP error in stream_response: %s", exc)
+            return
 
 
 
@@ -34,8 +41,12 @@ async def create_ticket(_args: argparse.Namespace) -> None:
     payload = json.load(sys.stdin)
 
     async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
-        resp = await client.post("/ticket", json=payload)
-        resp.raise_for_status()
+        try:
+            resp = await client.post("/ticket", json=payload)
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            logger.exception("HTTP error creating ticket: %s", exc)
+            return
         sys.stdout.write(resp.text)
         sys.stdout.flush()
 
