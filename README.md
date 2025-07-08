@@ -187,20 +187,19 @@ python -m tools.cli create-ticket
 
 Connect to the built-in FastMCP endpoint to send JSON-RPC commands over HTTP.
 
-1. **Open a session** by requesting `GET /mcp`. The response contains a `session_id` used for subsequent calls.
-2. **Send messages** to `/mcp/messages/?session_id=<id>` using the JSON-RPC payload.
+1. **Open a session** by requesting `GET /mcp`. This returns a Server-Sent Events (SSE) stream. The first `endpoint` event in the stream contains the path `/mcp/<session_id>`.
+2. **Send messages** by posting JSON-RPC payloads to that `/mcp/<session_id>` path.
 
 Example:
 
 ```bash
-# Retrieve a session ID
-curl http://localhost:8000/mcp
-# => {"session_id": "abc123"}
+# Retrieve the endpoint from the streaming response
+ENDPOINT=$(curl -s http://localhost:8000/mcp | grep -m1 '^data:' | cut -d' ' -f2)
 
 # Send a command
 curl -X POST -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "ping", "params": {}}' \
-  http://localhost:8000/mcp/messages/?session_id=abc123
+  http://localhost:8000$ENDPOINT
 ```
 
 
