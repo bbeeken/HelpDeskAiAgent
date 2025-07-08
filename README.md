@@ -7,7 +7,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
 1. **Install dependencies**
 
    ```bash
-   pip install -r requirements.txt
+   pip install -e .
    ```
 
    The requirements include `aioodbc` for async ODBC connections; `pyodbc` is no longer required.
@@ -22,33 +22,38 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     DB_CONN_STRING="mssql+aioodbc://user:pass@host/db?driver=ODBC+Driver+18+for+SQL+Server"
     ```
    The `driver` name must match an ODBC driver installed on the host machine.
-   - `CONFIG_ENV` – which config to load: `dev`, `staging`, or `prod` (default `dev`).
-   - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
-     lookups in `tools.user_tools`. When omitted, stub responses are returned.
-
-
-  Optional Microsoft Graph credentials enable real user lookups:
-
-   - `GRAPH_CLIENT_ID` – application (client) ID issued by Azure AD.
-   - `GRAPH_CLIENT_SECRET` – client secret associated with the app registration.
-   - `GRAPH_TENANT_ID` – tenant ID used when acquiring OAuth tokens.
-
-  When these variables are not provided, the Graph helper functions fall back
-  to stub implementations so tests can run without network access.
+  - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
+    lookups in `tools.user_tools`. When omitted, stub responses are returned.
+  - `MCP_URL` – optional FastMCP server URL used by AI helper functions
+    (default `http://localhost:8080`).
+  - `MCP_STREAM_TIMEOUT` – timeout in seconds for streaming AI responses
+    (default `30`).
 
 
   They can be provided in the shell environment or in a `.env` file in the project root.
   A template called `.env.example` lists the required and optional variables; copy it to `.env` and
-  update the values for your environment. `config.py` automatically loads `.env` and
-  then imports `config_{CONFIG_ENV}.py` so the appropriate settings are applied at
+  update the values for your environment. `config.py` automatically loads `.env` and then looks for
+  `config_env.py` to provide Python-level overrides when needed.
 
-  startup. Model parameters for the MCP server's LLM, such as name and timeouts, are defined in the
-  selected config file. The Graph credentials are optional; without them, the Graph
+3. **Ticket text length**
 
-  startup. The Graph credentials are optional; without them, the Graph
+   Ticket bodies and resolutions may exceed 2000 characters. These fields are
+   stored unmodified in the database using `TEXT`/`nvarchar(max)` columns so
+   their full contents are preserved. There is no environment variable that
+   limits their length; however, your `DB_CONN_STRING` should point to a driver
+   and database that support these large text types.
 
-  helper functions return stub data so tests and development work without network
-  access.
+4. **Python 3.12**
+
+   When running the application or tests on Python 3.12 you may need to disable
+   Pydantic's standard types shim:
+
+   ```bash
+   export PYDANTIC_DISABLE_STD_TYPES_SHIM=1
+   ```
+
+   Set this variable in your shell before starting the app or executing tests if
+   you encounter import errors related to builtin collections.
 
 ## Running the API
 
@@ -58,18 +63,13 @@ Start the development server with Uvicorn:
 uvicorn main:app --reload
 ```
 
-Select a configuration by setting `CONFIG_ENV`:
-
-```bash
-CONFIG_ENV=prod uvicorn main:app
-```
 
 ## Running tests
 
 Install the testing dependencies and run `pytest`:
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 pytest
 ```
 
@@ -83,8 +83,10 @@ docker-compose up
 ```
 
 Compose reads variables from `.env`. Copy `.env.example` to `.env` and set
-values for required options such as `DB_CONN_STRING`, `OPENAI_API_KEY`, and
-`CONFIG_ENV`. Optional Graph credentials may also be provided in this file.
+values for required options such as `DB_CONN_STRING` and `OPENAI_API_KEY`.
+Optional Graph credentials may also be provided in this file. Add any
+environment-specific Python overrides in a `config_env.py` file next to
+`config.py`.
 
 ## Database Migrations
 
@@ -97,6 +99,10 @@ alembic revision --autogenerate -m "message"
 alembic upgrade head
 ```
 
+Both the `Ticket_Body` and `Resolution` columns are defined using the SQL
+`TEXT` (or `nvarchar(max)`) type so lengthy content can be stored without
+truncation. Ensure any custom migrations preserve this unrestricted text type.
+
 
 ### V_Ticket_Master_Expanded
 
@@ -105,7 +111,8 @@ related labels such as status, asset, site, and vendor. Endpoints like
 `/tickets/expanded` and `/tickets/search` rely on this view to return a
 fully populated ticket record.
 
-Create the view with SQL similar to the following:
+Create the view with SQL similar to the following (the full statement is also
+available in `db/sql.py` as `CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL`):
 
 
 ```sql
@@ -152,6 +159,49 @@ LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
 - `GET /tickets/search?q=term` - search tickets by subject or body
 - `PUT /ticket/{id}` - update an existing ticket
 - `DELETE /ticket/{id}` - remove a ticket
+- `POST /ai/suggest_response` - generate an AI ticket reply
+- `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
+- Ticket body and resolution fields now accept large text values; the previous
+  2000-character limit has been removed.
+
+
+## CLI
+
+`tools.cli` provides a small command-line interface to the API. Set `API_BASE_URL` to the server URL (default `http://localhost:8000`).
+
+Stream an AI-generated response:
+
+```bash
+echo '{"Ticket_ID":1,"Subject":"Subj","Ticket_Body":"Body","Ticket_Status_ID":1,"Ticket_Contact_Name":"Name","Ticket_Contact_Email":"a@example.com"}' | \
+python -m tools.cli stream-response
+```
+
+Create a ticket:
+
+```bash
+echo '{"Subject":"Subj","Ticket_Body":"Body","Ticket_Contact_Name":"Name","Ticket_Contact_Email":"a@example.com"}' | \
+python -m tools.cli create-ticket
+```
+
+## MCP Streaming Interface
+
+Connect to the built-in FastMCP endpoint to send JSON-RPC commands over HTTP.
+
+1. **Open a session** by requesting `GET /mcp`. The response contains a `session_id` used for subsequent calls.
+2. **Send messages** to `/mcp/messages/?session_id=<id>` using the JSON-RPC payload.
+
+Example:
+
+```bash
+# Retrieve a session ID
+curl http://localhost:8000/mcp
+# => {"session_id": "abc123"}
+
+# Send a command
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "ping", "params": {}}' \
+  http://localhost:8000/mcp/messages/?session_id=abc123
+```
 
 
 ## Docker

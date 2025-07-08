@@ -36,11 +36,18 @@ GROUP_ID = "2ea9cf9b-4d28-456e-9eda-bd2c15825ee2"
 
 
 def _has_graph_creds() -> bool:
+    """Return ``True`` when all required Graph credentials are present."""
+
     return all([GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET, GRAPH_TENANT_ID])
 
 
 async def _get_token() -> str:
-    """Return a Graph access token or an empty string when creds are missing."""
+    """Obtain an access token from Microsoft Graph.
+
+    Returns:
+        The token string if credentials are configured; otherwise an empty
+        string when running in stub mode.
+    """
 
     if not _has_graph_creds():
         # In test/stub mode we short-circuit so no HTTP requests are made
@@ -56,15 +63,27 @@ async def _get_token() -> str:
     }
 
     async with httpx.AsyncClient() as client:
-        resp = await client.post(url, data=data, timeout=10)
-
-        resp.raise_for_status()
+        try:
+            resp = await client.post(url, data=data, timeout=10)
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            logger.exception("Error fetching Graph token: %s", exc)
+            return ""
         return resp.json()["access_token"]
 
 
 
 async def _graph_get(endpoint: str, token: str) -> dict:
-    """Perform a GET request to the Graph API or return an empty result."""
+    """Perform a GET request to the Graph API.
+
+    Args:
+        endpoint: Relative Graph endpoint (e.g. ``users/me``).
+        token: Bearer token obtained from :func:`_get_token`.
+
+    Returns:
+        Parsed JSON data from the API or an empty ``dict`` if no token is
+        available or an HTTP error occurs.
+    """
 
     if not token:
         logger.info("No Graph token provided, returning stub data for %s", endpoint)
@@ -72,15 +91,29 @@ async def _graph_get(endpoint: str, token: str) -> dict:
 
     url = f"https://graph.microsoft.com/v1.0/{endpoint}"
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            url, headers={"Authorization": f"Bearer {token}"}, timeout=10
-        )
-        resp.raise_for_status()
+        try:
+            resp = await client.get(
+                url, headers={"Authorization": f"Bearer {token}"}, timeout=10
+            )
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            logger.exception("Error calling Graph endpoint %s: %s", endpoint, exc)
+            return {}
         return resp.json()
 
 
 
 async def get_user_by_email(email: str) -> Dict[str, str | None]:
+    """Look up a user by email address using Microsoft Graph.
+
+    Args:
+        email: The email address to search for.
+
+    Returns:
+        A dictionary with ``email``, ``displayName`` and ``id`` keys. Values may
+        be ``None`` when running in stub mode or if the user is not found.
+    """
+
     token = await _get_token()
     if not token:
         return {"email": email, "displayName": None, "id": None}
@@ -95,6 +128,8 @@ async def get_user_by_email(email: str) -> Dict[str, str | None]:
 
 
 async def get_all_users_in_group() -> List[Dict[str, str | None]]:
+    """Return details for all members of the helpdesk security group."""
+
     token = await _get_token()
     if not token:
         return []
@@ -107,6 +142,8 @@ async def get_all_users_in_group() -> List[Dict[str, str | None]]:
 
 
 async def resolve_user_display_name(identifier: str) -> str:
+    """Return the display name for an email or identifier."""
+
     logger.info("Resolving display name for %s", identifier)
     user = await get_user_by_email(identifier)
     return user.get("displayName") or identifier

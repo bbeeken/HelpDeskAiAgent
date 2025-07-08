@@ -5,6 +5,7 @@ from .ticket import (
     TicketOut,
     TicketExpandedOut,
 )
+from .search import TicketSearchOut
 from .oncall import OnCallShiftOut
 from .paginated import PaginatedResponse
 from .basic import (
@@ -22,6 +23,7 @@ __all__ = [
     'TicketUpdate',
     'TicketOut',
     'TicketExpandedOut',
+    'TicketSearchOut',
     'OnCallShiftOut',
     'PaginatedResponse',
     'AssetOut',
@@ -35,6 +37,11 @@ __all__ = [
 
 
 
-from .analytics import StatusCount, SiteOpenCount
+from .analytics import (
+    StatusCount,
+    SiteOpenCount,
+    UserOpenCount,
+    WaitingOnUserCount,
+)
 
 

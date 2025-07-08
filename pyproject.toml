@@ -1,0 +1,32 @@
+[project]
+name = "helpdesk-ai-agent"
+version = "0.1.0"
+dependencies = [
+    "fastapi==0.110.0",
+    "uvicorn==0.35.0",
+    "sqlalchemy==2.0.41",
+    "pydantic==2.11.7",
+    "fastmcp==2.10.1",
+    "fastapi-mcp==0.3.4",
+    "python-dotenv==1.1.1",
+    "pytest==8.4.1",
+    "pytest-asyncio==0.23.6",
+    "email-validator==2.2.0",
+    "httpx==0.28.1",
+    "httpx-sse==0.4.1",
+    "mypy==1.16.1",
+    "slowapi==0.1.9",
+    "aiosqlite==0.21.0",
+    "aioodbc==0.5.0",
+]
+
+[tool.setuptools]
+packages = ["ai", "alembic", "api", "db", "schemas", "services", "tools"]
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203", "W503"]
+per-file-ignores = {"tests/*" = ["E402"]}
+
+[tool.mypy]
+ignore_missing_imports = true

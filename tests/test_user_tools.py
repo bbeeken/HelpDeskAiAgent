@@ -1,5 +1,6 @@
 import importlib
 from types import SimpleNamespace
+import httpx
 
 import pytest
 
@@ -109,3 +110,34 @@ async def test_user_tools_graph_calls(monkeypatch):
         "displayName": "U",
         "id": "2",
     }
+
+
+@pytest.mark.asyncio
+async def test_user_tools_http_error(monkeypatch):
+    ut = reload_module(
+        monkeypatch,
+        GRAPH_CLIENT_ID="id",
+        GRAPH_CLIENT_SECRET="secret",
+        GRAPH_TENANT_ID="tenant",
+    )
+
+    class DummyClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+        async def post(self, url, data=None, timeout=None):
+            raise httpx.HTTPError("fail")
+
+        async def get(self, url, headers=None, timeout=None):
+            raise httpx.HTTPError("fail")
+
+    monkeypatch.setattr(ut.httpx, "AsyncClient", DummyClient)
+
+    token = await ut._get_token()
+    assert token == ""
+
+    data = await ut._graph_get("users/x", "tok")
+    assert data == {}

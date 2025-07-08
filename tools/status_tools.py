@@ -1,3 +1,4 @@
+"""Helpers for listing ticket statuses."""
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
