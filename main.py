@@ -23,7 +23,7 @@ from sqlalchemy import text
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from api.routes import router, get_db
+from api.routes import register_routes, get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from limiter import limiter
 
@@ -85,7 +85,7 @@ app.add_exception_handler(
     lambda request, exc: JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"}),
 )
 app.add_middleware(SlowAPIMiddleware)
-app.include_router(router)
+register_routes(app)
 
 
 @app.middleware("http")

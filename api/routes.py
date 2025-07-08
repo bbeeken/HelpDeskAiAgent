@@ -42,7 +42,8 @@ from tools.ai_tools import ai_suggest_response, ai_stream_response
 from tools.oncall_tools import get_current_oncall
 
 # Schemas
-from schemas.ticket import (
+# Ticket schemas
+from schemas import (
     TicketCreate,
     TicketOut,
     TicketUpdate,
@@ -293,7 +294,7 @@ ai_router = APIRouter(prefix="/ai", tags=["ai"])
 
 @ai_router.post("/suggest_response", response_model=Dict[str, str])
 @limiter.limit("10/minute")
-async def suggest_response(ticket: TicketOut) -> Dict[str, str]:
+async def suggest_response(request: Request, ticket: TicketOut) -> Dict[str, str]:
     try:
         return {"response": await ai_suggest_response(ticket.model_dump(), "")}
     except ValidationError as exc:
@@ -301,7 +302,7 @@ async def suggest_response(ticket: TicketOut) -> Dict[str, str]:
 
 @ai_router.post("/suggest_response/stream")
 @limiter.limit("10/minute")
-async def suggest_response_stream(ticket: TicketOut) -> StreamingResponse:
+async def suggest_response_stream(request: Request, ticket: TicketOut) -> StreamingResponse:
     ticket.model_validate(ticket.model_dump())
     async def _gen() -> AsyncGenerator[str, None]:
         async for chunk in ai_stream_response(ticket.model_dump(), ""):
