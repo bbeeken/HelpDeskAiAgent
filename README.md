@@ -187,21 +187,23 @@ python -m tools.cli create-ticket
 
 Connect to the built-in FastMCP endpoint to exchange JSON-RPC messages.
 
+
 1. **Open the stream** with `GET /mcp`. It returns Server-Sent Events. The first
    `endpoint` event contains the URL for posting commands (e.g. `/mcp/abc123`).
 2. **POST messages** to that URL. Each payload is echoed back on the stream as a
    `message` event.
 
+
 Example:
 
-```bash
-# Capture the POST URL from the first event
-endpoint=$(curl -Ns http://localhost:8000/mcp | grep -m1 '^data:' | cut -d' ' -f2)
-
+```
 # Send a command
 curl -X POST -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "ping", "params": {}}' \
-  http://localhost:8000$endpoint
+
+  http://localhost:8000$ENDPOINT
+
+
 ```
 
 
