@@ -27,7 +27,40 @@ class MCPServer:
 
 
 def create_server() -> MCPServer:
-    """Return a server instance exposing tools from :mod:`tool_list`."""
-    from .tool_list import TOOLS
 
-    return MCPServer(list(TOOLS))
+    """Return a server instance exposing demo tools."""
+
+    async def echo(text: str) -> Dict[str, Any]:
+        return {"echo": text}
+
+    async def add(a: int, b: int) -> Dict[str, Any]:
+        return {"result": a + b}
+
+    tools = [
+        Tool(
+            name="echo",
+            description="Return the provided text.",
+            inputSchema={
+                "type": "object",
+                "properties": {"text": {"type": "string"}},
+                "required": ["text"],
+            },
+            _implementation=echo,
+        ),
+        Tool(
+            name="add",
+            description="Add two integers.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "a": {"type": "integer"},
+                    "b": {"type": "integer"},
+                },
+                "required": ["a", "b"],
+            },
+            _implementation=add,
+        ),
+    ]
+
+    return MCPServer(tools)
+
