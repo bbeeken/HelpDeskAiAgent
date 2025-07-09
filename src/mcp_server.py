@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
-from typing import Any, Awaitable, Callable, Dict, Iterable, List
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Optional
 import logging
 import os
 
@@ -21,9 +21,11 @@ class Tool:
     description: str
     inputSchema: Dict[str, Any]
     _implementation: Callable[..., Awaitable[Any]]
+
     category: str | None = None
     requires_auth: bool = False
     rate_limit: str | None = None
+
 
     def to_dict(self) -> Dict[str, Any]:
         # Serialize public fields while omitting the implementation callable
@@ -91,10 +93,16 @@ def create_enhanced_server() -> Server:
         return create_server()
 
     try:
-        from .enhanced_mcp_server import create_server as _create
+        from .enhanced_mcp_server import ENHANCED_TOOLS, create_server as _create
+        from .tool_list import TOOLS
+        TOOLS.clear()
+        TOOLS.extend(ENHANCED_TOOLS)
         server = _create()
         server.is_enhanced = True
-        logging.info("Enhanced MCP server loaded with %d tools", len(server._tools))
+        server._tools = TOOLS
+        logging.info(
+            "Enhanced MCP server loaded with %d tools", len(server._tools)
+        )
         return server
     except Exception as exc:  # pragma: no cover - unexpected
         logging.exception("Failed to load enhanced server: %s", exc)
