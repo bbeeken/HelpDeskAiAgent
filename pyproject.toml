@@ -19,6 +19,7 @@ dependencies = [
     "aiosqlite==0.21.0",
     "aioodbc==0.5.0",
     "asgi_lifespan==2.1.0",
+    "requests==2.32.3",
 ]
 
 [tool.setuptools]

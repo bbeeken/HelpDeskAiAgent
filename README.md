@@ -10,7 +10,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
    pip install -e .
    ```
 
-   The requirements include `aioodbc` for async ODBC connections; `pyodbc` is no longer required.
+   The requirements include `aioodbc` for async ODBC connections and `requests` for standard HTTP calls; `pyodbc` is no longer required.
 2. **Environment variables**
 
    The application requires the following variables:
