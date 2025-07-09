@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-from ..mcp_server import Tool
+from ..enhanced_mcp_server import Tool
 
 
 async def ticket_count() -> Dict[str, int]:
@@ -17,6 +17,9 @@ TICKET_COUNT = Tool(
     name="ticket_count",
     description="Return the total number of tickets.",
     inputSchema={"type": "object", "properties": {}, "required": []},
+    category="analytics",
+    requires_auth=False,
+    rate_limit=None,
     _implementation=ticket_count,
 )
 

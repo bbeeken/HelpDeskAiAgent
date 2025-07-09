@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi_mcp import FastApiMCP
 
-from src.mcp_server import create_server, Tool
+from src.enhanced_mcp_server import create_server, Tool
 from src.tool_list import TOOLS
 from api.routes import register_routes, get_db
 from sqlalchemy.ext.asyncio import AsyncSession
