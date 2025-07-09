@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI, Request, Depends, Response
 from fastapi_mcp import FastApiMCP
-from mcp_server import create_server, Tool
+from src.mcp_server import create_server, Tool
 from typing import List
 
 
