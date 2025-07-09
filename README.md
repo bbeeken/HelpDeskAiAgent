@@ -28,6 +28,8 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     (default `http://localhost:8080`).
   - `MCP_STREAM_TIMEOUT` – timeout in seconds for streaming AI responses
     (default `30`).
+  - `ENABLE_ENHANCED_MCP` – set to `0` to disable the enhanced MCP tool server
+    and use the basic implementation.
 
 
   They can be provided in the shell environment or in a `.env` file in the project root.
