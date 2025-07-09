@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 from typing import Any, Awaitable, Callable, Dict, Iterable, List
 
 from mcp.server import Server
@@ -234,16 +235,29 @@ def create_server() -> Server:
         return [
             types.Tool(name=t.name, description=t.description, inputSchema=t.inputSchema)
             for t in ENHANCED_TOOLS
+
         ]
 
     @server.call_tool()
     async def _call_tool(name: str, arguments: Dict[str, Any]) -> Iterable[types.Content]:
-        for tool in ENHANCED_TOOLS:
+
+        for tool in TOOLS:
             if tool.name == name:
                 result = await tool._implementation(**arguments)
-                return [types.TextContent(type="text", text=json.dumps(result))]
+                text = json.dumps(result)
+                return [types.TextContent(type="text", text=text)]
         raise ValueError(f"Unknown tool: {name}")
 
-    server._tools = ENHANCED_TOOLS
-    server.is_enhanced = True
     return server
+
+
+def run_server() -> None:
+    """Run the MCP server using stdio transport."""
+
+    async def _main() -> None:
+        server = create_server()
+        async with stdio_server() as (read, write):
+            await server.run(read, write)
+
+    anyio.run(_main)
+
