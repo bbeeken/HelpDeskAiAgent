@@ -4,7 +4,8 @@ from fastapi.encoders import jsonable_encoder
 from fastapi_mcp import FastApiMCP
 
 
-from src.enhanced_mcp_server import create_server, Tool
+# Import the server factory and Tool dataclass from the MCP package
+from src import create_enhanced_server, Tool
 
 from src.tool_list import TOOLS
 from api.routes import register_routes, get_db
