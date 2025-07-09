@@ -22,4 +22,6 @@ async def test_tools_list_route():
         resp = await client.get("/tools")
         assert resp.status_code == 200
         tools = resp.json()
-        assert any(t["name"] == "get_ticket" for t in tools)
+        assert any(t["name"] == "get_ticket" and t["category"] == "ticket" for t in tools)
+        assert any(t["name"] == "ticket_count" and t["category"] == "analytics" for t in tools)
+        assert any(t["name"] == "ai_echo" and t["category"] == "ai" for t in tools)
