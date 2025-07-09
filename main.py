@@ -26,6 +26,7 @@ from contextvars import ContextVar
 from datetime import datetime, UTC
 import logging
 import uuid
+import asyncio
 from typing import List, Dict, Any
 
 # Configure root logger so messages are output when running with uvicorn
@@ -111,6 +112,30 @@ async def list_tools() -> Dict[str, List[Dict[str, Any]]]:
 app.state.mcp = FastApiMCP(app)
 app.state.mcp.mount()
 
+
+@app.middleware("http")
+async def timeout_middleware(request: Request, call_next):
+    """Add request timeout to prevent hanging requests."""
+    try:
+        return await asyncio.wait_for(call_next(request), timeout=30.0)
+    except asyncio.TimeoutError:
+        return JSONResponse(
+            status_code=504,
+            content={"error": "Request timeout", "message": "Request took too long"},
+        )
+
+
+@app.middleware("http")
+async def limit_request_size(request: Request, call_next):
+    """Limit request body size to prevent memory issues."""
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > 10_000_000:
+        return JSONResponse(
+            status_code=413,
+            content={"error": "Request too large"},
+        )
+    return await call_next(request)
+
 @app.middleware("http")
 async def add_correlation_id(request: Request, call_next):
     correlation_id = request.headers.get("X-Request-ID", uuid.uuid4().hex)
@@ -166,15 +191,26 @@ async def handle_unexpected(request: Request, exc: Exception):
 
 @app.get("/health")
 async def health(db: AsyncSession = Depends(get_db)) -> dict:
-    """Return basic service health information."""
-    try:
-        await db.execute(text("SELECT 1"))
-        db_status = "ok"
-    except Exception:
-        db_status = "error"
+    """Enhanced health check with dependency testing."""
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.now(UTC).isoformat(),
+        "version": APP_VERSION,
+        "uptime": (datetime.now(UTC) - START_TIME).total_seconds(),
+        "checks": {},
+    }
 
-    uptime = (datetime.now(UTC) - START_TIME).total_seconds()
-    return {"db": db_status, "uptime": uptime, "version": APP_VERSION}
+    try:
+        await asyncio.wait_for(db.execute(text("SELECT 1")), timeout=5.0)
+        health_status["checks"]["database"] = {"status": "healthy"}
+    except asyncio.TimeoutError:
+        health_status["checks"]["database"] = {"status": "timeout"}
+        health_status["status"] = "degraded"
+    except Exception as e:
+        health_status["checks"]["database"] = {"status": "unhealthy", "error": str(e)}
+        health_status["status"] = "unhealthy"
+
+    return health_status
 
 
 @app.get("/health/mcp")
