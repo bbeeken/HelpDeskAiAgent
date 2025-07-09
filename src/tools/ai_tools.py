@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-from ..mcp_server import Tool
+from ..enhanced_mcp_server import Tool
 
 
 async def ai_echo(text: str) -> Dict[str, str]:
@@ -20,6 +20,9 @@ AI_ECHO = Tool(
         "properties": {"text": {"type": "string"}},
         "required": ["text"],
     },
+    category="ai",
+    requires_auth=False,
+    rate_limit=None,
     _implementation=ai_echo,
 )
 

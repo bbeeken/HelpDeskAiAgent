@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import List
 
-from .mcp_server import Tool
+
+from .enhanced_mcp_server import Tool
 from .tools import GET_TICKET, TICKET_COUNT, AI_ECHO
 
 TOOLS: List[Tool] = [
@@ -12,3 +13,4 @@ TOOLS: List[Tool] = [
     TICKET_COUNT,
     AI_ECHO,
 ]
+
