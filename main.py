@@ -100,10 +100,12 @@ for tool in TOOLS:
 @app.get("/tools")
 async def list_tools() -> Dict[str, List[Dict[str, Any]]]:
 
+
   
     """Return a dictionary of available tools."""
 
     
+
     return {"tools": [t.to_dict() for t in TOOLS]}
 
 app.state.mcp = FastApiMCP(app)

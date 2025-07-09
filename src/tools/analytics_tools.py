@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-from ..enhanced_mcp_server import Tool
+from ..mcp_server import Tool
 
 
 async def ticket_count() -> Dict[str, int]:
