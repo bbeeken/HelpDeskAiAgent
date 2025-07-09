@@ -23,10 +23,18 @@ _client: ClientSessionGroup | None = None
 
 
 async def _get_client() -> "ClientSessionGroup":
+    """Return a connected MCP client instance.
+
+    The global client may be closed after use in a context manager. This
+    helper recreates and reconnects the client if no active sessions are
+    present so callers always get a usable connection.
+    """
+
     if ClientSessionGroup is None:
         raise ImportError("mcp package is required for MCP operations")
+
     global _client
-    if _client is None:
+    if _client is None or not getattr(_client, "sessions", []):
         _client = ClientSessionGroup()
         await _client.connect_to_server(
             StreamableHttpParameters(url=MCP_URL)
