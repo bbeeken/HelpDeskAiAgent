@@ -1,44 +1,33 @@
-
-
-from fastapi import FastAPI, Request, Depends, Response
+from fastapi import FastAPI, Request, Depends
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from fastapi_mcp import FastApiMCP
-from mcp_server import create_server, Tool
-from typing import List
 
+from src.mcp_server import create_server, Tool
+from api.routes import register_routes, get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
+from limiter import limiter
+from errors import ErrorResponse, NotFoundError, ValidationError, DatabaseError
+from db.models import Base
+from db.mssql import engine
+
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
+from datetime import datetime, UTC
 import logging
-
+import uuid
+from typing import List, Dict, Any
 
 # Configure root logger so messages are output when running with uvicorn
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from contextlib import asynccontextmanager
-from contextvars import ContextVar
-
-
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse, StreamingResponse
-
-from sqlalchemy import text
-
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-
-from api.routes import register_routes, get_db
-from sqlalchemy.ext.asyncio import AsyncSession
-from limiter import limiter
-
-from datetime import datetime, UTC
-import uuid
-import asyncio
-import json
-import typing
-
-
 # Correlation ID context variable for log records
 _correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="-")
-
 
 class CorrelationIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:  # type: ignore[override]
@@ -50,10 +39,6 @@ APP_VERSION = "0.1.0"
 
 # Record startup time to report uptime
 START_TIME = datetime.now(UTC)
-from errors import ErrorResponse, NotFoundError, ValidationError, DatabaseError
-from db.models import Base
-from db.mssql import engine
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -74,22 +59,19 @@ async def lifespan(app: FastAPI):
 
     yield
 
-
 app = FastAPI(title="Truck Stop MCP Helpdesk API", lifespan=lifespan)
-
 app.add_exception_handler(
     RateLimitExceeded,
     lambda request, exc: JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"}),
 )
 app.add_middleware(SlowAPIMiddleware)
-register_routes(app)
 
+register_routes(app)
 
 # --- Dynamically expose MCP tools as HTTP endpoints ---
 server = create_server()
 
-
-def build_endpoint(tool: Tool, schema: dict):
+def build_endpoint(tool: Tool, schema: Dict[str, Any]):
     async def endpoint(request: Request):
         data = await request.json()
         allowed = set(schema.get("properties", {}).keys())
@@ -101,11 +83,9 @@ def build_endpoint(tool: Tool, schema: dict):
 
     return endpoint
 
-
 for tool in server.tools:
     schema = tool.inputSchema if isinstance(tool.inputSchema, dict) else {}
     app.post(f"/{tool.name}", operation_id=tool.name)(build_endpoint(tool, schema))
-
 
 @app.get("/tools")
 async def list_tools() -> List[dict]:
@@ -113,7 +93,6 @@ async def list_tools() -> List[dict]:
 
 app.state.mcp = FastApiMCP(app)
 app.state.mcp.mount()
-
 
 @app.middleware("http")
 async def add_correlation_id(request: Request, call_next):
@@ -126,8 +105,6 @@ async def add_correlation_id(request: Request, call_next):
     response.headers["X-Request-ID"] = correlation_id
     return response
 
-
-
 @app.exception_handler(NotFoundError)
 async def handle_not_found(request: Request, exc: NotFoundError):
     resp = ErrorResponse(
@@ -137,7 +114,6 @@ async def handle_not_found(request: Request, exc: NotFoundError):
         timestamp=datetime.now(UTC),
     )
     return JSONResponse(status_code=404, content=jsonable_encoder(resp))
-
 
 @app.exception_handler(ValidationError)
 async def handle_validation(request: Request, exc: ValidationError):
@@ -149,7 +125,6 @@ async def handle_validation(request: Request, exc: ValidationError):
     )
     return JSONResponse(status_code=400, content=jsonable_encoder(resp))
 
-
 @app.exception_handler(DatabaseError)
 async def handle_database(request: Request, exc: DatabaseError):
     resp = ErrorResponse(
@@ -159,7 +134,6 @@ async def handle_database(request: Request, exc: DatabaseError):
         timestamp=datetime.now(UTC),
     )
     return JSONResponse(status_code=500, content=jsonable_encoder(resp))
-
 
 @app.exception_handler(Exception)
 async def handle_unexpected(request: Request, exc: Exception):
@@ -173,9 +147,7 @@ async def handle_unexpected(request: Request, exc: Exception):
     )
     return JSONResponse(status_code=500, content=jsonable_encoder(resp))
 
-
 @app.get("/health")
-
 async def health(db: AsyncSession = Depends(get_db)) -> dict:
     """Return basic service health information."""
     try:
@@ -186,5 +158,3 @@ async def health(db: AsyncSession = Depends(get_db)) -> dict:
 
     uptime = (datetime.now(UTC) - START_TIME).total_seconds()
     return {"db": db_status, "uptime": uptime, "version": APP_VERSION}
-
-
