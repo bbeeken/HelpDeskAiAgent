@@ -39,9 +39,16 @@ async def list_tickets_expanded(
     query = select(VTicketMasterExpanded)
 
     if filters:
+        filter_conditions = []
         for key, value in filters.items():
             if hasattr(VTicketMasterExpanded, key):
-                query = query.filter(getattr(VTicketMasterExpanded, key) == value)
+                attr = getattr(VTicketMasterExpanded, key)
+                if isinstance(value, list):
+                    filter_conditions.append(attr.in_(value))
+                else:
+                    filter_conditions.append(attr == value)
+        if filter_conditions:
+            query = query.filter(and_(*filter_conditions))
 
     if sort:
         if isinstance(sort, str):
@@ -64,7 +71,7 @@ async def list_tickets_expanded(
         if order_columns:
             query = query.order_by(*order_columns)
     else:
-        query = query.order_by(VTicketMasterExpanded.Ticket_ID)
+        query = query.order_by(VTicketMasterExpanded.Ticket_ID.desc())
 
     if skip:
         query = query.offset(skip)
