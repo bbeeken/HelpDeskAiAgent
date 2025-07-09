@@ -5,6 +5,7 @@ from fastapi_mcp import FastApiMCP
 
 
 from src.enhanced_mcp_server import create_server, Tool
+from src.mcp_server import create_enhanced_server
 
 from src.tool_list import TOOLS
 from api.routes import register_routes, get_db
@@ -95,12 +96,8 @@ for tool in TOOLS:
     app.post(f"/{tool.name}", operation_id=tool.name)(build_endpoint(tool, schema))
 
 @app.get("/tools")
-async def list_tools() -> Dict[str, Any]:
-    return {
-        "enhanced": getattr(server, "is_enhanced", False),
-        "count": len(TOOLS),
-        "tools": [t.to_dict() for t in TOOLS],
-    }
+async def list_tools() -> List[Dict[str, Any]]:
+    return [t.to_dict() for t in TOOLS]
 
 app.state.mcp = FastApiMCP(app)
 app.state.mcp.mount()
