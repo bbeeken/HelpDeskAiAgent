@@ -55,9 +55,6 @@ from db.models import Base
 from db.mssql import engine
 
 
-app = FastAPI(title="Truck Stop MCP Helpdesk API")
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Configure logging and initialize application components."""
