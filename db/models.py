@@ -84,7 +84,7 @@ class TicketStatus(Base):
 
 
 class Priority(Base):
-    __tablename__ = "Priorities"
+    __tablename__ = "Priority_Levels"
     ID = Column(Integer, primary_key=True, index=True)
     Level = Column(String)
 
