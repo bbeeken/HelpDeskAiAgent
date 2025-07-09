@@ -2,6 +2,8 @@
 
 from fastapi import FastAPI, Request, Depends, Response
 from fastapi_mcp import FastApiMCP
+from mcp_server import create_server, Tool
+from typing import List
 
 
 import logging
@@ -66,8 +68,6 @@ async def lifespan(app: FastAPI):
     logging.getLogger().addFilter(CorrelationIdFilter())
 
     app.state.limiter = limiter
-    app.state.mcp = FastApiMCP(app)
-    app.state.mcp.mount()
 
     global START_TIME
     START_TIME = datetime.now(UTC)
@@ -86,6 +86,36 @@ app.add_exception_handler(
 )
 app.add_middleware(SlowAPIMiddleware)
 register_routes(app)
+
+
+# --- Dynamically expose MCP tools as HTTP endpoints ---
+server = create_server()
+
+
+def build_endpoint(tool: Tool, schema: dict):
+    async def endpoint(request: Request):
+        data = await request.json()
+        allowed = set(schema.get("properties", {}).keys())
+        extra = set(data) - allowed
+        if extra:
+            return JSONResponse(status_code=422, content={"detail": "Unexpected parameters"})
+        filtered = {k: data[k] for k in allowed if k in data}
+        return await tool._implementation(**filtered)
+
+    return endpoint
+
+
+for tool in server.tools:
+    schema = tool.inputSchema if isinstance(tool.inputSchema, dict) else {}
+    app.post(f"/{tool.name}", operation_id=tool.name)(build_endpoint(tool, schema))
+
+
+@app.get("/tools")
+async def list_tools() -> List[dict]:
+    return [t.to_dict() for t in server.tools]
+
+app.state.mcp = FastApiMCP(app)
+app.state.mcp.mount()
 
 
 @app.middleware("http")
