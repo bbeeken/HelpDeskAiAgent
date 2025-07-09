@@ -191,35 +191,3 @@ async def health(db: AsyncSession = Depends(get_db)) -> dict:
     return {"db": db_status, "uptime": uptime, "version": APP_VERSION}
 
 
-# --- Minimal MCP SSE endpoint used for testing ---
-_mcp_sessions: dict[str, asyncio.Queue] = {}
-
-
-@app.get("/mcp")
-async def mcp_stream() -> StreamingResponse:
-    """Establish a Server-Sent Events stream for MCP messages."""
-    session_id = uuid.uuid4().hex
-    post_url = f"/mcp/{session_id}"
-    queue: asyncio.Queue = asyncio.Queue()
-    _mcp_sessions[session_id] = queue
-
-    async def _generate() -> typing.AsyncGenerator[str, None]:
-        yield f"event: endpoint\ndata: {post_url}\n\n"
-        try:
-            while True:
-                data = await queue.get()
-                yield f"event: message\ndata: {json.dumps(data)}\n\n"
-        finally:
-            _mcp_sessions.pop(session_id, None)
-
-    return StreamingResponse(_generate(), media_type="text/event-stream")
-
-
-@app.post("/mcp/{session_id}")
-async def mcp_post(session_id: str, request: Request) -> Response:
-    queue = _mcp_sessions.get(session_id)
-    if not queue:
-        return Response(status_code=404)
-    payload = await request.json()
-    await queue.put(payload)
-    return Response(status_code=202)
