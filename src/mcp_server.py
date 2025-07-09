@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
-from typing import Any, Awaitable, Callable, Dict, List
+from typing import Any, Awaitable, Callable, Dict, Iterable, List
+
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+from mcp import types
+import anyio
+import json
 
 
 
@@ -20,22 +26,45 @@ class Tool:
         return data
 
 
-class MCPServer:
-    """Container for available tools."""
-
-    def __init__(self, tools: List[Tool]) -> None:
-        self.tools = tools
-
-
-def create_server() -> MCPServer:
+def create_server() -> Server:
 
     """Return a server instance exposing available tools."""
 
-    # Import inside the function to avoid circular imports during module
-    # initialization.
+    server = Server("helpdesk-ai-agent")
+
+    # Import inside function to avoid circular imports.
     from .tool_list import TOOLS
 
-    # ``list()`` creates a shallow copy so callers cannot mutate the original
-    # list defined in :mod:`src.tool_list`.
-    return MCPServer(list(TOOLS))
+    @server.list_tools()
+    async def _list_tools() -> list[types.Tool]:
+        return [
+            types.Tool(
+                name=t.name,
+                description=t.description,
+                inputSchema=t.inputSchema,
+            )
+            for t in TOOLS
+        ]
+
+    @server.call_tool()
+    async def _call_tool(name: str, arguments: Dict[str, Any]) -> Iterable[types.Content]:
+        for tool in TOOLS:
+            if tool.name == name:
+                result = await tool._implementation(**arguments)
+                text = json.dumps(result)
+                return [types.TextContent(type="text", text=text)]
+        raise ValueError(f"Unknown tool: {name}")
+
+    return server
+
+
+def run_server() -> None:
+    """Run the MCP server using stdio transport."""
+
+    async def _main() -> None:
+        server = create_server()
+        async with stdio_server() as (read, write):
+            await server.run(read, write)
+
+    anyio.run(_main)
 

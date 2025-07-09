@@ -4,6 +4,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi_mcp import FastApiMCP
 
 from src.mcp_server import create_server, Tool
+from src.tool_list import TOOLS
 from api.routes import register_routes, get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -83,13 +84,13 @@ def build_endpoint(tool: Tool, schema: Dict[str, Any]):
 
     return endpoint
 
-for tool in server.tools:
+for tool in TOOLS:
     schema = tool.inputSchema if isinstance(tool.inputSchema, dict) else {}
     app.post(f"/{tool.name}", operation_id=tool.name)(build_endpoint(tool, schema))
 
 @app.get("/tools")
 async def list_tools() -> List[dict]:
-    return [t.to_dict() for t in server.tools]
+    return [t.to_dict() for t in TOOLS]
 
 app.state.mcp = FastApiMCP(app)
 app.state.mcp.mount()
