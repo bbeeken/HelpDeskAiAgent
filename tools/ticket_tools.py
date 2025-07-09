@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel
 
-from sqlalchemy import select
+from sqlalchemy import select, or_, and_
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
