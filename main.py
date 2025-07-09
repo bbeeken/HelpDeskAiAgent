@@ -3,7 +3,9 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi_mcp import FastApiMCP
 
+
 from src.enhanced_mcp_server import create_server, Tool
+
 from src.tool_list import TOOLS
 from api.routes import register_routes, get_db
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -70,7 +72,11 @@ app.add_middleware(SlowAPIMiddleware)
 register_routes(app)
 
 # --- Dynamically expose MCP tools as HTTP endpoints ---
-server = create_server()
+server = create_enhanced_server()
+if getattr(server, "is_enhanced", False):
+    logger.info("Enhanced MCP server active with %d tools", len(getattr(server, "_tools", [])))
+else:
+    logger.info("Basic MCP server active")
 
 def build_endpoint(tool: Tool, schema: Dict[str, Any]):
     async def endpoint(request: Request):
@@ -89,8 +95,12 @@ for tool in TOOLS:
     app.post(f"/{tool.name}", operation_id=tool.name)(build_endpoint(tool, schema))
 
 @app.get("/tools")
-async def list_tools() -> List[dict]:
-    return [t.to_dict() for t in TOOLS]
+async def list_tools() -> Dict[str, Any]:
+    return {
+        "enhanced": getattr(server, "is_enhanced", False),
+        "count": len(TOOLS),
+        "tools": [t.to_dict() for t in TOOLS],
+    }
 
 app.state.mcp = FastApiMCP(app)
 app.state.mcp.mount()
@@ -159,3 +169,12 @@ async def health(db: AsyncSession = Depends(get_db)) -> dict:
 
     uptime = (datetime.now(UTC) - START_TIME).total_seconds()
     return {"db": db_status, "uptime": uptime, "version": APP_VERSION}
+
+
+@app.get("/health/mcp")
+async def health_mcp() -> Dict[str, Any]:
+    """Return health information about the MCP server."""
+    return {
+        "enhanced": getattr(server, "is_enhanced", False),
+        "tool_count": len(TOOLS),
+    }
