@@ -29,35 +29,37 @@ class MCPServer:
 def create_server() -> MCPServer:
     """Return a server instance exposing demo tools."""
 
-    async def echo(text: str) -> Dict[str, Any]:
-        return {"echo": text}
+    async def get_ticket(ticket_id: int) -> Dict[str, Any]:
+        """Return a simple representation of a ticket."""
+        return {"ticket_id": ticket_id}
 
-    async def add(a: int, b: int) -> Dict[str, Any]:
-        return {"result": a + b}
+    async def create_ticket(subject: str, body: str) -> Dict[str, Any]:
+        """Pretend to create a ticket and return its info."""
+        return {"ticket_id": 1, "subject": subject, "ticket_body": body}
 
     tools = [
         Tool(
-            name="echo",
-            description="Return the provided text.",
+            name="get_ticket",
+            description="Fetch a ticket by ID.",
             inputSchema={
                 "type": "object",
-                "properties": {"text": {"type": "string"}},
-                "required": ["text"],
+                "properties": {"ticket_id": {"type": "integer"}},
+                "required": ["ticket_id"],
             },
-            _implementation=echo,
+            _implementation=get_ticket,
         ),
         Tool(
-            name="add",
-            description="Add two integers.",
+            name="create_ticket",
+            description="Create a new ticket.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "a": {"type": "integer"},
-                    "b": {"type": "integer"},
+                    "subject": {"type": "string"},
+                    "body": {"type": "string"},
                 },
-                "required": ["a", "b"],
+                "required": ["subject", "body"],
             },
-            _implementation=add,
+            _implementation=create_ticket,
         ),
     ]
 
