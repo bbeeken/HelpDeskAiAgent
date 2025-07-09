@@ -14,7 +14,7 @@ except Exception:  # pragma: no cover - optional dependency
     StreamableHttpParameters = None  # type: ignore
     TextContent = None  # type: ignore
 
-MCP_URL = os.getenv("MCP_URL", "http://localhost:8080")
+MCP_URL = os.getenv("MCP_URL", "http://localhost:8008")
 MCP_STREAM_TIMEOUT = int(os.getenv("MCP_STREAM_TIMEOUT", "30"))
 
 logger = logging.getLogger(__name__)
