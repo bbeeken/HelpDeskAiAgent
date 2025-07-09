@@ -24,7 +24,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
    The `driver` name must match an ODBC driver installed on the host machine.
   - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
     lookups in `tools.user_tools`. When omitted, stub responses are returned.
-  - `MCP_URL` – optional FastMCP server URL used by AI helper functions
+  - `MCP_URL` – optional MCP server URL used by AI helper functions
     (default `http://localhost:8080`).
   - `MCP_STREAM_TIMEOUT` – timeout in seconds for streaming AI responses
     (default `30`).
@@ -185,7 +185,7 @@ python -m tools.cli create-ticket
 
 ## MCP Streaming Interface
 
-Connect to the built-in FastMCP endpoint to exchange JSON-RPC messages.
+Connect to the built-in MCP endpoint to exchange JSON-RPC messages.
 
 
 1. **Open the stream** with `GET /mcp`. It returns Server-Sent Events. The first
