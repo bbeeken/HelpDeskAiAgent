@@ -28,6 +28,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     (default `http://localhost:8080`).
   - `MCP_STREAM_TIMEOUT` – timeout in seconds for streaming AI responses
     (default `30`).
+  - `OPENAI_API_KEY` – API key used by OpenAI-based tools.
 
 
   They can be provided in the shell environment or in a `.env` file in the project root.
