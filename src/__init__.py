@@ -1,4 +1,6 @@
-"""Core package exposing MCP server utilities and tools."""
+"""HelpDesk MCP Server"""
+
+__version__ = "1.0.0"
 
 from .mcp_server import Tool, MCPServer, create_server
 
