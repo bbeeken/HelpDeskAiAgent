@@ -21,7 +21,8 @@ async def test_tools_list_route():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.get("/tools")
         assert resp.status_code == 200
-        tools = resp.json()
+        data = resp.json()
+        tools = data["tools"]
         assert any(t["name"] == "get_ticket" and t["category"] == "ticket" for t in tools)
         assert any(t["name"] == "ticket_count" and t["category"] == "analytics" for t in tools)
         assert any(t["name"] == "ai_echo" and t["category"] == "ai" for t in tools)

@@ -11,11 +11,12 @@ EXPECTED_TOOLS: Dict[str, Set[str]] = {
 
 
 def verify(base_url: str) -> bool:
-    """Fetch /tools and verify the available tool names."""
+    """Fetch `/tools` and verify the available tool names."""
     url = base_url.rstrip('/') + '/tools'
     resp = requests.get(url, timeout=10)
     resp.raise_for_status()
-    tools = resp.json()
+    data = resp.json()
+    tools = data["tools"]
 
     reported = {t["name"] for t in tools}
     expected = set().union(*EXPECTED_TOOLS.values())

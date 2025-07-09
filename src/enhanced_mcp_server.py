@@ -241,13 +241,14 @@ def create_server() -> Server:
     @server.call_tool()
     async def _call_tool(name: str, arguments: Dict[str, Any]) -> Iterable[types.Content]:
 
-        for tool in TOOLS:
+        for tool in ENHANCED_TOOLS:
             if tool.name == name:
                 result = await tool._implementation(**arguments)
                 text = json.dumps(result)
                 return [types.TextContent(type="text", text=text)]
         raise ValueError(f"Unknown tool: {name}")
 
+    server._tools = ENHANCED_TOOLS
     return server
 
 
