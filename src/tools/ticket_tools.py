@@ -9,7 +9,7 @@ from ..mcp_server import Tool
 
 async def get_ticket(ticket_id: int) -> Dict[str, Any]:
     """Return details for a ticket."""
-    return {"ticket_id": ticket_id, "status": "open"}
+    return {"ticket_id": ticket_id}
 
 
 GET_TICKET = Tool(
