@@ -25,7 +25,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
   - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
     lookups in `tools.user_tools`. When omitted, stub responses are returned.
   - `MCP_URL` – optional MCP server URL used by AI helper functions
-    (default `http://localhost:8080`).
+    (default `http://localhost:8008`).
   - `MCP_STREAM_TIMEOUT` – timeout in seconds for streaming AI responses
     (default `30`).
 
@@ -86,6 +86,9 @@ Build the image and start the containers:
 docker build -t helpdesk-agent .
 docker-compose up
 ```
+
+The MCP server will be available on `http://localhost:8008` when the
+containers are running.
 
 Compose reads variables from `.env`. Copy `.env.example` to `.env` and set
 values for required options such as `DB_CONN_STRING` and `OPENAI_API_KEY`.
