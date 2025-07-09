@@ -221,6 +221,19 @@ values from `.env`. `DB_CONN_STRING` is set automatically to connect to the
 `postgres` container using the provided `POSTGRES_USER`, `POSTGRES_PASSWORD`, and
 `POSTGRES_DB` values.
 
+## Verifying Available Tools
+
+Run `verify_tools.py` after deploying to ensure the server exposes the expected
+set of tool endpoints. The script fetches the `/tools` route and compares the
+returned tool names against a predefined mapping. It exits with a non-zero
+status when any tools are missing or unexpected.
+
+```bash
+python verify_tools.py http://localhost:8000
+```
+
+Include this check in deployment pipelines to catch configuration issues early.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
