@@ -21,11 +21,20 @@ class Tool:
     description: str
     inputSchema: Dict[str, Any]
     _implementation: Callable[..., Awaitable[Any]]
+    category: str | None = None
+    requires_auth: bool = False
+    rate_limit: str | None = None
 
     def to_dict(self) -> Dict[str, Any]:
-        data = asdict(self)
-        data.pop("_implementation", None)
-        return data
+        # Serialize public fields while omitting the implementation callable
+        return {
+            "name": self.name,
+            "description": self.description,
+            "inputSchema": self.inputSchema,
+            "category": self.category,
+            "requires_auth": self.requires_auth,
+            "rate_limit": self.rate_limit,
+        }
 
 
 def create_server() -> Server:
