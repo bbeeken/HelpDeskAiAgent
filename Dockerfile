@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 # Install MS ODBC drivers and build tools
 RUN apt-get update \
@@ -12,12 +12,18 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# Default environment variables for enhanced features
+ENV ENABLE_RATE_LIMITING=true
+ENV ERROR_TRACKING_DSN=""
+
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application source
 COPY . .
+# Ensure enhanced server implementation is included
+COPY src/enhanced_mcp_server.py ./src/enhanced_mcp_server.py
 
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

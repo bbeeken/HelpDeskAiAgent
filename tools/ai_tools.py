@@ -5,7 +5,12 @@ from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from pydantic import BaseModel, Field, ValidationError
-from fastmcp import Client
+
+try:
+    from mcp.client.session_group import ClientSessionGroup, StreamableHttpParameters
+except Exception:  # pragma: no cover - optional dependency
+    ClientSessionGroup = None  # type: ignore
+    StreamableHttpParameters = None  # type: ignore
 
 from schemas.ticket import TicketOut
 from ai.mcp_agent import (
@@ -49,16 +54,21 @@ class AITools:
     def __init__(self, mcp_url: str, timeout: int = 30) -> None:
         self.mcp_url = mcp_url
         self.timeout = timeout
-        self._client: Optional[Client] = None
+        self._client: Optional[ClientSessionGroup] = None
         self._safety = _SafetyPatterns(
             pii=[r"\b\d{3}-\d{2}-\d{4}\b", r"\b\d{16}\b"],
             prompt_injection=["ignore previous instructions", "system prompt"],
             sensitive_actions=["delete all", "drop table", "sudo rm"]
         )
 
-    def _ensure_client(self) -> Client:
+    async def _ensure_client(self) -> "ClientSessionGroup":
+        if ClientSessionGroup is None:
+            raise ImportError("mcp package is required for AI tools")
         if not self._client:
-            self._client = Client(self.mcp_url)
+            self._client = ClientSessionGroup()
+            await self._client.connect_to_server(
+                StreamableHttpParameters(url=self.mcp_url)
+            )
         return self._client
 
     def _check_safety(self, text: str) -> List[str]:
@@ -103,8 +113,8 @@ class AITools:
             f"Tone: {tone.value}",
             f"Max tokens: {max_tokens}",
             "",  # newline
-            f"Subject: {ticket.subject}",
-            f"Description: {ticket.ticket_body}",
+            f"Subject: {ticket.Subject}",
+            f"Description: {ticket.Ticket_Body}",
         ]
         if extra_instructions:
             parts.extend(["", extra_instructions])
@@ -134,7 +144,7 @@ class AITools:
         if issues:
             return {"error": "unsafe_content", "safety_issues": issues}
 
-        client = self._ensure_client()
+        client = await self._ensure_client()
         async with client:
             try:
                 text = await mcp_suggest_response(ticket.model_dump(), prompt)
@@ -142,7 +152,7 @@ class AITools:
                 logger.exception("MCP suggest failed")
                 text = ""
 
-        quality = self._evaluate_quality(text, ticket.subject)
+        quality = self._evaluate_quality(text, ticket.Subject or "")
         return {
             "content": text,
             "tone": tone.value,
@@ -174,7 +184,7 @@ class AITools:
             yield {"error": "unsafe_content", "safety_issues": issues}
             return
 
-        client = self._ensure_client()
+        client = await self._ensure_client()
         async with client:
             try:
                 async for chunk in mcp_stream_ticket_response(
@@ -200,3 +210,4 @@ __all__ = [
     "AITools", "ResponseTone", "AIResponseQuality",
     "ai_suggest_response", "ai_stream_response"
 ]
+

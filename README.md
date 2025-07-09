@@ -24,10 +24,15 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
    The `driver` name must match an ODBC driver installed on the host machine.
   - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
     lookups in `tools.user_tools`. When omitted, stub responses are returned.
-  - `MCP_URL` – optional FastMCP server URL used by AI helper functions
+  - `MCP_URL` – optional MCP server URL used by AI helper functions
     (default `http://localhost:8080`).
   - `MCP_STREAM_TIMEOUT` – timeout in seconds for streaming AI responses
     (default `30`).
+
+  - `OPENAI_API_KEY` – API key used by OpenAI-based tools.
+
+  - `ENABLE_ENHANCED_MCP` – set to `0` to disable the enhanced MCP tool server
+    and use the basic implementation.
 
 
   They can be provided in the shell environment or in a `.env` file in the project root.
@@ -144,7 +149,7 @@ LEFT JOIN Assets a ON a.ID = t.Asset_ID
 LEFT JOIN Sites s ON s.ID = t.Site_ID
 LEFT JOIN Ticket_Categories c ON c.ID = t.Ticket_Category_ID
 LEFT JOIN Vendors v ON v.ID = t.Assigned_Vendor_ID
-LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
+LEFT JOIN Priority_Levels p ON p.ID = t.Priority_ID;
 ```
 
 
@@ -185,7 +190,7 @@ python -m tools.cli create-ticket
 
 ## MCP Streaming Interface
 
-Connect to the built-in FastMCP endpoint to exchange JSON-RPC messages.
+Connect to the built-in MCP endpoint to exchange JSON-RPC messages.
 
 
 1. **Open the stream** with `GET /mcp`. It returns Server-Sent Events. The first
@@ -220,6 +225,19 @@ The API listens on `http://localhost:8000`. The compose file reads environment
 values from `.env`. `DB_CONN_STRING` is set automatically to connect to the
 `postgres` container using the provided `POSTGRES_USER`, `POSTGRES_PASSWORD`, and
 `POSTGRES_DB` values.
+
+## Verifying Available Tools
+
+Run `verify_tools.py` after deploying to ensure the server exposes the expected
+set of tool endpoints. The script fetches the `/tools` route and compares the
+returned tool names against a predefined mapping. It exits with a non-zero
+status when any tools are missing or unexpected.
+
+```bash
+python verify_tools.py http://localhost:8000
+```
+
+Include this check in deployment pipelines to catch configuration issues early.
 
 ## License
 

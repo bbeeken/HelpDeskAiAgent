@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel
 
-from sqlalchemy import select
+from sqlalchemy import select, or_, and_
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -114,7 +114,9 @@ async def search_tickets_expanded(
     return summaries
 
 
-async def create_ticket(db: AsyncSession, ticket_obj: Ticket) -> Ticket:
+async def create_ticket(db: AsyncSession, ticket_obj: Ticket | Dict[str, Any]) -> Ticket:
+    if isinstance(ticket_obj, dict):
+        ticket_obj = Ticket(**ticket_obj)
     db.add(ticket_obj)
     try:
         await db.commit()
