@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from ..mcp_server import Tool
+from ..enhanced_mcp_server import Tool
 
 
 async def get_ticket(ticket_id: int) -> Dict[str, Any]:
@@ -20,6 +20,9 @@ GET_TICKET = Tool(
         "properties": {"ticket_id": {"type": "integer"}},
         "required": ["ticket_id"],
     },
+    category="ticket",
+    requires_auth=False,
+    rate_limit=None,
     _implementation=get_ticket,
 )
 

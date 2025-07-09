@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-"""MCP server implementation with optional enhanced features."""
 
 from dataclasses import dataclass, asdict
 from typing import Any, Awaitable, Callable, Dict, Iterable
@@ -10,9 +9,6 @@ import json
 import logging
 import os
 
-from mcp import types
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
 
 # Environment flags for optional functionality
 ENABLE_RATE_LIMITING = os.getenv("ENABLE_RATE_LIMITING", "true").lower() == "true"
@@ -23,15 +19,32 @@ logger = logging.getLogger(__name__)
 if ERROR_TRACKING_DSN:
     logger.info("Error tracking enabled")
 
+from dataclasses import dataclass, asdict
+from typing import Any, Awaitable, Callable, Dict, Iterable, List, Optional
+
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+from mcp import types
+import anyio
+import json
+
+
 
 @dataclass
 class Tool:
-    """Simple representation of a callable tool."""
+
+    """Representation of a callable tool with extra metadata."""
+
 
     name: str
     description: str
     inputSchema: Dict[str, Any]
     _implementation: Callable[..., Awaitable[Any]]
+
+    category: str
+    requires_auth: bool = False
+    rate_limit: Optional[str] = None
+
 
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)
@@ -50,11 +63,10 @@ def create_server() -> Server:
     @server.list_tools()
     async def _list_tools() -> list[types.Tool]:
         return [
-            types.Tool(
-                name=t.name,
-                description=t.description,
-                inputSchema=t.inputSchema,
-            )
+
+
+            types.Tool(name=t.name, description=t.description, inputSchema=t.inputSchema)
+
             for t in TOOLS
         ]
 

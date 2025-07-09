@@ -2,7 +2,11 @@ version: "3.8"
 
 services:
   helpdeskmcpserver:
+
     build: .
+
+    image: bbeeken/helpdeskmcpserver:latest
+
     env_file:
       - .env
     environment:
