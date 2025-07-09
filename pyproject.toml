@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["ai", "alembic", "api", "db", "schemas", "services", "tools", "src"]
+packages = ["ai", "alembic", "api", "db", "schemas", "tools", "src"]
 
 [tool.flake8]
 max-line-length = 100

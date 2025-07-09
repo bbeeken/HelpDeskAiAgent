@@ -229,9 +229,10 @@ values from `.env`. `DB_CONN_STRING` is set automatically to connect to the
 ## Verifying Available Tools
 
 Run `verify_tools.py` after deploying to ensure the server exposes the expected
-set of tool endpoints. The script fetches the `/tools` route and compares the
-returned tool names against a predefined mapping. It exits with a non-zero
-status when any tools are missing or unexpected.
+set of tool endpoints. The `/tools` route now returns an object with a `tools`
+key containing the available tools. The verification script fetches this route
+and compares the returned names against a predefined mapping. It exits with a
+non-zero status when any tools are missing or unexpected.
 
 ```bash
 python verify_tools.py http://localhost:8000
