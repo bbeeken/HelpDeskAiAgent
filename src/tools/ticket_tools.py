@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from ..enhanced_mcp_server import Tool
+from ..mcp_server import Tool
 
 
 async def get_ticket(ticket_id: int) -> Dict[str, Any]:
