@@ -27,6 +27,7 @@ class MCPServer:
 
 
 def create_server() -> MCPServer:
+
     """Return a server instance exposing demo tools."""
 
     async def echo(text: str) -> Dict[str, Any]:
@@ -62,3 +63,4 @@ def create_server() -> MCPServer:
     ]
 
     return MCPServer(tools)
+
