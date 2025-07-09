@@ -98,8 +98,9 @@ for tool in TOOLS:
     app.post(f"/{tool.name}", operation_id=tool.name)(build_endpoint(tool, schema))
 
 @app.get("/tools")
-async def list_tools() -> List[Dict[str, Any]]:
-    return [t.to_dict() for t in TOOLS]
+async def list_tools() -> Dict[str, List[Dict[str, Any]]]:
+    """Return metadata about available tool endpoints."""
+    return {"tools": [t.to_dict() for t in TOOLS]}
 
 app.state.mcp = FastApiMCP(app)
 app.state.mcp.mount()
