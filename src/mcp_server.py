@@ -4,6 +4,7 @@ from dataclasses import dataclass, asdict
 from typing import Any, Awaitable, Callable, Dict, List
 
 
+
 @dataclass
 class Tool:
     """Simple representation of a callable tool."""
@@ -28,39 +29,13 @@ class MCPServer:
 
 def create_server() -> MCPServer:
 
-    """Return a server instance exposing demo tools."""
+    """Return a server instance exposing available tools."""
 
-    async def echo(text: str) -> Dict[str, Any]:
-        return {"echo": text}
+    # Import inside the function to avoid circular imports during module
+    # initialization.
+    from .tool_list import TOOLS
 
-    async def add(a: int, b: int) -> Dict[str, Any]:
-        return {"result": a + b}
-
-    tools = [
-        Tool(
-            name="echo",
-            description="Return the provided text.",
-            inputSchema={
-                "type": "object",
-                "properties": {"text": {"type": "string"}},
-                "required": ["text"],
-            },
-            _implementation=echo,
-        ),
-        Tool(
-            name="add",
-            description="Add two integers.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "a": {"type": "integer"},
-                    "b": {"type": "integer"},
-                },
-                "required": ["a", "b"],
-            },
-            _implementation=add,
-        ),
-    ]
-
-    return MCPServer(tools)
+    # ``list()`` creates a shallow copy so callers cannot mutate the original
+    # list defined in :mod:`src.tool_list`.
+    return MCPServer(list(TOOLS))
 
