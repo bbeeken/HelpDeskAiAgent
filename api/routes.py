@@ -316,7 +316,9 @@ async def open_by_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[User
 @analytics_router.get(
     "/waiting_on_user",
     response_model=List[WaitingOnUserCount],
-    operation_id="tickets_waiting_on_user",
+
+    operation_id="waiting_on_user",
+
 )
 async def waiting_on_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[WaitingOnUserCount]:
     return await tickets_waiting_on_user(db)
@@ -347,10 +349,9 @@ async def suggest_response(request: Request, ticket: TicketOut) -> Dict[str, str
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-@ai_router.post(
-    "/suggest_response/stream",
-    operation_id="suggest_response_stream",
-)
+
+@ai_router.post("/suggest_response/stream", operation_id="suggest_response_stream")
+
 @limiter.limit("10/minute")
 async def suggest_response_stream(request: Request, ticket: TicketOut) -> StreamingResponse:
     ticket.model_validate(ticket.model_dump())
