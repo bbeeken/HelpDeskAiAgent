@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
+from fastapi.openapi.utils import get_openapi
 from fastapi_mcp import FastApiMCP
 
 
@@ -74,6 +75,28 @@ app.add_exception_handler(
 app.add_middleware(SlowAPIMiddleware)
 
 register_routes(app)
+
+def custom_openapi() -> Dict[str, Any]:
+    """Return OpenAPI schema with array parameters expanded."""
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(title=app.title, version=APP_VERSION, routes=app.routes)
+    for path_item in schema.get("paths", {}).values():
+        for operation in path_item.values():
+            for param in operation.get("parameters", []):
+                s = param.get("schema", {})
+                if "anyOf" in s and not s.get("items"):
+                    array_schema = next((a for a in s["anyOf"] if a.get("type") == "array"), None)
+                    if array_schema and array_schema.get("items"):
+                        param["schema"] = {
+                            "type": "array",
+                            "items": array_schema["items"],
+                            "title": s.get("title", param["name"]),
+                        }
+    app.openapi_schema = schema
+    return schema
+
+app.openapi = custom_openapi
 
 # --- Dynamically expose MCP tools as HTTP endpoints ---
 server = create_enhanced_server()
