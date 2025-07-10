@@ -1,7 +1,7 @@
 import logging
 import json
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Dict, List, Optional, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence, Union
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
@@ -83,7 +83,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 # ─── Utility ──────────────────────────────────────────────────────────────────
 def extract_filters(
     request: Request,
-    exclude: List[str] = ("skip", "limit", "sort", "sla_days", "status_id")
+    exclude: Sequence[str] = (
+        "skip",
+        "limit",
+        "sort",
+        "sla_days",
+        "status_id",
+    ),
 ) -> Dict[str, Any]:
     """
     Extract arbitrary query parameters for filtering, excluding reserved keys.

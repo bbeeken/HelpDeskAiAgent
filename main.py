@@ -215,7 +215,7 @@ async def handle_unexpected(request: Request, exc: Exception):
 @app.get("/health")
 async def health(db: AsyncSession = Depends(get_db)) -> dict:
     """Enhanced health check with dependency testing."""
-    health_status = {
+    health_status: Dict[str, Any] = {
         "status": "healthy",
         "timestamp": datetime.now(UTC).isoformat(),
         "version": APP_VERSION,
