@@ -103,6 +103,24 @@ class MessageIn(BaseModel):
     sender_code: str = Field(..., example="USR123")
     sender_name: str = Field(..., example="John Doe")
 
+
+@ticket_router.get("/search", response_model=List[TicketSearchOut])
+async def search_tickets(
+    q: str = Query(..., min_length=1),
+    limit: int = Query(10, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> List[TicketSearchOut]:
+    logger.info("Searching tickets for '%s' (limit=%d)", q, limit)
+    results = await search_tickets_expanded(db, q, limit)
+    validated: List[TicketSearchOut] = []
+    for r in results:
+        try:
+            validated.append(TicketSearchOut.model_validate(r))
+        except ValidationError as exc:
+            logger.error("Invalid search result %s: %s", r.get("Ticket_ID", "?"), exc)
+    return validated
+
+
 @ticket_router.get("/{ticket_id}", response_model=TicketExpandedOut)
 async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketExpandedOut:
     ticket = await get_ticket_expanded(db, ticket_id)
@@ -153,22 +171,6 @@ async def list_tickets_expanded_alias(
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedResponse[TicketExpandedOut]:
     return await list_tickets(request, skip, limit, db)
-
-@ticket_router.get("/search", response_model=List[TicketSearchOut])
-async def search_tickets(
-    q: str = Query(..., min_length=1),
-    limit: int = Query(10, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
-) -> List[TicketSearchOut]:
-    logger.info("Searching tickets for '%s' (limit=%d)", q, limit)
-    results = await search_tickets_expanded(db, q, limit)
-    validated: List[TicketSearchOut] = []
-    for r in results:
-        try:
-            validated.append(TicketSearchOut.model_validate(r))
-        except ValidationError as exc:
-            logger.error("Invalid search result %s: %s", r.get("Ticket_ID", "?"), exc)
-    return validated
 
 @tickets_router.get("/search", response_model=List[TicketSearchOut])
 async def search_tickets_alias(
