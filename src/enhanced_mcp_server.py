@@ -156,7 +156,7 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_db_wrapper(message_tools.post_ticket_message),
     ),
     Tool(
-        name="get_ticket_attachments",
+        name="ticket_attachments",
         description="Get attachments for a ticket",
         inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
         _implementation=_db_wrapper(attachment_tools.get_ticket_attachments),
@@ -180,7 +180,7 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_db_wrapper(analysis_tools.open_tickets_by_user),
     ),
     Tool(
-        name="tickets_waiting_on_user",
+        name="tickets_waiting_user",
         description="Tickets waiting on user",
         inputSchema={"type": "object", "properties": {}, "required": []},
         _implementation=_db_wrapper(analysis_tools.tickets_waiting_on_user),
