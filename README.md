@@ -77,10 +77,20 @@ uvicorn main:app --reload
 
 ## Running tests
 
-Install the testing dependencies and run `flake8` and `pytest`:
+Install the dependencies from `requirements.txt` and the package itself before
+running the linters and tests. A helper script is provided to automate this
+setup:
 
 ```bash
-pip install -e .
+# install packages and verify required tools are available
+bash scripts/setup-tests.sh
+```
+
+The script installs everything with `pip install -r requirements.txt` and
+`pip install -e .`, then prints the versions of `flake8`, `pytest` and
+`httpx`. After running it (or manually installing the packages) execute:
+
+```bash
 flake8
 pytest
 ```
