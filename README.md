@@ -35,7 +35,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     and use the basic implementation.
 
   - `ENABLE_RATE_LIMITING` – enable the SlowAPI limiter middleware used by
-    `/ai` endpoints. Set to `false` or `0` to disable it (default `true`).
+    `/ai` endpoints. Set to `false`, `0`, or `no` to disable it (default `true`).
 
   - `ERROR_TRACKING_DSN` – optional DSN for an error tracking service such as
     Sentry. Leave empty to disable integration.
