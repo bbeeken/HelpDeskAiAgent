@@ -4,12 +4,12 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime, timedelta, timezone, date as date_cls
-from typing import Any, Dict, List, Optional, AsyncGenerator
+from typing import Any, Dict, List, Optional
 import time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
-from db.models import Ticket, TicketStatus, Site, TicketMessage
+from db.models import Ticket, TicketStatus, Site
 from schemas.analytics import (
     StatusCount,
     SiteOpenCount,
@@ -17,7 +17,6 @@ from schemas.analytics import (
     WaitingOnUserCount,
     TrendCount,
 )
-from schemas.analytics import TrendCount  # ensure TrendCount is imported
 
 
 logger = logging.getLogger(__name__)
@@ -308,7 +307,10 @@ class AnalyticsTools:
             insights.append(
                 {
                     "type": "warning",
-                    "message": "Ticket volume is increasing rapidly; consider scaling support resources.",
+                    "message": (
+                        "Ticket volume is increasing rapidly; "
+                        "consider scaling support resources."
+                    ),
                 }
             )
         return insights
