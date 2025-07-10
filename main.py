@@ -21,6 +21,8 @@ from limiter import limiter
 from errors import ErrorResponse, NotFoundError, ValidationError, DatabaseError
 from db.models import Base
 from db.mssql import engine
+from config import ERROR_TRACKING_DSN
+import sentry_sdk
 
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
@@ -56,6 +58,10 @@ async def lifespan(app: FastAPI):
         format="%(asctime)s - %(levelname)s - %(correlation_id)s - %(name)s - %(message)s",
     )
     logging.getLogger().addFilter(CorrelationIdFilter())
+
+    if ERROR_TRACKING_DSN:
+        sentry_sdk.init(dsn=ERROR_TRACKING_DSN)
+        logger.info("Sentry error tracking enabled")
 
     app.state.limiter = limiter
 
