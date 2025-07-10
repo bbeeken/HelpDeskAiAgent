@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+import os
 
 from limiter import limiter
 from errors import ErrorResponse, NotFoundError, ValidationError, DatabaseError
@@ -78,7 +79,8 @@ app.add_exception_handler(
     RateLimitExceeded,
     lambda request, exc: JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"}),
 )
-app.add_middleware(SlowAPIMiddleware)
+if os.getenv("ENABLE_RATE_LIMITING", "true").lower() not in {"0", "false", "no"}:
+    app.add_middleware(SlowAPIMiddleware)
 
 register_routes(app)
 
