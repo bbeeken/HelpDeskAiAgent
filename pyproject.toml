@@ -20,6 +20,7 @@ dependencies = [
     "aioodbc==0.5.0",
     "asgi_lifespan==2.1.0",
     "requests==2.32.3",
+    "flake8==7.3.0",
 ]
 
 [tool.setuptools]
