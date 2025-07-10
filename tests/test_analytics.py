@@ -138,6 +138,7 @@ async def test_sla_breaches_with_filters(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+
 async def test_sla_breaches_excludes_non_open(client: AsyncClient):
     """Closed or waiting tickets should not count towards SLA breaches."""
     old = datetime.now(UTC) - timedelta(days=5)
@@ -153,6 +154,7 @@ async def test_sla_breaches_excludes_non_open(client: AsyncClient):
     resp = await client.get(
         "/analytics/sla_breaches",
         params={"status_id": [3], "sla_days": 2},
+
     )
     assert resp.status_code == 200
     assert resp.json() == {"breaches": 1}
