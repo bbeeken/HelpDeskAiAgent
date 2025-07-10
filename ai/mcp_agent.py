@@ -120,4 +120,3 @@ async def stream_ticket_response(
             await task
 
     return _generator()
-
