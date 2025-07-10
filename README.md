@@ -34,6 +34,12 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
   - `ENABLE_ENHANCED_MCP` – set to `0` to disable the enhanced MCP tool server
     and use the basic implementation.
 
+  - `ENABLE_RATE_LIMITING` – enable the SlowAPI limiter middleware used by
+    `/ai` endpoints. Set to `false` or `0` to disable it (default `true`).
+
+  - `ERROR_TRACKING_DSN` – optional DSN for an error tracking service such as
+    Sentry. Leave empty to disable integration.
+
 
   They can be provided in the shell environment or in a `.env` file in the project root.
   A template called `.env.example` lists the required and optional variables; copy it to `.env` and
