@@ -120,7 +120,7 @@ async def sla_breaches(
     db: AsyncSession,
     sla_days: int = 2,
     filters: Optional[Dict[str, Any]] = None,
-    status_ids: Optional[List[int]] = None,
+    status_ids: Optional[List[int] | int] = None,
 ) -> int:
     """Count tickets older than `sla_days` with optional filtering."""
     logger.info(
@@ -133,9 +133,16 @@ async def sla_breaches(
     query = select(func.count(Ticket.Ticket_ID)).filter(Ticket.Created_Date < cutoff)
 
     if status_ids is not None:
+        if isinstance(status_ids, int):
+            status_ids = [status_ids]
         query = query.filter(Ticket.Ticket_Status_ID.in_(status_ids))
     else:
+<<<<<<< HEAD
         query = query.filter(Ticket.Ticket_Status_ID != 3,7)
+=======
+        # Default to counting only open or in-progress tickets
+        query = query.filter(Ticket.Ticket_Status_ID.in_([1, 2]))
+>>>>>>> 4482d4edf44a12cca9d42188f38f7bc3e7ab8d93
 
     if filters:
         for key, value in filters.items():
