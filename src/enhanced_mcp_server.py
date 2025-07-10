@@ -228,7 +228,8 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=user_tools.get_user_by_email,
     ),
 ]
-"""Approximately 27 tools. Update count carefully if editing."""
+# Keep track of how many tools are defined for easier maintenance.
+TOOL_COUNT: int = len(ENHANCED_TOOLS)
 
 
 def create_server() -> Server:
