@@ -7,7 +7,7 @@ Create Date: 2025-07-03 04:12:26.131518
 """
 from typing import Sequence, Union
 
-from alembic import op
+from alembic import op  # type: ignore[attr-defined]
 from db.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
 
 

@@ -187,9 +187,10 @@ class AITools:
         client = await self._ensure_client()
         async with client:
             try:
-                async for chunk in mcp_stream_ticket_response(
+                generator = await mcp_stream_ticket_response(
                     ticket.model_dump(), prompt
-                ):
+                )
+                async for chunk in generator:
                     yield {"content": chunk}
             except Exception:
                 logger.exception("MCP stream failed")
@@ -202,7 +203,8 @@ def ai_suggest_response(ticket: Dict[str, Any], context: str = "") -> Any:
 
 async def ai_stream_response(ticket: Dict[str, Any], context: str = "") -> AsyncGenerator[str, None]:
     """Legacy helper: stream response chunks as plain strings."""
-    async for chunk in mcp_stream_ticket_response(ticket, context):
+    generator = await mcp_stream_ticket_response(ticket, context)
+    async for chunk in generator:
         yield chunk
 
 
