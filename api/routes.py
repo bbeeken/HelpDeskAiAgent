@@ -206,12 +206,20 @@ async def delete_ticket_endpoint(ticket_id: int, db: AsyncSession = Depends(get_
         logger.warning("Ticket %s not found for deletion", ticket_id)
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-@ticket_router.get("/{ticket_id}/messages", response_model=List[TicketMessageOut])
+@ticket_router.get(
+    "/{ticket_id}/messages",
+    response_model=List[TicketMessageOut],
+    operation_id="list_ticket_messages",
+)
 async def list_ticket_messages(ticket_id: int, db: AsyncSession = Depends(get_db)) -> List[TicketMessageOut]:
     msgs = await get_ticket_messages(db, ticket_id)
     return [TicketMessageOut.model_validate(m) for m in msgs]
 
-@ticket_router.post("/{ticket_id}/messages", response_model=TicketMessageOut)
+@ticket_router.post(
+    "/{ticket_id}/messages",
+    response_model=TicketMessageOut,
+    operation_id="add_ticket_message",
+)
 async def add_ticket_message(
     ticket_id: int,
     msg: MessageIn,
@@ -281,7 +289,11 @@ async def list_statuses_endpoint(db: AsyncSession = Depends(get_db)) -> List[Tic
     stats = await list_statuses(db)
     return [TicketStatusOut.model_validate(s) for s in stats]
 
-@lookup_router.get("/ticket/{ticket_id}/attachments", response_model=List[TicketAttachmentOut])
+@lookup_router.get(
+    "/ticket/{ticket_id}/attachments",
+    response_model=List[TicketAttachmentOut],
+    operation_id="get_ticket_attachments",
+)
 async def get_ticket_attachments_endpoint(ticket_id: int, db: AsyncSession = Depends(get_db)) -> List[TicketAttachmentOut]:
     atts = await get_ticket_attachments(db, ticket_id)
     return [TicketAttachmentOut.model_validate(a) for a in atts]
@@ -301,7 +313,11 @@ async def open_by_site_endpoint(db: AsyncSession = Depends(get_db)) -> List[Site
 async def open_by_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[UserOpenCount]:
     return await open_tickets_by_user(db)
 
-@analytics_router.get("/waiting_on_user", response_model=List[WaitingOnUserCount])
+@analytics_router.get(
+    "/waiting_on_user",
+    response_model=List[WaitingOnUserCount],
+    operation_id="waiting_on_user",
+)
 async def waiting_on_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[WaitingOnUserCount]:
     return await tickets_waiting_on_user(db)
 
@@ -331,7 +347,7 @@ async def suggest_response(request: Request, ticket: TicketOut) -> Dict[str, str
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-@ai_router.post("/suggest_response/stream")
+@ai_router.post("/suggest_response/stream", operation_id="suggest_response_stream")
 @limiter.limit("10/minute")
 async def suggest_response_stream(request: Request, ticket: TicketOut) -> StreamingResponse:
     ticket.model_validate(ticket.model_dump())
