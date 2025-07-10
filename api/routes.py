@@ -327,7 +327,7 @@ async def waiting_on_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[W
 async def sla_breaches_endpoint(
     request: Request,
     sla_days: int = Query(2, ge=0),
-    status_id: Optional[List[int]] = Query(None),
+    status_id: List[int] = Query(default_factory=list),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, int]:
     filters = extract_filters(request)
