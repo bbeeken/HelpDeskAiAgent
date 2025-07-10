@@ -13,7 +13,7 @@ def create_sample_ticket():
         "Ticket_Contact_Email": "tester@example.com",
     }
     response = client.post("/ticket", json=payload)
-    assert response.status_code == 200
+    assert response.status_code == 201
     return response.json()
 
 
