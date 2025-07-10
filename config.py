@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DB_CONN_STRING: str | None = os.getenv("DB_CONN_STRING")
+ERROR_TRACKING_DSN: str | None = os.getenv("ERROR_TRACKING_DSN")
 
 try:
     env_module = importlib.import_module("config_env")

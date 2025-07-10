@@ -10,7 +10,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
    pip install -e .
    ```
 
-   The requirements include `aioodbc` for async ODBC connections and `requests` for standard HTTP calls; `pyodbc` is no longer required.
+   The requirements include `aioodbc` for async ODBC connections and `requests` for standard HTTP calls; `pyodbc` is no longer required. The optional `sentry_sdk` package enables error tracking when `ERROR_TRACKING_DSN` is set.
 2. **Environment variables**
 
    The application requires the following variables:
@@ -37,8 +37,9 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
   - `ENABLE_RATE_LIMITING` – enable the SlowAPI limiter middleware used by
     `/ai` endpoints. Set to `false` or `0` to disable it (default `true`).
 
-  - `ERROR_TRACKING_DSN` – optional DSN for an error tracking service such as
-    Sentry. Leave empty to disable integration.
+  - `ERROR_TRACKING_DSN` – optional DSN for Sentry or another error tracking
+    service. When set, the application initializes `sentry_sdk` on startup to
+    capture unhandled exceptions.
 
 
   They can be provided in the shell environment or in a `.env` file in the project root.
