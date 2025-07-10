@@ -135,7 +135,7 @@ async def sla_breaches(
     if status_ids is not None:
         query = query.filter(Ticket.Ticket_Status_ID.in_(status_ids))
     else:
-        query = query.filter(Ticket.Ticket_Status_ID != 3)
+        query = query.filter(Ticket.Ticket_Status_ID != 3,7)
 
     if filters:
         for key, value in filters.items():
