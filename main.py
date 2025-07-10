@@ -5,7 +5,7 @@ from fastapi_mcp import FastApiMCP
 
 
 
-from src.enhanced_mcp_server import create_server, Tool
+from src.enhanced_mcp_server import Tool
 from src.mcp_server import create_enhanced_server
 
 
