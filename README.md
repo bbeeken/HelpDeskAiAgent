@@ -77,10 +77,11 @@ uvicorn main:app --reload
 
 ## Running tests
 
-Install the testing dependencies and run `pytest`:
+Install the testing dependencies and run `flake8` and `pytest`:
 
 ```bash
 pip install -e .
+flake8
 pytest
 ```
 

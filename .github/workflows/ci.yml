@@ -10,6 +10,7 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - run: pip install mypy
+      - run: flake8
       - name: Start API and run smoke tests
         run: |
           uvicorn main:app --port 8000 &
