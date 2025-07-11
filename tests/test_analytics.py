@@ -168,3 +168,21 @@ async def test_ticket_trend(client: AsyncClient):
     data = {item["date"]: item["count"] for item in resp.json()}
     assert data[(now - timedelta(days=2)).date().isoformat()] == 1
     assert data[(now - timedelta(days=1)).date().isoformat()] == 2
+
+
+@pytest.mark.asyncio
+async def test_staff_ticket_report(client: AsyncClient):
+    t1 = await _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=1)
+    t2 = await _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=3)
+    t3 = await _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=1)
+    await _add_ticket(Assigned_Email="other@example.com", Ticket_Status_ID=1)
+
+    resp = await client.get(
+        "/analytics/staff_report", params={"assigned_email": "tech@example.com"}
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["assigned_email"] == "tech@example.com"
+    assert data["open_count"] == 2
+    assert data["closed_count"] == 1
+    assert set(data["recent_ticket_ids"]) >= {t1.Ticket_ID, t2.Ticket_ID, t3.Ticket_ID}

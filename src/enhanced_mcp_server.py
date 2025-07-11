@@ -180,6 +180,20 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_db_wrapper(analysis_tools.open_tickets_by_user),
     ),
     Tool(
+        name="staff_ticket_report",
+        description="Summary counts of tickets for a technician",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "email": {"type": "string"},
+                "start_date": {"type": "string", "format": "date-time"},
+                "end_date": {"type": "string", "format": "date-time"},
+            },
+            "required": ["email"],
+        },
+        _implementation=_db_wrapper(analysis_tools.get_staff_ticket_report),
+    ),
+    Tool(
         name="tickets_waiting_user",
         description="Tickets waiting on user",
         inputSchema={"type": "object", "properties": {}, "required": []},
