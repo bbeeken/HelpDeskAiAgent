@@ -32,3 +32,12 @@ class TrendCount(BaseModel):
 
     date: date
     count: int
+
+
+class StaffTicketReport(BaseModel):
+    """Summary of tickets assigned to a technician."""
+
+    assigned_email: str
+    open_count: int
+    closed_count: int
+    recent_ticket_ids: Optional[list[int]] | None = None

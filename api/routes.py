@@ -34,6 +34,7 @@ from tools.analysis_tools import (
     tickets_by_status,
     open_tickets_by_site,
     open_tickets_by_user,
+    get_staff_ticket_report,
     sla_breaches,
     tickets_waiting_on_user,
     ticket_trend,
@@ -59,7 +60,14 @@ from schemas.basic import (
     TicketAttachmentOut,
     TicketMessageOut,
 )
-from schemas.analytics import StatusCount, SiteOpenCount, UserOpenCount, WaitingOnUserCount, TrendCount
+from schemas.analytics import (
+    StatusCount,
+    SiteOpenCount,
+    UserOpenCount,
+    WaitingOnUserCount,
+    TrendCount,
+    StaffTicketReport,
+)
 from schemas.oncall import OnCallShiftOut
 from schemas.paginated import PaginatedResponse
 
@@ -323,6 +331,21 @@ async def open_by_site_endpoint(db: AsyncSession = Depends(get_db)) -> List[Site
 @analytics_router.get("/open_by_user", response_model=List[UserOpenCount])
 async def open_by_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[UserOpenCount]:
     return await open_tickets_by_user(db)
+
+
+@analytics_router.get("/staff_report", response_model=StaffTicketReport)
+async def staff_report_endpoint(
+    assigned_email: str = Query(...),
+    start_date: Optional[datetime] = Query(None),
+    end_date: Optional[datetime] = Query(None),
+    db: AsyncSession = Depends(get_db),
+) -> StaffTicketReport:
+    return await get_staff_ticket_report(
+        db,
+        assigned_email,
+        start_date=start_date,
+        end_date=end_date,
+    )
 
 @analytics_router.get(
     "/waiting_on_user",
