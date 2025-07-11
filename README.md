@@ -190,6 +190,44 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Priority_ID;
 - Ticket body and resolution fields now accept large text values; the previous
   2000-character limit has been removed.
 
+### Analytics Endpoints
+
+- `GET /analytics/late_tickets` - list tickets that are past their expected resolution date. Returns a JSON array of objects containing the ticket ID, assigned technician and number of days late.
+
+  Example:
+
+  ```bash
+  curl http://localhost:8000/analytics/late_tickets
+  ```
+
+  ```json
+  [
+    {
+      "ticket_id": 123,
+      "assigned_email": "tech@example.com",
+      "days_late": 5
+    }
+  ]
+  ```
+
+- `GET /analytics/staff_report` - return summary statistics for each technician showing the number of open and overdue tickets assigned to them.
+
+  Example:
+
+  ```bash
+  curl http://localhost:8000/analytics/staff_report
+  ```
+
+  ```json
+  [
+    {
+      "assigned_email": "tech@example.com",
+      "open": 7,
+      "late": 2
+    }
+  ]
+  ```
+
 
 ## CLI
 
