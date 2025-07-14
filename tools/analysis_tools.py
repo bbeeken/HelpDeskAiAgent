@@ -16,6 +16,7 @@ from schemas.analytics import (
     UserOpenCount,
     WaitingOnUserCount,
     TrendCount,
+    StaffTicketReport,
 )
 
 
@@ -139,6 +140,7 @@ async def sla_breaches(
     else:
 
         # Default to counting only open or in-progress tickets
+        query = query.filter(Ticket.Ticket_Status_ID.in_([1, 2]))
         query = query.filter(Ticket.Ticket_Status_ID.in_([1, 2,4,5,6]))
 
     if filters:
@@ -213,6 +215,40 @@ async def ticket_trend(db: AsyncSession, days: int = 7) -> List[TrendCount]:
             d = d.date()
         trend.append(TrendCount(date=d, count=c))
     return trend
+
+
+async def get_staff_ticket_report(
+    db: AsyncSession,
+    email: str,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> StaffTicketReport:
+    """Return open/closed counts for a technician with recent tickets."""
+
+    base_query = select(Ticket).filter(Ticket.Assigned_Email == email)
+    if start_date:
+        base_query = base_query.filter(Ticket.Created_Date >= start_date)
+    if end_date:
+        base_query = base_query.filter(Ticket.Created_Date <= end_date)
+
+    open_q = base_query.filter(Ticket.Ticket_Status_ID != 3)
+    closed_q = base_query.filter(Ticket.Ticket_Status_ID == 3)
+
+    open_count = await db.scalar(select(func.count()).select_from(open_q.subquery())) or 0
+    closed_count = await db.scalar(select(func.count()).select_from(closed_q.subquery())) or 0
+
+    recent_q = (
+        base_query.order_by(Ticket.Created_Date.desc()).with_only_columns(Ticket.Ticket_ID).limit(5)
+    )
+    result = await db.execute(recent_q)
+    recent_ids = [row[0] for row in result.all()]
+
+    return StaffTicketReport(
+        assigned_email=email,
+        open_count=open_count,
+        closed_count=closed_count,
+        recent_ticket_ids=recent_ids,
+    )
 
 
 class AnalyticsTools:

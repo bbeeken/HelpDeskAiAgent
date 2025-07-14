@@ -42,6 +42,8 @@ from .analytics import (
     SiteOpenCount,
     UserOpenCount,
     WaitingOnUserCount,
+    TrendCount,
+    StaffTicketReport,
 )
 
 
