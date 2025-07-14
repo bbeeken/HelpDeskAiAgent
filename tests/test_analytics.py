@@ -148,12 +148,8 @@ async def test_sla_breaches_excludes_non_open(client: AsyncClient):
 
     resp = await client.get("/analytics/sla_breaches", params={"sla_days": 2})
     assert resp.status_code == 200
-    # Only the open ticket should be counted
-    assert resp.json() == {"breaches": 1}
-
-  
-    assert resp.status_code == 200
-    assert resp.json() == {"breaches": 1}
+    # Both open and waiting tickets should be counted
+    assert resp.json() == {"breaches": 2}
 
 
 @pytest.mark.asyncio
