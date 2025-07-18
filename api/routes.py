@@ -169,14 +169,6 @@ async def list_tickets(
 
     return PaginatedResponse(items=validated, total=total, skip=skip, limit=limit)
 
-@tickets_router.get("", response_model=PaginatedResponse[TicketExpandedOut])
-async def list_tickets_alias(
-    request: Request,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1),
-    db: AsyncSession = Depends(get_db),
-) -> PaginatedResponse[TicketExpandedOut]:
-    return await list_tickets(request, skip, limit, db)
 
 @tickets_router.get("/expanded", response_model=PaginatedResponse[TicketExpandedOut])
 async def list_tickets_expanded_alias(

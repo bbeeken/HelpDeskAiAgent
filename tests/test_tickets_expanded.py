@@ -94,7 +94,7 @@ async def test_ticket_filtering(client: AsyncClient):
         },
     )
 
-    resp = await client.get("/tickets", params={"Subject": "Foo"})
+    resp = await client.get("/tickets/expanded", params={"Subject": "Foo"})
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 1
