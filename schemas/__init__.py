@@ -7,6 +7,7 @@ from .ticket import (
 )
 from .search import TicketSearchOut
 from .search_params import TicketSearchParams
+from .filters import AdvancedFilters
 from .oncall import OnCallShiftOut
 from .paginated import PaginatedResponse
 from .basic import (
@@ -26,6 +27,7 @@ __all__ = [
     'TicketExpandedOut',
     'TicketSearchOut',
     'TicketSearchParams',
+    'AdvancedFilters',
     'OnCallShiftOut',
     'PaginatedResponse',
     'AssetOut',
