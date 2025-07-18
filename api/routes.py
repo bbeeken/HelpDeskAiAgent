@@ -39,7 +39,6 @@ from tools.analysis_tools import (
     tickets_waiting_on_user,
     ticket_trend,
 )
-from tools.ai_tools import ai_suggest_response, ai_stream_response
 from tools.oncall_tools import get_current_oncall
 
 # Schemas
@@ -376,27 +375,6 @@ async def sla_breaches_endpoint(
 async def ticket_trend_endpoint(days: int = Query(7, ge=1), db: AsyncSession = Depends(get_db)) -> List[TrendCount]:
     return await ticket_trend(db, days)
 
-# ─── AI Sub-Router ───────────────────────────────────────────────────────────
-ai_router = APIRouter(prefix="/ai", tags=["ai"])
-
-@ai_router.post("/suggest_response", response_model=Dict[str, str])
-@limiter.limit("10/minute")
-async def suggest_response(request: Request, ticket: TicketOut) -> Dict[str, str]:
-    try:
-        return {"response": await ai_suggest_response(ticket.model_dump(), "")}
-    except ValidationError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
-
-
-@ai_router.post("/suggest_response/stream", operation_id="suggest_response_stream")
-
-@limiter.limit("10/minute")
-async def suggest_response_stream(request: Request, ticket: TicketOut) -> StreamingResponse:
-    ticket.model_validate(ticket.model_dump())
-    async def _gen() -> AsyncGenerator[str, None]:
-        async for chunk in ai_stream_response(ticket.model_dump(), ""):
-            yield f"data: {json.dumps(chunk)}\n\n"
-    return StreamingResponse(_gen(), media_type="text/event-stream")
 
 # ─── On-Call Sub-Router ───────────────────────────────────────────────────────
 oncall_router = APIRouter(prefix="/oncall", tags=["oncall"])
@@ -412,5 +390,4 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(tickets_router)
     app.include_router(lookup_router)
     app.include_router(analytics_router)
-    app.include_router(ai_router)
     app.include_router(oncall_router)

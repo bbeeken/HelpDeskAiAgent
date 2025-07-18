@@ -6,7 +6,6 @@ from typing import Set
 EXPECTED_TOOLS: Set[str] = {
     "get_ticket",
     "list_tickets",
-    "ai_suggest_response",
 }
 
 

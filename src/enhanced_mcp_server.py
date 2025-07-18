@@ -15,7 +15,6 @@ from .mcp_server import Tool
 
 # Business logic modules
 from tools import (
-    ai_tools,
     analysis_tools,
     asset_tools,
     attachment_tools,
@@ -274,12 +273,6 @@ ENHANCED_TOOLS: List[Tool] = [
         description="List on-call schedule",
         inputSchema={"type": "object", "properties": {"skip": {"type": "integer"}, "limit": {"type": "integer"}}, "required": []},
         _implementation=_db_wrapper(oncall_tools.list_oncall_schedule),
-    ),
-    Tool(
-        name="ai_suggest_response",
-        description="AI suggested ticket response",
-        inputSchema={"type": "object", "properties": {"ticket": {"type": "object"}}, "required": ["ticket"]},
-        _implementation=ai_tools.ai_suggest_response,
     ),
     Tool(
         name="get_user_by_email",
