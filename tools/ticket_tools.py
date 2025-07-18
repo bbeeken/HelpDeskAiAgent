@@ -11,12 +11,12 @@ from datetime import datetime, timezone
 from pydantic import BaseModel
 from schemas.search_params import TicketSearchParams
 
-from sqlalchemy import select, or_, and_
+from sqlalchemy import select, or_, and_, func
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import Ticket, VTicketMasterExpanded
+from db.models import Ticket, TicketMessage, VTicketMasterExpanded
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +137,59 @@ async def search_tickets_expanded(
         )
 
     return summaries
+
+
+async def get_tickets_by_user(
+    db: AsyncSession,
+    identifier: str,
+    *,
+    skip: int = 0,
+    limit: int | None = 100,
+) -> list[VTicketMasterExpanded]:
+    """Return tickets associated with a user.
+
+    The lookup checks contact and assignee fields in
+    ``VTicketMasterExpanded`` as well as ``TicketMessage`` senders.
+    Matches are case-insensitive.
+    """
+
+    ident = identifier.lower()
+
+    contact_stmt = select(VTicketMasterExpanded.Ticket_ID).filter(
+        or_(
+            func.lower(VTicketMasterExpanded.Ticket_Contact_Name) == ident,
+            func.lower(VTicketMasterExpanded.Ticket_Contact_Email) == ident,
+            func.lower(VTicketMasterExpanded.Assigned_Name) == ident,
+            func.lower(VTicketMasterExpanded.Assigned_Email) == ident,
+        )
+    )
+    result = await db.execute(contact_stmt)
+    ticket_ids = {row[0] for row in result.all()}
+
+    msg_stmt = select(TicketMessage.Ticket_ID).filter(
+        or_(
+            func.lower(TicketMessage.SenderUserName) == ident,
+            func.lower(TicketMessage.SenderUserCode) == ident,
+        )
+    )
+    result = await db.execute(msg_stmt)
+    ticket_ids.update(row[0] for row in result.all())
+
+    if not ticket_ids:
+        return []
+
+    query = (
+        select(VTicketMasterExpanded)
+        .filter(VTicketMasterExpanded.Ticket_ID.in_(ticket_ids))
+        .order_by(VTicketMasterExpanded.Ticket_ID)
+    )
+    if skip:
+        query = query.offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+
+    result = await db.execute(query)
+    return list(result.scalars().all())
 
 
 async def create_ticket(db: AsyncSession, ticket_obj: Ticket | Dict[str, Any]) -> Ticket:

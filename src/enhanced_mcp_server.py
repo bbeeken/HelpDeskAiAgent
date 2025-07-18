@@ -212,6 +212,20 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_db_wrapper(analysis_tools.open_tickets_by_user),
     ),
     Tool(
+        name="tickets_by_user",
+        description="List tickets related to a user",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "identifier": {"type": "string"},
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+            },
+            "required": ["identifier"],
+        },
+        _implementation=_db_wrapper(ticket_tools.get_tickets_by_user),
+    ),
+    Tool(
         name="staff_ticket_report",
         description="Summary counts of tickets for a technician",
         inputSchema={
