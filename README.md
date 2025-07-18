@@ -358,6 +358,10 @@ expanded ticket records related to a specific user.
 curl "http://localhost:8000/tickets/by_user?identifier=user@example.com"
 ```
 
+Tool endpoints validate request bodies against each tool's `inputSchema` using
+JSON Schema. Payloads missing required fields or with incorrect types return a
+`422 Unprocessable Entity` response.
+
 `tickets_by_timeframe` lists tickets filtered by status and age. Provide a
 number of `days` and optional `status` such as `open` or `closed`.
 
