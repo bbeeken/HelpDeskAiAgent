@@ -42,6 +42,23 @@ def _db_wrapper(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[
     return wrapper
 
 
+async def _search_tickets_smart(
+    db: Any,
+    query: str,
+    limit: int = 10,
+    include_closed: bool = False,
+    filters: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Helper to call :meth:`TicketTools.search_tickets_smart`."""
+    tools = ticket_tools.TicketTools(db)
+    return await tools.search_tickets_smart(
+        query=query,
+        filters=filters,
+        limit=limit,
+        include_closed=include_closed,
+    )
+
+
 ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="get_asset",
@@ -115,6 +132,21 @@ ENHANCED_TOOLS: List[Tool] = [
         description="Search tickets",
         inputSchema={"type": "object", "properties": {"query": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["query"]},
         _implementation=_db_wrapper(ticket_tools.search_tickets_expanded),
+    ),
+    Tool(
+        name="search_tickets_smart",
+        description="Search tickets using natural language",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "limit": {"type": "integer"},
+                "include_closed": {"type": "boolean"},
+                "filters": {"type": "object"},
+            },
+            "required": ["query"],
+        },
+        _implementation=_db_wrapper(_search_tickets_smart),
     ),
     Tool(
         name="create_ticket",
