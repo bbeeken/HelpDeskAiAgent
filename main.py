@@ -6,8 +6,7 @@ from fastapi_mcp import FastApiMCP
 
 
 
-from src.enhanced_mcp_server import Tool
-from src.mcp_server import create_enhanced_server
+from src.mcp_server import Tool, create_enhanced_server
 
 
 from src.tool_list import TOOLS
@@ -108,10 +107,9 @@ app.openapi = custom_openapi
 
 # --- Dynamically expose MCP tools as HTTP endpoints ---
 server = create_enhanced_server()
-if getattr(server, "is_enhanced", False):
-    logger.info("Enhanced MCP server active with %d tools", len(getattr(server, "_tools", [])))
-else:
-    logger.info("Basic MCP server active")
+logger.info(
+    "Enhanced MCP server active with %d tools", len(getattr(server, "_tools", []))
+)
 
 def build_endpoint(tool: Tool, schema: Dict[str, Any]):
     async def endpoint(request: Request):

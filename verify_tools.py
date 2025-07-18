@@ -1,12 +1,12 @@
 import requests
 import sys
-from typing import Dict, Set
+from typing import Set
 
-# Expected mapping of tool categories to tool names
-EXPECTED_TOOLS: Dict[str, Set[str]] = {
-    "ticket": {"get_ticket"},
-    "analytics": {"ticket_count"},
-    "ai": {"ai_echo"},
+# Expected tool names exposed by the server
+EXPECTED_TOOLS: Set[str] = {
+    "get_ticket",
+    "list_tickets",
+    "ai_suggest_response",
 }
 
 
@@ -19,10 +19,9 @@ def verify(base_url: str) -> bool:
     tools = data["tools"]
 
     reported = {t["name"] for t in tools}
-    expected = set().union(*EXPECTED_TOOLS.values())
 
-    missing = expected - reported
-    unexpected = reported - expected
+    missing = EXPECTED_TOOLS - reported
+    unexpected = reported - EXPECTED_TOOLS
 
     ok = True
 
