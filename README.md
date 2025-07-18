@@ -24,16 +24,10 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
    The `driver` name must match an ODBC driver installed on the host machine.
   - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
     lookups in `tools.user_tools`. When omitted, stub responses are returned.
-  - `MCP_URL` – optional MCP server URL used by AI helper functions
-    (default `http://localhost:8008`).
-  - `MCP_STREAM_TIMEOUT` – timeout in seconds for streaming AI responses
-    (default `30`).
-
-  - `OPENAI_API_KEY` – API key used by OpenAI-based tools.
 
 
-  - `ENABLE_RATE_LIMITING` – enable the SlowAPI limiter middleware used by
-    `/ai` endpoints. Set to `false`, `0`, or `no` to disable it (default `true`).
+  - `ENABLE_RATE_LIMITING` – enable the SlowAPI limiter middleware.
+    Set to `false`, `0`, or `no` to disable it (default `true`).
 
   - `ERROR_TRACKING_DSN` – optional DSN for Sentry or another error tracking
     service. When set, the application initializes `sentry_sdk` on startup to
@@ -107,7 +101,7 @@ The MCP server will be available on `http://localhost:8008` when the
 containers are running.
 
 Compose reads variables from `.env`. Copy `.env.example` to `.env` and set
-values for required options such as `DB_CONN_STRING` and `OPENAI_API_KEY`.
+values for required options such as `DB_CONN_STRING`.
 Optional Graph credentials may also be provided in this file. Add any
 environment-specific Python overrides in a `config_env.py` file next to
 `config.py`.
@@ -192,8 +186,6 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Priority_ID;
   assigned technician or has posted a message. Provide a name or email via the
   `identifier` query parameter.
 - `PUT /ticket/{id}` - update an existing ticket
-- `POST /ai/suggest_response` - generate an AI ticket reply
-- `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
 - Ticket body and resolution fields now accept large text values; the previous
   2000-character limit has been removed.
 
@@ -254,13 +246,6 @@ curl "http://localhost:8000/tickets/smart_search?q=unassigned+critical&limit=5"
 ## CLI
 
 `tools.cli` provides a small command-line interface to the API. Set `API_BASE_URL` to the server URL (default `http://localhost:8000`).
-
-Stream an AI-generated response:
-
-```bash
-echo '{"Ticket_ID":1,"Subject":"Subj","Ticket_Body":"Body","Ticket_Status_ID":1,"Ticket_Contact_Name":"Name","Ticket_Contact_Email":"a@example.com"}' | \
-python -m tools.cli stream-response
-```
 
 Create a ticket:
 
