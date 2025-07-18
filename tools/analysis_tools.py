@@ -140,8 +140,9 @@ async def sla_breaches(
     else:
 
         # Default to counting only open or in-progress tickets
-        query = query.filter(Ticket.Ticket_Status_ID.in_([1, 2]))
-        query = query.filter(Ticket.Ticket_Status_ID.in_([1, 2,4,5,6]))
+        query = query.filter(
+            Ticket.Ticket_Status_ID.in_([1, 2, 4, 5, 6])
+        )
 
     if filters:
         for key, value in filters.items():
