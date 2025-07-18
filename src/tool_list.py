@@ -1,4 +1,4 @@
-"""List of all available tools used by :func:`create_server`."""
+"""List of available tools for the MCP server."""
 
 from __future__ import annotations
 
@@ -6,11 +6,8 @@ from typing import List
 
 
 from .mcp_server import Tool
-from .tools import GET_TICKET, TICKET_COUNT, AI_ECHO
+from .enhanced_mcp_server import ENHANCED_TOOLS
 
-TOOLS: List[Tool] = [
-    GET_TICKET,
-    TICKET_COUNT,
-    AI_ECHO,
-]
+# Alias used by the HTTP server and tests
+TOOLS: List[Tool] = ENHANCED_TOOLS
 

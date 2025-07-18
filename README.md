@@ -31,8 +31,6 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
 
   - `OPENAI_API_KEY` – API key used by OpenAI-based tools.
 
-  - `ENABLE_ENHANCED_MCP` – set to `0` to disable the enhanced MCP tool server
-    and use the basic implementation.
 
   - `ENABLE_RATE_LIMITING` – enable the SlowAPI limiter middleware used by
     `/ai` endpoints. Set to `false`, `0`, or `no` to disable it (default `true`).
