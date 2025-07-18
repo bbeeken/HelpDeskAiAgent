@@ -316,6 +316,14 @@ expanded ticket records related to a specific user.
 curl "http://localhost:8000/tickets/by_user?identifier=user@example.com"
 ```
 
+`tickets_by_timeframe` lists tickets filtered by status and age. Provide a
+number of `days` and optional `status` such as `open` or `closed`.
+
+```bash
+curl -X POST http://localhost:8000/tickets_by_timeframe \
+  -d '{"status": "open", "days": 7, "limit": 5}'
+```
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).

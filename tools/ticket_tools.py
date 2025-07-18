@@ -6,7 +6,7 @@ import logging
 from typing import Any, Sequence, Dict, List, Optional
 from dataclasses import dataclass
 from enum import Enum
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from pydantic import BaseModel
 from schemas.search_params import TicketSearchParams
@@ -18,7 +18,7 @@ from .operation_result import OperationResult
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import Ticket, TicketMessage, VTicketMasterExpanded
+from db.models import Ticket, TicketMessage, TicketStatus, VTicketMasterExpanded
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +194,62 @@ async def get_tickets_by_user(
     if skip:
         query = query.offset(skip)
     if limit is not None:
+        query = query.limit(limit)
+
+    result = await db.execute(query)
+    return list(result.scalars().all())
+
+
+async def tickets_by_timeframe(
+    db: AsyncSession,
+    *,
+    status: str | None = None,
+    days: int = 7,
+    limit: int = 10,
+) -> list[VTicketMasterExpanded]:
+    """Return tickets filtered by creation date and status.
+
+    Parameters
+    ----------
+    status:
+        Optionally filter by ticket status. Supported values are ``"open"``,
+        ``"closed"`` and ``"recent"``.
+    days:
+        Number of days in the past to include when ``status`` is ``"recent"`` or
+        when a timeframe is desired for other statuses.
+    limit:
+        Maximum number of tickets to return.
+    """
+
+    query = (
+        select(VTicketMasterExpanded)
+        .join(TicketStatus, VTicketMasterExpanded.Ticket_Status_ID == TicketStatus.ID, isouter=True)
+    )
+
+    if status:
+        s = status.lower()
+        if s == "open":
+            query = query.filter(
+                or_(
+                    TicketStatus.Label.ilike("%open%"),
+                    TicketStatus.Label.ilike("%progress%"),
+                )
+            )
+        elif s == "closed":
+            query = query.filter(
+                or_(
+                    TicketStatus.Label.ilike("%closed%"),
+                    TicketStatus.Label.ilike("%resolved%"),
+                )
+            )
+
+    if days is not None and days > 0:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        query = query.filter(VTicketMasterExpanded.Created_Date >= cutoff)
+
+    query = query.order_by(VTicketMasterExpanded.Created_Date.desc())
+
+    if limit:
         query = query.limit(limit)
 
     result = await db.execute(query)
