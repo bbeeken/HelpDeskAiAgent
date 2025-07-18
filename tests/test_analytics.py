@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, UTC
 import pytest
 from httpx import AsyncClient, ASGITransport
 from main import app
-from db.models import Ticket
+from db.models import Ticket, TicketStatus
 from db.mssql import SessionLocal
 from tools.ticket_tools import create_ticket
 
@@ -33,6 +33,17 @@ async def client():
 
 async def _add_ticket(**kwargs):
     async with SessionLocal() as db:
+        status_id = kwargs.get("Ticket_Status_ID", 1)
+        label_map = {
+            1: "Open",
+            2: "In Progress",
+            3: "Closed",
+            4: "Waiting Open",
+        }
+        if not await db.get(TicketStatus, status_id):
+            db.add(TicketStatus(ID=status_id, Label=label_map.get(status_id, f"Status {status_id}")))
+            await db.commit()
+
         ticket = Ticket(
             Subject="subj",
             Ticket_Body="body",

@@ -42,6 +42,23 @@ def _db_wrapper(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[
     return wrapper
 
 
+async def _search_tickets_smart(
+    db: Any,
+    query: str,
+    limit: int = 10,
+    include_closed: bool = False,
+    filters: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Helper to call :meth:`TicketTools.search_tickets_smart`."""
+    tools = ticket_tools.TicketTools(db)
+    return await tools.search_tickets_smart(
+        query=query,
+        filters=filters,
+        limit=limit,
+        include_closed=include_closed,
+    )
+
+
 ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="get_asset",
@@ -117,6 +134,21 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_db_wrapper(ticket_tools.search_tickets_expanded),
     ),
     Tool(
+        name="search_tickets_smart",
+        description="Search tickets using natural language",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "limit": {"type": "integer"},
+                "include_closed": {"type": "boolean"},
+                "filters": {"type": "object"},
+            },
+            "required": ["query"],
+        },
+        _implementation=_db_wrapper(_search_tickets_smart),
+    ),
+    Tool(
         name="create_ticket",
         description="Create a ticket",
         inputSchema={"type": "object", "properties": {"ticket_obj": {"type": "object"}}, "required": ["ticket_obj"]},
@@ -178,6 +210,20 @@ ENHANCED_TOOLS: List[Tool] = [
         description="Open ticket counts by user",
         inputSchema={"type": "object", "properties": {}, "required": []},
         _implementation=_db_wrapper(analysis_tools.open_tickets_by_user),
+    ),
+    Tool(
+        name="tickets_by_user",
+        description="List tickets related to a user",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "identifier": {"type": "string"},
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+            },
+            "required": ["identifier"],
+        },
+        _implementation=_db_wrapper(ticket_tools.get_tickets_by_user),
     ),
     Tool(
         name="staff_ticket_report",

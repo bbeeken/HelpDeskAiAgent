@@ -21,6 +21,7 @@ from tools.ticket_tools import (
     get_ticket_expanded,
     list_tickets_expanded,
     search_tickets_expanded,
+    get_tickets_by_user,
 )
 from tools.asset_tools import get_asset, list_assets
 from tools.vendor_tools import get_vendor, list_vendors
@@ -187,6 +188,21 @@ async def search_tickets_alias(
     db: AsyncSession = Depends(get_db),
 ) -> List[TicketSearchOut]:
     return await search_tickets(q=q, params=params, limit=limit, db=db)
+
+
+@tickets_router.get("/by_user", response_model=PaginatedResponse[TicketExpandedOut])
+async def tickets_by_user_endpoint(
+    identifier: str = Query(..., min_length=1),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedResponse[TicketExpandedOut]:
+    items = await get_tickets_by_user(db, identifier, skip=skip, limit=limit)
+    total = len(await get_tickets_by_user(db, identifier, skip=0, limit=None))
+    validated: List[TicketExpandedOut] = [
+        TicketExpandedOut.model_validate(t) for t in items
+    ]
+    return PaginatedResponse(items=validated, total=total, skip=skip, limit=limit)
 
 @ticket_router.post("", response_model=TicketOut, status_code=201)
 async def create_ticket_endpoint(
