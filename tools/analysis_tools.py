@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 import time
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from .operation_result import OperationResult
 from sqlalchemy import func, select, or_
 from db.models import Ticket, TicketStatus, Site
 from schemas.analytics import (
@@ -57,37 +58,41 @@ _cache_ttl = 300  # 5 minutes
 
 async def tickets_by_status(
     db: AsyncSession,
-) -> List[StatusCount]:
+) -> OperationResult[List[StatusCount]]:
     """Return counts of tickets grouped by status with caching."""
     cache_key = "tickets_by_status"
 
     if cache_key in _analytics_cache:
         cached_time, result = _analytics_cache[cache_key]
         if time.time() - cached_time < _cache_ttl:
-            return result
+            return OperationResult(success=True, data=result)
 
     logger.info("Calculating tickets by status")
-    result = await db.execute(
-        select(
-            Ticket.Ticket_Status_ID,
-            TicketStatus.Label,
-            func.count(Ticket.Ticket_ID),
-        ).join(
-            TicketStatus,
-            Ticket.Ticket_Status_ID == TicketStatus.ID,
-            isouter=True,
-        ).group_by(
-            Ticket.Ticket_Status_ID,
-            TicketStatus.Label,
+    try:
+        result = await db.execute(
+            select(
+                Ticket.Ticket_Status_ID,
+                TicketStatus.Label,
+                func.count(Ticket.Ticket_ID),
+            ).join(
+                TicketStatus,
+                Ticket.Ticket_Status_ID == TicketStatus.ID,
+                isouter=True,
+            ).group_by(
+                Ticket.Ticket_Status_ID,
+                TicketStatus.Label,
+            )
         )
-    )
-    status_counts = [
-        StatusCount(status_id=row[0], status_label=row[1], count=row[2])
-        for row in result.all()
-    ]
+        status_counts = [
+            StatusCount(status_id=row[0], status_label=row[1], count=row[2])
+            for row in result.all()
+        ]
 
-    _analytics_cache[cache_key] = (time.time(), status_counts)
-    return status_counts
+        _analytics_cache[cache_key] = (time.time(), status_counts)
+        return OperationResult(success=True, data=status_counts)
+    except Exception as e:
+        logger.exception("Failed to get tickets by status")
+        return OperationResult(success=False, error=str(e))
 
 
 async def open_tickets_by_site(
