@@ -306,7 +306,12 @@ class TicketTools:
                     conditions.append(VTicketMasterExpanded.Priority_ID == priority_id)
 
             if not include_closed:
-                conditions.append(VTicketMasterExpanded.Ticket_Status_ID != 3)
+                conditions.append(
+                    and_(
+                        ~VTicketMasterExpanded.Ticket_Status_Label.ilike("%closed%"),
+                        ~VTicketMasterExpanded.Ticket_Status_Label.ilike("%resolved%"),
+                    )
+                )
 
             if search_context.get("assigned_to"):
                 conditions.append(
