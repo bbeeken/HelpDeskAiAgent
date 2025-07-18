@@ -187,7 +187,6 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Priority_ID;
 - `GET /tickets/search` - search tickets by subject or body. Accepts the same
   optional fields as `/tickets` plus `sort=oldest|newest` to control ordering
 - `PUT /ticket/{id}` - update an existing ticket
-- `DELETE /ticket/{id}` - remove a ticket
 - `POST /ai/suggest_response` - generate an AI ticket reply
 - `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
 - Ticket body and resolution fields now accept large text values; the previous

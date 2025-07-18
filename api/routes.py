@@ -18,7 +18,6 @@ from limiter import limiter
 from tools.ticket_tools import (
     create_ticket,
     update_ticket,
-    delete_ticket,
     get_ticket_expanded,
     list_tickets_expanded,
     search_tickets_expanded,
@@ -218,15 +217,6 @@ async def update_ticket_endpoint(
         raise HTTPException(status_code=404, detail="Ticket not found or no changes")
     return TicketOut.model_validate(updated)
 
-@ticket_router.delete("/{ticket_id}", status_code=200)
-async def delete_ticket_endpoint(
-    ticket_id: int, db: AsyncSession = Depends(get_db)
-) -> Dict[str, bool]:
-    success = await delete_ticket(db, ticket_id)
-    if not success:
-        logger.warning("Ticket %s not found for deletion", ticket_id)
-        raise HTTPException(status_code=404, detail="Ticket not found")
-    return {"deleted": True}
 
 @ticket_router.get(
     "/{ticket_id}/messages",
