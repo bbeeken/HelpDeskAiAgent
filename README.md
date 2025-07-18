@@ -242,6 +242,42 @@ curl "http://localhost:8000/tickets/smart_search?q=unassigned+critical&limit=5"
   ]
   ```
 
+- `GET /analytics/open_by_site` - count open tickets grouped by site.
+
+  Example:
+
+  ```bash
+  curl http://localhost:8000/analytics/open_by_site
+  ```
+
+  ```json
+  [
+    {
+      "site_id": 1,
+      "site_label": "Main",
+      "count": 3
+    }
+  ]
+  ```
+
+- `GET /analytics/open_by_assigned_user` - count open tickets grouped by assigned technician. Supports ticket filtering parameters.
+
+  Example:
+
+  ```bash
+  curl http://localhost:8000/analytics/open_by_assigned_user
+  ```
+
+  ```json
+  [
+    {
+      "assigned_email": "tech@example.com",
+      "assigned_name": "Tech",
+      "count": 2
+    }
+  ]
+  ```
+
 
 ## CLI
 
