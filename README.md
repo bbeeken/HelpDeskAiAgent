@@ -186,11 +186,30 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Priority_ID;
 - `GET /tickets/search` - search tickets by subject or body. Accepts the same
   optional fields as `/tickets/expanded` plus `sort=oldest|newest` to control
   ordering
+- `GET /tickets/smart_search` - perform a natural language search. Parameters:
+  `q` for the query, `limit` for number of results (default `10`), and
+  `include_closed` to search closed tickets. Returns structured results sorted
+  by relevance.
 - `PUT /ticket/{id}` - update an existing ticket
 - `POST /ai/suggest_response` - generate an AI ticket reply
 - `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
 - Ticket body and resolution fields now accept large text values; the previous
   2000-character limit has been removed.
+
+#### Smart search vs. regular search
+
+Use `/tickets/search` for straightforward keyword queries or when you need to
+filter and sort by specific columns in `V_Ticket_Master_Expanded`. The
+`/tickets/smart_search` endpoint interprets natural language phrases (e.g.
+"unassigned high priority emails") and returns results ranked by relevance. It
+works best for quick human-friendly searches or when you don't know the exact
+keywords to use.
+
+Example:
+
+```bash
+curl "http://localhost:8000/tickets/smart_search?q=unassigned+critical&limit=5"
+```
 
 ### Analytics Endpoints
 
