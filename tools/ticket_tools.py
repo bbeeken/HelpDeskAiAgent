@@ -216,6 +216,17 @@ class TicketStatus(str, Enum):
     CLOSED = "closed"
 
 
+def status_category(label: str) -> str:
+    l = label.lower()
+    if "closed" in l or "resolved" in l:
+        return "closed"
+    if "progress" in l:
+        return "inprogress"
+    if "open" in l:
+        return "open"
+    return "other"
+
+
 @dataclass
 class TicketSearchResult:
     """Structured search result data for LLM use."""
@@ -230,13 +241,14 @@ class TicketSearchResult:
     relevance_score: float
 
     def to_llm_format(self) -> Dict[str, Any]:
+        cat = status_category(self.status)
         return {
             "id": self.ticket_id,
             "title": self.subject,
             "preview": self.summary,
             "status": {
                 "value": self.status,
-                "is_open": self.status not in ["resolved", "closed"],
+                "is_open": cat in {"open", "inprogress"},
             },
             "priority": {
                 "value": self.priority,
