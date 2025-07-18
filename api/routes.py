@@ -51,6 +51,7 @@ from schemas import (
     TicketExpandedOut,
     TicketSearchOut,
 )
+from schemas.search_params import TicketSearchParams
 from schemas.basic import (
     AssetOut,
     VendorOut,
@@ -121,11 +122,12 @@ class MessageIn(BaseModel):
 @ticket_router.get("/search", response_model=List[TicketSearchOut])
 async def search_tickets(
     q: str = Query(..., min_length=1),
+    params: TicketSearchParams = Depends(),
     limit: int = Query(10, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ) -> List[TicketSearchOut]:
     logger.info("Searching tickets for '%s' (limit=%d)", q, limit)
-    results = await search_tickets_expanded(db, q, limit)
+    results = await search_tickets_expanded(db, q, limit, params)
     validated: List[TicketSearchOut] = []
     for r in results:
         try:
@@ -189,10 +191,11 @@ async def list_tickets_expanded_alias(
 @tickets_router.get("/search", response_model=List[TicketSearchOut])
 async def search_tickets_alias(
     q: str = Query(..., min_length=1),
+    params: TicketSearchParams = Depends(),
     limit: int = Query(10, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ) -> List[TicketSearchOut]:
-    return await search_tickets(q=q, limit=limit, db=db)
+    return await search_tickets(q=q, params=params, limit=limit, db=db)
 
 @ticket_router.post("", response_model=TicketOut, status_code=201)
 async def create_ticket_endpoint(
