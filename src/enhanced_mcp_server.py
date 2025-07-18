@@ -58,6 +58,12 @@ async def _search_tickets_smart(
     )
 
 
+async def _open_tickets_by_user_tool(db: Any, **kwargs: Any) -> Any:
+    """Pass kwargs as filters to open_tickets_by_user."""
+    filters = kwargs or None
+    return await analysis_tools.open_tickets_by_user(db, filters=filters)
+
+
 ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="g_asset",
@@ -207,8 +213,15 @@ ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="op_user",
         description="Open ticket counts by user",
-        inputSchema={"type": "object", "properties": {}, "required": []},
-        _implementation=_db_wrapper(analysis_tools.open_tickets_by_user),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "Assigned_Email": {"type": "string"},
+                "Assigned_Name": {"type": "string"},
+            },
+            "required": [],
+        },
+        _implementation=_db_wrapper(_open_tickets_by_user_tool),
     ),
     Tool(
         name="by_user",

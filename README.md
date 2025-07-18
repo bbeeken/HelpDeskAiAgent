@@ -242,11 +242,16 @@ curl "http://localhost:8000/tickets/smart_search?q=unassigned+critical&limit=5"
   ]
   ```
 
+
 - `GET /analytics/open_by_site` - count open tickets grouped by site.
+
 
   Example:
 
   ```bash
+
+  curl "http://localhost:8000/analytics/open_by_assigned_user?Assigned_Email=tech@example.com"
+
   curl http://localhost:8000/analytics/open_by_site
   ```
 
@@ -276,6 +281,7 @@ curl "http://localhost:8000/tickets/smart_search?q=unassigned+critical&limit=5"
       "count": 2
     }
   ]
+
   ```
 
 
