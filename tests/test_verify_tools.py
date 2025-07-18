@@ -32,7 +32,7 @@ def fake_server(data):
 
 
 def test_verify_tools_success():
-    data = {"tools": [{"name": "g_ticket"}, {"name": "l_tickets"}]}
+    data = {"tools": [{"name": "g_ticket"}, {"name": "l_tkts"}]}
     with fake_server(data) as url:
         assert verify_tools.verify(url)
 
