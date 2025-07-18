@@ -188,6 +188,9 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Priority_ID;
   `q` for the query, `limit` for number of results (default `10`), and
   `include_closed` to search closed tickets. Returns structured results sorted
   by relevance.
+- `GET /tickets/by_user` - list tickets where the user is the contact,
+  assigned technician or has posted a message. Provide a name or email via the
+  `identifier` query parameter.
 - `PUT /ticket/{id}` - update an existing ticket
 - `POST /ai/suggest_response` - generate an AI ticket reply
 - `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
@@ -317,6 +320,15 @@ python verify_tools.py http://localhost:8000
 ```
 
 Include this check in deployment pipelines to catch configuration issues early.
+
+### Tool Reference
+
+The MCP server exposes several JSON-RPC tools. `tickets_by_user` returns
+expanded ticket records related to a specific user.
+
+```bash
+curl "http://localhost:8000/tickets/by_user?identifier=user@example.com"
+```
 
 ## License
 
