@@ -210,8 +210,11 @@ async def create_ticket_endpoint(
 ) -> TicketOut:
     payload = ticket.model_dump()
     payload["Created_Date"] = datetime.now(timezone.utc)
-    created = await create_ticket(db, payload)
-    return TicketOut.model_validate(created)
+    result = await create_ticket(db, payload)
+    if not result.success:
+        logger.error("Ticket creation failed: %s", result.error)
+        raise HTTPException(status_code=500, detail=result.error or "ticket create failed")
+    return TicketOut.model_validate(result.data)
 
 @ticket_router.put("/{ticket_id}", response_model=TicketOut)
 async def update_ticket_endpoint(
@@ -323,7 +326,11 @@ analytics_router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 @analytics_router.get("/status", response_model=List[StatusCount])
 async def tickets_by_status_endpoint(db: AsyncSession = Depends(get_db)) -> List[StatusCount]:
-    return await tickets_by_status(db)
+    result = await tickets_by_status(db)
+    if not result.success:
+        logger.error("tickets_by_status failed: %s", result.error)
+        raise HTTPException(status_code=500, detail=result.error or "analytics failure")
+    return result.data
 
 @analytics_router.get("/open_by_site", response_model=List[SiteOpenCount])
 async def open_by_site_endpoint(db: AsyncSession = Depends(get_db)) -> List[SiteOpenCount]:

@@ -13,6 +13,7 @@ from schemas.search_params import TicketSearchParams
 
 from sqlalchemy import select, or_, and_, func
 from fastapi import HTTPException
+from .operation_result import OperationResult
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -192,18 +193,21 @@ async def get_tickets_by_user(
     return list(result.scalars().all())
 
 
-async def create_ticket(db: AsyncSession, ticket_obj: Ticket | Dict[str, Any]) -> Ticket:
+async def create_ticket(db: AsyncSession, ticket_obj: Ticket | Dict[str, Any]) -> OperationResult[Ticket]:
+    """Create a ticket and return an :class:`OperationResult`."""
+
     if isinstance(ticket_obj, dict):
         ticket_obj = Ticket(**ticket_obj)
+
     db.add(ticket_obj)
     try:
         await db.commit()
         await db.refresh(ticket_obj)
+        return OperationResult(success=True, data=ticket_obj)
     except SQLAlchemyError as e:
         await db.rollback()
         logger.exception("Failed to create ticket")
-        raise HTTPException(status_code=500, detail=f"Failed to create ticket: {e}")
-    return ticket_obj
+        return OperationResult(success=False, error=f"Failed to create ticket: {e}")
 
 
 async def update_ticket(db: AsyncSession, ticket_id: int, updates) -> Ticket | None:
