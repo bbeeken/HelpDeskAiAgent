@@ -133,5 +133,7 @@ class TicketExpandedOut(TicketOut):
 
     Assigned_Vendor_Name: Optional[str] = None
     Priority_Level: Optional[str] = None
+    Closed_Date: Optional[datetime] = None
+    LastModified: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True, str_max_length=None)

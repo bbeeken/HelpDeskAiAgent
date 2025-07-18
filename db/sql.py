@@ -18,6 +18,8 @@ SELECT t.Ticket_ID,
        t.Assigned_Email,
        t.Priority_ID,
        t.Assigned_Vendor_ID,
+       t.Closed_Date,
+       t.LastModified,
        v.Name AS Assigned_Vendor_Name,
        t.Resolution,
        p.Level AS Priority_Level

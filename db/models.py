@@ -22,6 +22,8 @@ class Ticket(Base):
     Assigned_Email = Column(String)
     Priority_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
+    Closed_Date = Column(DateTime)
+    LastModified = Column(DateTime)
     Resolution = Column(Text)
 
 
@@ -130,6 +132,8 @@ class VTicketMasterExpanded(ViewBase):
     Assigned_Email = Column(String)
     Priority_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
+    Closed_Date = Column(DateTime)
+    LastModified = Column(DateTime)
 
     Assigned_Vendor_Name = Column(String)
     Resolution = Column(Text)
