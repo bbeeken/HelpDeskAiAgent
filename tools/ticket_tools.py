@@ -9,6 +9,7 @@ from enum import Enum
 from datetime import datetime, timezone
 
 from pydantic import BaseModel
+from schemas.search_params import TicketSearchParams
 
 from sqlalchemy import select, or_, and_
 from fastapi import HTTPException
@@ -83,7 +84,10 @@ async def list_tickets_expanded(
 
 
 async def search_tickets_expanded(
-    db: AsyncSession, query: str, limit: int = 10
+    db: AsyncSession,
+    query: str,
+    limit: int = 10,
+    params: TicketSearchParams | None = None,
 ) -> list[dict[str, Any]]:
     """Search tickets in the expanded view by subject or body.
 
@@ -93,15 +97,29 @@ async def search_tickets_expanded(
     """
 
     like = f"%{query}%"
-
-    result = await db.execute(
-        select(VTicketMasterExpanded)
-        .filter(
-            (VTicketMasterExpanded.Subject.ilike(like))
-            | (VTicketMasterExpanded.Ticket_Body.ilike(like))
-        )
-        .limit(limit)
+    stmt = select(VTicketMasterExpanded).filter(
+        VTicketMasterExpanded.Subject.ilike(like)
+        | VTicketMasterExpanded.Ticket_Body.ilike(like)
     )
+
+    filters = (params.model_dump(exclude_none=True) if params else {})
+    sort_value = filters.pop("sort", None)
+    for key, value in filters.items():
+        if hasattr(VTicketMasterExpanded, key):
+            col = getattr(VTicketMasterExpanded, key)
+            if isinstance(value, str):
+                stmt = stmt.filter(col.ilike(f"%{value}%"))
+            else:
+                stmt = stmt.filter(col == value)
+
+    if sort_value == "oldest":
+        stmt = stmt.order_by(VTicketMasterExpanded.Created_Date.asc())
+    else:
+        stmt = stmt.order_by(VTicketMasterExpanded.Created_Date.desc())
+
+    stmt = stmt.limit(limit)
+
+    result = await db.execute(stmt)
 
     summaries: list[dict[str, Any]] = []
     for row in result.scalars().all():
