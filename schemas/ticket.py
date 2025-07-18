@@ -16,7 +16,7 @@ class TicketBase(BaseModel):
     Ticket_Category_ID: Optional[int] = None
     Assigned_Name: Optional[Annotated[str, Field(max_length=255)]] = None
     Assigned_Email: Optional[EmailStr] = None
-    Priority_ID: Optional[int] = None
+    Severity_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[Annotated[str, Field()]] = None
 

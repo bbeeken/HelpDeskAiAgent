@@ -20,7 +20,7 @@ class Ticket(Base):
     Created_Date = Column(DateTime)
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
-    Priority_ID = Column(Integer)
+    Severity_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
     Resolution = Column(Text)
 
