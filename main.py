@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
+import jsonschema
 from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
 from fastapi_mcp import FastApiMCP
@@ -118,6 +119,10 @@ def build_endpoint(tool: Tool, schema: Dict[str, Any]):
         extra = set(data) - allowed
         if extra:
             return JSONResponse(status_code=422, content={"detail": "Unexpected parameters"})
+        try:
+            jsonschema.validate(instance=data, schema=schema)
+        except jsonschema.exceptions.ValidationError as exc:
+            return JSONResponse(status_code=422, content={"detail": exc.message})
         filtered = {k: data[k] for k in allowed if k in data}
         return await tool._implementation(**filtered)
 
