@@ -48,7 +48,6 @@ async def test_user_tools_graph_calls(monkeypatch):
         GRAPH_TENANT_ID="tenant",
     )
 
-
     class DummyResponse(SimpleNamespace):
         def raise_for_status(self):
             pass
@@ -86,12 +85,9 @@ async def test_user_tools_graph_calls(monkeypatch):
                 json=lambda: data,
             )
 
-
     FakeAsyncClient = DummyClient
 
     monkeypatch.setattr(ut.httpx, "AsyncClient", FakeAsyncClient)
-
-
 
     token = await ut._get_token()
     assert token == "tok"

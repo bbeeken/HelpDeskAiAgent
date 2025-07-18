@@ -120,7 +120,6 @@ class TicketOut(TicketIn):
     )
 
 
-
 class TicketExpandedOut(TicketOut):
 
     """Ticket output schema that includes related labels."""

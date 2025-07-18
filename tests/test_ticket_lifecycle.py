@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 from fastapi import HTTPException
 from main import app
 
+
 client = TestClient(app)
 
 
@@ -21,7 +22,10 @@ def test_ticket_full_lifecycle():
     ticket = create_sample_ticket()
     tid = ticket["Ticket_ID"]
 
-    update_resp = client.put(f"/ticket/{tid}", json={"Assigned_Name": "Agent", "Ticket_Status_ID": 2})
+    update_resp = client.put(
+        f"/ticket/{tid}",
+        json={"Assigned_Name": "Agent", "Ticket_Status_ID": 2},
+    )
     assert update_resp.status_code == 200
     assert update_resp.json()["Assigned_Name"] == "Agent"
 
@@ -37,7 +41,6 @@ def test_ticket_full_lifecycle():
     close_resp = client.put(f"/ticket/{tid}", json={"Ticket_Status_ID": 3})
     assert close_resp.status_code == 200
     assert close_resp.json()["Ticket_Status_ID"] == 3
-
 
 
 def test_update_ticket_not_found():

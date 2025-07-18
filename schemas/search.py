@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
+
 class TicketSearchOut(BaseModel):
     """Summary information returned by the search endpoint."""
 

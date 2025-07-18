@@ -4,6 +4,7 @@ from httpx import AsyncClient, ASGITransport
 from httpx_sse import EventSource
 from main import app
 
+
 @pytest.mark.asyncio
 async def test_mcp_endpoint():
     transport = ASGITransport(app=app)
@@ -17,4 +18,3 @@ async def test_mcp_endpoint():
             post_url = first.data
             assert post_url.startswith("/mcp/messages/")
             await source.aclose()
-

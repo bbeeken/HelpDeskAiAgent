@@ -32,7 +32,8 @@ def fake_server(data):
 
 
 def test_verify_tools_success():
-    data = {"tools": [{"name": "get_ticket"}, {"name": "list_tickets"}, {"name": "ai_suggest_response"}]}
+    data = {"tools": [{"name": "get_ticket"}, {
+        "name": "list_tickets"}, {"name": "ai_suggest_response"}]}
     with fake_server(data) as url:
         assert verify_tools.verify(url)
 

@@ -1,3 +1,4 @@
+from schemas.ticket import TicketExpandedOut
 import pytest
 from httpx import AsyncClient, ASGITransport
 import pytest_asyncio
@@ -56,9 +57,6 @@ async def test_tickets_expanded_endpoint(client: AsyncClient):
     assert item["LastModified"] is None
 
 
-from schemas.ticket import TicketExpandedOut
-
-
 def test_ticket_expanded_schema():
     data = {
         "Ticket_ID": 1,
@@ -104,7 +102,7 @@ async def test_ticket_filtering(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_ticket_sorting(client: AsyncClient):
-    first = await client.post(
+    await client.post(
         "/ticket",
         json={
             "Subject": "First",

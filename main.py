@@ -5,7 +5,6 @@ from fastapi.openapi.utils import get_openapi
 from fastapi_mcp import FastApiMCP
 
 
-
 from src.mcp_server import Tool, create_enhanced_server
 
 
@@ -39,16 +38,19 @@ logger = logging.getLogger(__name__)
 # Correlation ID context variable for log records
 _correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="-")
 
+
 class CorrelationIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:  # type: ignore[override]
         record.correlation_id = _correlation_id_var.get()
         return True
+
 
 # Application version
 APP_VERSION = "0.1.0"
 
 # Record startup time to report uptime
 START_TIME = datetime.now(UTC)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -83,6 +85,7 @@ if os.getenv("ENABLE_RATE_LIMITING", "true").lower() not in {"0", "false", "no"}
 
 register_routes(app)
 
+
 def custom_openapi() -> Dict[str, Any]:
     """Return OpenAPI schema with array parameters expanded."""
     if app.openapi_schema:
@@ -103,6 +106,7 @@ def custom_openapi() -> Dict[str, Any]:
     app.openapi_schema = schema
     return schema
 
+
 app.openapi = custom_openapi
 
 # --- Dynamically expose MCP tools as HTTP endpoints ---
@@ -110,6 +114,7 @@ server = create_enhanced_server()
 logger.info(
     "Enhanced MCP server active with %d tools", len(getattr(server, "_tools", []))
 )
+
 
 def build_endpoint(tool: Tool, schema: Dict[str, Any]):
     async def endpoint(request: Request):
@@ -123,18 +128,15 @@ def build_endpoint(tool: Tool, schema: Dict[str, Any]):
 
     return endpoint
 
+
 for tool in TOOLS:
     schema = tool.inputSchema if isinstance(tool.inputSchema, dict) else {}
     app.post(f"/{tool.name}", operation_id=tool.name)(build_endpoint(tool, schema))
 
+
 @app.get("/tools")
 async def list_tools() -> Dict[str, List[Dict[str, Any]]]:
-
-
-  
     """Return a dictionary of available tools."""
-
-    
 
     return {"tools": [t.to_dict() for t in TOOLS]}
 
@@ -165,6 +167,7 @@ async def limit_request_size(request: Request, call_next):
         )
     return await call_next(request)
 
+
 @app.middleware("http")
 async def add_correlation_id(request: Request, call_next):
     correlation_id = request.headers.get("X-Request-ID", uuid.uuid4().hex)
@@ -176,6 +179,7 @@ async def add_correlation_id(request: Request, call_next):
     response.headers["X-Request-ID"] = correlation_id
     return response
 
+
 @app.exception_handler(NotFoundError)
 async def handle_not_found(request: Request, exc: NotFoundError):
     resp = ErrorResponse(
@@ -185,6 +189,7 @@ async def handle_not_found(request: Request, exc: NotFoundError):
         timestamp=datetime.now(UTC),
     )
     return JSONResponse(status_code=404, content=jsonable_encoder(resp))
+
 
 @app.exception_handler(ValidationError)
 async def handle_validation(request: Request, exc: ValidationError):
@@ -196,6 +201,7 @@ async def handle_validation(request: Request, exc: ValidationError):
     )
     return JSONResponse(status_code=400, content=jsonable_encoder(resp))
 
+
 @app.exception_handler(DatabaseError)
 async def handle_database(request: Request, exc: DatabaseError):
     resp = ErrorResponse(
@@ -205,6 +211,7 @@ async def handle_database(request: Request, exc: DatabaseError):
         timestamp=datetime.now(UTC),
     )
     return JSONResponse(status_code=500, content=jsonable_encoder(resp))
+
 
 @app.exception_handler(Exception)
 async def handle_unexpected(request: Request, exc: Exception):
@@ -217,6 +224,7 @@ async def handle_unexpected(request: Request, exc: Exception):
         timestamp=datetime.now(UTC),
     )
     return JSONResponse(status_code=500, content=jsonable_encoder(resp))
+
 
 @app.get("/health")
 async def health(db: AsyncSession = Depends(get_db)) -> dict:

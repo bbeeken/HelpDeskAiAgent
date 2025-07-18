@@ -1,3 +1,4 @@
+import pytest_asyncio
 import os
 from datetime import datetime, timedelta, UTC
 
@@ -9,9 +10,6 @@ from db.mssql import SessionLocal
 from tools.ticket_tools import create_ticket
 
 os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
-
-
-import pytest_asyncio
 
 
 async def fake_create(*args, **kwargs):
@@ -31,6 +29,7 @@ async def client():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
+
 async def _add_ticket(**kwargs):
     async with SessionLocal() as db:
         status_id = kwargs.get("Ticket_Status_ID", 1)
@@ -41,7 +40,8 @@ async def _add_ticket(**kwargs):
             4: "Waiting Open",
         }
         if not await db.get(TicketStatus, status_id):
-            db.add(TicketStatus(ID=status_id, Label=label_map.get(status_id, f"Status {status_id}")))
+            db.add(TicketStatus(ID=status_id, Label=label_map.get(
+                status_id, f"Status {status_id}")))
             await db.commit()
 
         ticket = Ticket(
@@ -60,6 +60,7 @@ async def _add_ticket(**kwargs):
 
         return ticket
 
+
 @pytest.mark.asyncio
 async def test_analytics_status(client: AsyncClient):
     await _add_ticket(Ticket_Status_ID=1)
@@ -71,6 +72,7 @@ async def test_analytics_status(client: AsyncClient):
     data = {item["status_id"]: item["count"] for item in resp.json()}
     assert data == {1: 2, 2: 1}
     assert all("status_label" in item for item in resp.json())
+
 
 @pytest.mark.asyncio
 async def test_analytics_open_by_site(client: AsyncClient):
@@ -85,6 +87,7 @@ async def test_analytics_open_by_site(client: AsyncClient):
     assert data == {1: 2, 2: 1}
     assert all("site_label" in item for item in resp.json())
 
+
 @pytest.mark.asyncio
 async def test_analytics_sla_breaches(client: AsyncClient):
     old = datetime.now(UTC) - timedelta(days=3)
@@ -93,6 +96,7 @@ async def test_analytics_sla_breaches(client: AsyncClient):
     resp = await client.get("/analytics/sla_breaches", params={"sla_days": 2})
     assert resp.status_code == 200
     assert resp.json() == {"breaches": 1}
+
 
 @pytest.mark.asyncio
 async def test_analytics_open_by_assigned_user(client: AsyncClient):
@@ -119,7 +123,7 @@ async def test_analytics_open_by_assigned_user(client: AsyncClient):
 
     resp = await client.get("/analytics/open_by_assigned_user")
     assert resp.status_code == 200
-    data = { (item["assigned_email"], item["assigned_name"]): item["count"] for item in resp.json() }
+    data = {(item["assigned_email"], item["assigned_name"]): item["count"] for item in resp.json()}
     assert data == {("tech@example.com", "Tech"): 2, ("other@example.com", "Other"): 1}
 
     resp = await client.get(
@@ -129,6 +133,7 @@ async def test_analytics_open_by_assigned_user(client: AsyncClient):
     assert resp.status_code == 200
     data = {item["assigned_email"]: item["count"] for item in resp.json()}
     assert data == {"tech@example.com": 2}
+
 
 @pytest.mark.asyncio
 async def test_analytics_waiting_on_user(client: AsyncClient):
@@ -174,7 +179,6 @@ async def test_sla_breaches_with_filters(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-
 async def test_sla_breaches_excludes_non_open(client: AsyncClient):
     """Closed or waiting tickets should not count towards SLA breaches."""
     old = datetime.now(UTC) - timedelta(days=5)

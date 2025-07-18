@@ -92,7 +92,6 @@ class Priority(Base):
     Level = Column(String)
 
 
-
 class OnCallShift(Base):
     __tablename__ = "OnCall_Shifts"
 
@@ -109,15 +108,11 @@ class ViewBase(DeclarativeBase):
 
 class VTicketMasterExpanded(ViewBase):
     """Mapped class for the V_Ticket_Master_Expanded view."""
-
     __tablename__ = "V_Ticket_Master_Expanded"
-
-
     Ticket_ID = Column(Integer, primary_key=True, index=True)
     Subject = Column(String)
     Ticket_Body = Column(Text)
     Ticket_Status_ID = Column(Integer)
-
     Ticket_Status_Label = Column(String)
     Ticket_Contact_Name = Column(String)
     Ticket_Contact_Email = Column(String)

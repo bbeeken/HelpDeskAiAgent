@@ -8,6 +8,7 @@ from db.models import Ticket, TicketMessage
 from tools.ticket_tools import create_ticket, get_tickets_by_user
 from src.mcp_server import create_enhanced_server
 
+
 @pytest.mark.asyncio
 async def test_get_tickets_by_user_function():
     async with SessionLocal() as db:
