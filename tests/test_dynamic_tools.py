@@ -23,5 +23,6 @@ async def test_tools_list_route():
         assert resp.status_code == 200
         data = resp.json()
         tools = data["tools"] if isinstance(data, dict) else data
-        assert isinstance(tools, list)
-        assert tools
+        names = {t["name"] for t in tools}
+        assert "g_ticket" in names
+        assert "l_tkts" in names
