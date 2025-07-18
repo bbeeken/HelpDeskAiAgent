@@ -17,6 +17,7 @@ class UserOpenCount(BaseModel):
     """Open ticket count grouped by assigned technician."""
 
     assigned_email: Optional[str]
+    assigned_name: Optional[str]
     count: int
 
 
