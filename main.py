@@ -24,6 +24,7 @@ from db.models import Base
 from db.mssql import engine
 from config import ERROR_TRACKING_DSN
 import sentry_sdk
+from jsonschema import Draft7Validator, ValidationError as JsonSchemaError
 
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
@@ -112,7 +113,10 @@ logger.info(
     "Enhanced MCP server active with %d tools", len(getattr(server, "_tools", []))
 )
 
+
 def build_endpoint(tool: Tool, schema: Dict[str, Any]):
+    validator = Draft7Validator(schema)
+
     async def endpoint(request: Request):
         data = await request.json()
         allowed = set(schema.get("properties", {}).keys())
@@ -124,6 +128,12 @@ def build_endpoint(tool: Tool, schema: Dict[str, Any]):
         except jsonschema.exceptions.ValidationError as exc:
             return JSONResponse(status_code=422, content={"detail": exc.message})
         filtered = {k: data[k] for k in allowed if k in data}
+
+        try:
+            validator.validate(filtered)
+        except JsonSchemaError as exc:
+            return JSONResponse(status_code=422, content={"detail": str(exc.message)})
+
         return await tool._implementation(**filtered)
 
     return endpoint

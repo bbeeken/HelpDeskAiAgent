@@ -22,6 +22,17 @@ async def test_dynamic_tool_routes():
 
 
 @pytest.mark.asyncio
+async def test_dynamic_tool_validation():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post("/g_ticket", json={"ticket_id": "bad"})
+        assert resp.status_code == 422
+
+        resp = await client.post("/g_ticket", json={})
+        assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_tools_list_route():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
