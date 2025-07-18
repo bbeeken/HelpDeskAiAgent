@@ -6,6 +6,7 @@ from .ticket import (
     TicketExpandedOut,
 )
 from .search import TicketSearchOut
+from .search_params import TicketSearchParams
 from .oncall import OnCallShiftOut
 from .paginated import PaginatedResponse
 from .basic import (
@@ -24,6 +25,7 @@ __all__ = [
     'TicketOut',
     'TicketExpandedOut',
     'TicketSearchOut',
+    'TicketSearchParams',
     'OnCallShiftOut',
     'PaginatedResponse',
     'AssetOut',
