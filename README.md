@@ -242,12 +242,46 @@ curl "http://localhost:8000/tickets/smart_search?q=unassigned+critical&limit=5"
   ]
   ```
 
-- `GET /analytics/open_by_assigned_user` - retrieve counts of open tickets for technicians. Use `Assigned_Email` or `Assigned_Name` query parameters to filter for a specific technician.
+
+- `GET /analytics/open_by_site` - count open tickets grouped by site.
+
 
   Example:
 
   ```bash
+
   curl "http://localhost:8000/analytics/open_by_assigned_user?Assigned_Email=tech@example.com"
+
+  curl http://localhost:8000/analytics/open_by_site
+  ```
+
+  ```json
+  [
+    {
+      "site_id": 1,
+      "site_label": "Main",
+      "count": 3
+    }
+  ]
+  ```
+
+- `GET /analytics/open_by_assigned_user` - count open tickets grouped by assigned technician. Supports ticket filtering parameters.
+
+  Example:
+
+  ```bash
+  curl http://localhost:8000/analytics/open_by_assigned_user
+  ```
+
+  ```json
+  [
+    {
+      "assigned_email": "tech@example.com",
+      "assigned_name": "Tech",
+      "count": 2
+    }
+  ]
+
   ```
 
 
@@ -322,6 +356,14 @@ expanded ticket records related to a specific user.
 
 ```bash
 curl "http://localhost:8000/tickets/by_user?identifier=user@example.com"
+```
+
+`tickets_by_timeframe` lists tickets filtered by status and age. Provide a
+number of `days` and optional `status` such as `open` or `closed`.
+
+```bash
+curl -X POST http://localhost:8000/tickets_by_timeframe \
+  -d '{"status": "open", "days": 7, "limit": 5}'
 ```
 
 ## License

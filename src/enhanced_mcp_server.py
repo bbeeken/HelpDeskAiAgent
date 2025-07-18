@@ -238,6 +238,20 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_db_wrapper(ticket_tools.get_tickets_by_user),
     ),
     Tool(
+        name="tickets_by_timeframe",
+        description="List tickets by timeframe and status",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "status": {"type": "string"},
+                "days": {"type": "integer"},
+                "limit": {"type": "integer"},
+            },
+            "required": [],
+        },
+        _implementation=_db_wrapper(ticket_tools.tickets_by_timeframe),
+    ),
+    Tool(
         name="staff_rp",
         description="Summary counts of tickets for a technician",
         inputSchema={
