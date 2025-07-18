@@ -242,6 +242,14 @@ curl "http://localhost:8000/tickets/smart_search?q=unassigned+critical&limit=5"
   ]
   ```
 
+- `GET /analytics/open_by_assigned_user` - retrieve counts of open tickets for technicians. Use `Assigned_Email` or `Assigned_Name` query parameters to filter for a specific technician.
+
+  Example:
+
+  ```bash
+  curl "http://localhost:8000/analytics/open_by_assigned_user?Assigned_Email=tech@example.com"
+  ```
+
 
 ## CLI
 
