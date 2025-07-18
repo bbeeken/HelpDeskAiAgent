@@ -232,6 +232,8 @@ ENHANCED_TOOLS: List[Tool] = [
                 "identifier": {"type": "string"},
                 "skip": {"type": "integer"},
                 "limit": {"type": "integer"},
+                "status": {"type": "string"},
+                "filters": {"type": "object"},
             },
             "required": ["identifier"],
         },

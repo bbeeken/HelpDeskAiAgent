@@ -221,13 +221,34 @@ async def search_tickets_alias(
     operation_id="tickets_by_user",
 )
 async def tickets_by_user_endpoint(
+    request: Request,
     identifier: str = Query(..., min_length=1),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1),
+    status: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedResponse[TicketExpandedOut]:
-    items = await get_tickets_by_user(db, identifier, skip=skip, limit=limit)
-    total = len(await get_tickets_by_user(db, identifier, skip=0, limit=None))
+    filters = extract_filters(
+        request, exclude=["identifier", "skip", "limit", "status"]
+    )
+    items = await get_tickets_by_user(
+        db,
+        identifier,
+        skip=skip,
+        limit=limit,
+        status=status,
+        filters=filters or None,
+    )
+    total = len(
+        await get_tickets_by_user(
+            db,
+            identifier,
+            skip=0,
+            limit=None,
+            status=status,
+            filters=filters or None,
+        )
+    )
     validated: List[TicketExpandedOut] = [
         TicketExpandedOut.model_validate(t) for t in items
     ]

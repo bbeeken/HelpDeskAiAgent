@@ -183,8 +183,9 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Priority_ID;
   `include_closed` to search closed tickets. Returns structured results sorted
   by relevance.
 - `GET /tickets/by_user` - list tickets where the user is the contact,
-  assigned technician or has posted a message. Provide a name or email via the
-  `identifier` query parameter.
+  assigned technician or has posted a message. Provide an `identifier` and
+  optionally filter by `status` (open, closed or progress). Additional query
+  parameters are applied as column filters on `V_Ticket_Master_Expanded`.
 - `PUT /ticket/{id}` - update an existing ticket
 - Ticket body and resolution fields now accept large text values; the previous
   2000-character limit has been removed.
@@ -352,10 +353,11 @@ Include this check in deployment pipelines to catch configuration issues early.
 ### Tool Reference
 
 The MCP server exposes several JSON-RPC tools. `tickets_by_user` returns
-expanded ticket records related to a specific user.
+expanded ticket records for a user. It accepts an `identifier`, optional
+`status` and arbitrary `filters`.
 
 ```bash
-curl "http://localhost:8000/tickets/by_user?identifier=user@example.com"
+curl "http://localhost:8000/tickets/by_user?identifier=user@example.com&status=open"
 ```
 
 Tool endpoints validate request bodies against each tool's `inputSchema` using

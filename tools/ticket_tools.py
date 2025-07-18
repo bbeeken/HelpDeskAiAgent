@@ -18,7 +18,12 @@ from .operation_result import OperationResult
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import Ticket, TicketMessage, TicketStatus, VTicketMasterExpanded
+from db.models import (
+    Ticket,
+    TicketMessage,
+    TicketStatus as TicketStatusModel,
+    VTicketMasterExpanded,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +158,8 @@ async def get_tickets_by_user(
     *,
     skip: int = 0,
     limit: int | None = 100,
+    status: str | None = None,
+    filters: dict[str, Any] | None = None,
 ) -> list[VTicketMasterExpanded]:
     """Return tickets associated with a user.
 
@@ -191,6 +198,41 @@ async def get_tickets_by_user(
         .filter(VTicketMasterExpanded.Ticket_ID.in_(ticket_ids))
         .order_by(VTicketMasterExpanded.Ticket_ID)
     )
+    if status:
+        query = query.join(
+            TicketStatusModel,
+            VTicketMasterExpanded.Ticket_Status_ID == TicketStatusModel.ID,
+            isouter=True,
+        )
+        s = status.lower()
+        if s == "open":
+            query = query.filter(
+                or_(
+                    TicketStatusModel.Label.ilike("%open%"),
+                    TicketStatusModel.Label.ilike("%progress%"),
+                )
+            )
+        elif s == "closed":
+            query = query.filter(
+                or_(
+                    TicketStatusModel.Label.ilike("%closed%"),
+                    TicketStatusModel.Label.ilike("%resolved%"),
+                )
+            )
+        elif s == "progress":
+            query = query.filter(TicketStatusModel.Label.ilike("%progress%"))
+
+    if filters:
+        filter_conditions = []
+        for key, value in filters.items():
+            if hasattr(VTicketMasterExpanded, key):
+                attr = getattr(VTicketMasterExpanded, key)
+                if isinstance(value, list):
+                    filter_conditions.append(attr.in_(value))
+                else:
+                    filter_conditions.append(attr == value)
+        if filter_conditions:
+            query = query.filter(and_(*filter_conditions))
     if skip:
         query = query.offset(skip)
     if limit is not None:
@@ -223,7 +265,11 @@ async def tickets_by_timeframe(
 
     query = (
         select(VTicketMasterExpanded)
-        .join(TicketStatus, VTicketMasterExpanded.Ticket_Status_ID == TicketStatus.ID, isouter=True)
+        .join(
+            TicketStatusModel,
+            VTicketMasterExpanded.Ticket_Status_ID == TicketStatusModel.ID,
+            isouter=True,
+        )
     )
 
     if status:
@@ -231,15 +277,15 @@ async def tickets_by_timeframe(
         if s == "open":
             query = query.filter(
                 or_(
-                    TicketStatus.Label.ilike("%open%"),
-                    TicketStatus.Label.ilike("%progress%"),
+                    TicketStatusModel.Label.ilike("%open%"),
+                    TicketStatusModel.Label.ilike("%progress%"),
                 )
             )
         elif s == "closed":
             query = query.filter(
                 or_(
-                    TicketStatus.Label.ilike("%closed%"),
-                    TicketStatus.Label.ilike("%resolved%"),
+                    TicketStatusModel.Label.ilike("%closed%"),
+                    TicketStatusModel.Label.ilike("%resolved%"),
                 )
             )
 
