@@ -14,6 +14,12 @@ async def test_dynamic_tool_routes():
         resp = await client.post("/g_ticket", json={"ticket_id": 1, "extra": 1})
         assert resp.status_code == 422
 
+        resp = await client.post("/g_ticket", json={})
+        assert resp.status_code == 422
+
+        resp = await client.post("/g_ticket", json={"ticket_id": "one"})
+        assert resp.status_code == 422
+
 
 @pytest.mark.asyncio
 async def test_tools_list_route():

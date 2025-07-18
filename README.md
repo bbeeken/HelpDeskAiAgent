@@ -366,6 +366,10 @@ curl -X POST http://localhost:8000/tickets_by_timeframe \
   -d '{"status": "open", "days": 7, "limit": 5}'
 ```
 
+Request bodies are validated against each tool's `inputSchema` using the
+`jsonschema` library. Missing or incorrectly typed fields result in a `422`
+response.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
