@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel
 from schemas.search_params import TicketSearchParams
+from schemas.filters import AdvancedFilters, apply_advanced_filters
 
 from sqlalchemy import select, or_, and_, func
 from fastapi import HTTPException
@@ -32,14 +33,18 @@ async def list_tickets_expanded(
     db: AsyncSession,
     skip: int = 0,
     limit: int = 10,
-    filters: dict[str, Any] | None = None,
+    filters: AdvancedFilters | dict[str, Any] | None = None,
     sort: str | list[str] | None = None,
 ) -> Sequence[VTicketMasterExpanded]:
     """Return tickets with related labels from the expanded view."""
 
     query = select(VTicketMasterExpanded)
+    sorted_applied = False
 
-    if filters:
+    if isinstance(filters, AdvancedFilters):
+        query = apply_advanced_filters(query, filters, VTicketMasterExpanded)
+        sorted_applied = bool(filters.sort)
+    elif filters:
         filter_conditions = []
         for key, value in filters.items():
             if hasattr(VTicketMasterExpanded, key):
@@ -71,7 +76,9 @@ async def list_tickets_expanded(
                 order_columns.append(attr.desc() if direction == "desc" else attr.asc())
         if order_columns:
             query = query.order_by(*order_columns)
-    else:
+        sorted_applied = True
+
+    if not sorted_applied:
         query = query.order_by(VTicketMasterExpanded.Ticket_ID.desc())
 
     if skip:
@@ -333,7 +340,7 @@ class TicketTools:
     async def search_tickets_smart(
         self,
         query: str,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[AdvancedFilters | Dict[str, Any]] = None,
         limit: int = 10,
         include_closed: bool = False,
     ) -> Dict[str, Any]:
@@ -390,7 +397,25 @@ class TicketTools:
             if conditions:
                 stmt = stmt.filter(and_(*conditions))
 
-            stmt = stmt.order_by(VTicketMasterExpanded.Created_Date.desc()).limit(limit)
+            sorted_applied = False
+            if isinstance(filters, AdvancedFilters):
+                stmt = apply_advanced_filters(stmt, filters, VTicketMasterExpanded)
+                sorted_applied = bool(filters.sort)
+            elif filters:
+                for key, value in filters.items():
+                    if hasattr(VTicketMasterExpanded, key):
+                        col = getattr(VTicketMasterExpanded, key)
+                        if isinstance(value, list):
+                            stmt = stmt.filter(col.in_(value))
+                        elif isinstance(value, str):
+                            stmt = stmt.filter(col.ilike(f"%{value}%"))
+                        else:
+                            stmt = stmt.filter(col == value)
+
+            if not sorted_applied:
+                stmt = stmt.order_by(VTicketMasterExpanded.Created_Date.desc())
+
+            stmt = stmt.limit(limit)
 
             result = await self.db.execute(stmt)
             tickets = result.scalars().all()
