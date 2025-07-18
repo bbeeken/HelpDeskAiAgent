@@ -41,6 +41,7 @@ async def _add_ticket(**kwargs):
             Ticket_Status_ID=kwargs.get("Ticket_Status_ID", 1),
             Site_ID=kwargs.get("Site_ID"),
             Assigned_Email=kwargs.get("Assigned_Email"),
+            Assigned_Name=kwargs.get("Assigned_Name"),
             Created_Date=kwargs.get("Created_Date", datetime.now(UTC)),
         )
 
@@ -83,16 +84,40 @@ async def test_analytics_sla_breaches(client: AsyncClient):
     assert resp.json() == {"breaches": 1}
 
 @pytest.mark.asyncio
-async def test_analytics_open_by_user(client: AsyncClient):
-    await _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=1)
-    await _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=1)
-    await _add_ticket(Assigned_Email="other@example.com", Ticket_Status_ID=1)
-    await _add_ticket(Assigned_Email="tech@example.com", Ticket_Status_ID=3)
+async def test_analytics_open_by_assigned_user(client: AsyncClient):
+    await _add_ticket(
+        Assigned_Email="tech@example.com",
+        Assigned_Name="Tech",
+        Ticket_Status_ID=1,
+    )
+    await _add_ticket(
+        Assigned_Email="tech@example.com",
+        Assigned_Name="Tech",
+        Ticket_Status_ID=1,
+    )
+    await _add_ticket(
+        Assigned_Email="other@example.com",
+        Assigned_Name="Other",
+        Ticket_Status_ID=1,
+    )
+    await _add_ticket(
+        Assigned_Email="tech@example.com",
+        Assigned_Name="Tech",
+        Ticket_Status_ID=3,
+    )
 
-    resp = await client.get("/analytics/open_by_user")
+    resp = await client.get("/analytics/open_by_assigned_user")
+    assert resp.status_code == 200
+    data = { (item["assigned_email"], item["assigned_name"]): item["count"] for item in resp.json() }
+    assert data == {("tech@example.com", "Tech"): 2, ("other@example.com", "Other"): 1}
+
+    resp = await client.get(
+        "/analytics/open_by_assigned_user",
+        params={"Assigned_Email": "tech@example.com"},
+    )
     assert resp.status_code == 200
     data = {item["assigned_email"]: item["count"] for item in resp.json()}
-    assert data == {"tech@example.com": 2, "other@example.com": 1}
+    assert data == {"tech@example.com": 2}
 
 @pytest.mark.asyncio
 async def test_analytics_waiting_on_user(client: AsyncClient):

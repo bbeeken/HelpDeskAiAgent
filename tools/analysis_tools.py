@@ -153,21 +153,35 @@ async def sla_breaches(
     return result.scalar_one()
 
 
-async def open_tickets_by_user(db: AsyncSession) -> List[UserOpenCount]:
-    """Return open ticket counts grouped by assigned technician."""
-    logger.info("Calculating open tickets by user")
-    result = await db.execute(
+async def open_tickets_by_user(
+    db: AsyncSession, filters: Optional[Dict[str, Any]] | None = None
+) -> List[UserOpenCount]:
+    """Return open ticket counts for assigned technicians with optional filtering."""
+
+    logger.info("Calculating open tickets by user with filters %s", filters)
+
+    query = (
         select(
             Ticket.Assigned_Email,
+            Ticket.Assigned_Name,
             func.count(Ticket.Ticket_ID),
-        ).filter(
-            Ticket.Ticket_Status_ID != 3
-        ).group_by(
-            Ticket.Assigned_Email
+        )
+        .filter(
+            Ticket.Ticket_Status_ID != 3,
+            Ticket.Assigned_Email.is_not(None),
         )
     )
+
+    if filters:
+        for key, value in filters.items():
+            if hasattr(Ticket, key):
+                query = query.filter(getattr(Ticket, key) == value)
+
+    query = query.group_by(Ticket.Assigned_Email, Ticket.Assigned_Name)
+
+    result = await db.execute(query)
     return [
-        UserOpenCount(assigned_email=row[0], count=row[1])
+        UserOpenCount(assigned_email=row[0], assigned_name=row[1], count=row[2])
         for row in result.all()
     ]
 
