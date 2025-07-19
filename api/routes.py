@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request, Body
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,6 +37,7 @@ from tools.analysis_tools import (
     ticket_trend,
 )
 from tools.oncall_tools import get_current_oncall
+from tools import TicketManager
 
 # Schemas
 # Ticket schemas
@@ -120,6 +121,14 @@ class MessageIn(BaseModel):
     message: str = Field(..., example="Thanks for the update")
     sender_code: str = Field(..., example="USR123")
     sender_name: str = Field(..., example="John Doe")
+
+
+class SearchBody(BaseModel):
+    """Request body for JSON ticket search."""
+
+    q: str = Field(..., min_length=1)
+    limit: int = Field(10, ge=1, le=100)
+    params: TicketSearchParams = Field(default_factory=TicketSearchParams)
 
 
 @ticket_router.get(
@@ -215,6 +224,26 @@ async def search_tickets_alias(
     return await search_tickets(q=q, params=params, limit=limit, db=db)
 
 
+@tickets_router.post(
+    "/search/json",
+    response_model=List[TicketSearchOut],
+    operation_id="search_tickets_json",
+    description="Search tickets with JSON 🔍",
+    tags=["tickets", "🔍"],
+)
+async def search_tickets_json(
+    body: SearchBody,
+    db: AsyncSession = Depends(get_db),
+) -> List[TicketSearchOut]:
+    results = await TicketManager().search_tickets(
+        db,
+        query=body.q,
+        limit=body.limit,
+        params=body.params,
+    )
+    return [TicketSearchOut.model_validate(r) for r in results]
+
+
 @tickets_router.get(
     "/by_user",
     response_model=PaginatedResponse[TicketExpandedOut],
@@ -273,6 +302,28 @@ async def create_ticket_endpoint(
     return TicketOut.model_validate(result.data)
 
 
+@ticket_router.post(
+    "/json",
+    response_model=TicketExpandedOut,
+    status_code=201,
+    operation_id="create_ticket_json",
+    description="Create a ticket from JSON 📨",
+    tags=["tickets", "📝"],
+)
+async def create_ticket_json(
+    payload: TicketCreate = Body(...),
+    db: AsyncSession = Depends(get_db),
+) -> TicketExpandedOut:
+    data = payload.model_dump()
+    data["Created_Date"] = datetime.now(timezone.utc)
+    result = await TicketManager().create_ticket(db, data)
+    if not result.success:
+        logger.error("Ticket creation failed: %s", result.error)
+        raise HTTPException(status_code=500, detail=result.error or "ticket create failed")
+    ticket = await TicketManager().get_ticket(db, result.data.Ticket_ID)
+    return TicketExpandedOut.model_validate(ticket)
+
+
 @ticket_router.put(
     "/{ticket_id}",
     response_model=TicketOut,
@@ -288,6 +339,26 @@ async def update_ticket_endpoint(
         logger.warning("Ticket %s not found or no changes applied", ticket_id)
         raise HTTPException(status_code=404, detail="Ticket not found or no changes")
     return TicketOut.model_validate(updated)
+
+
+@ticket_router.put(
+    "/json/{ticket_id}",
+    response_model=TicketExpandedOut,
+    operation_id="update_ticket_json",
+    description="Update a ticket with JSON ✏️",
+    tags=["tickets", "📝"],
+)
+async def update_ticket_json(
+    ticket_id: int,
+    updates: TicketUpdate = Body(...),
+    db: AsyncSession = Depends(get_db),
+) -> TicketExpandedOut:
+    updated = await TicketManager().update_ticket(db, ticket_id, updates)
+    if not updated:
+        logger.warning("Ticket %s not found or no changes applied", ticket_id)
+        raise HTTPException(status_code=404, detail="Ticket not found or no changes")
+    ticket = await TicketManager().get_ticket(db, ticket_id)
+    return TicketExpandedOut.model_validate(ticket)
 
 
 @ticket_router.get(
