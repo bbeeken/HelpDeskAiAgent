@@ -23,7 +23,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     ```
    The `driver` name must match an ODBC driver installed on the host machine.
   - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
-    lookups in `tools.user_tools`. When omitted, stub responses are returned.
+    lookups in `tools.user_services`. When omitted, stub responses are returned.
 
 
   - `ENABLE_RATE_LIMITING` – enable the SlowAPI limiter middleware.

@@ -1,13 +1,5 @@
-from __future__ import annotations
-from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar
+"""Deprecated - use :mod:`tools.system_utilities` instead."""
 
-T = TypeVar("T")
+from .system_utilities import OperationResult
 
-@dataclass
-class OperationResult(Generic[T]):
-    """Generic result wrapper for tool operations."""
-
-    success: bool
-    data: Optional[T] = None
-    error: Optional[str] = None
+__all__ = ["OperationResult"]
