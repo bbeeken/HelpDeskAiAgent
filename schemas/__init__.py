@@ -5,7 +5,7 @@ from .ticket import (
     TicketOut,
     TicketExpandedOut,
 )
-from .search import TicketSearchOut
+from .search import TicketSearchOut, TicketSearchRequest
 from .search_params import TicketSearchParams
 from .filters import AdvancedFilters
 from .oncall import OnCallShiftOut
@@ -26,6 +26,7 @@ __all__ = [
     'TicketOut',
     'TicketExpandedOut',
     'TicketSearchOut',
+    'TicketSearchRequest',
     'TicketSearchParams',
     'AdvancedFilters',
     'OnCallShiftOut',

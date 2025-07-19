@@ -82,3 +82,25 @@ async def test_search_filters_and_sort():
         resp = await ac.get("/tickets/search", params={"q": "Query", "sort": "oldest"})
         ids = [item["Ticket_ID"] for item in resp.json()]
         assert ids == [first_id, second_id]
+
+
+@pytest.mark.asyncio
+async def test_search_accepts_json():
+    async with SessionLocal() as db:
+        t = Ticket(
+            Subject="JSON Search",
+            Ticket_Body="json body",
+            Ticket_Contact_Name="T",
+            Ticket_Contact_Email="t@example.com",
+            Created_Date=datetime.now(UTC),
+            Ticket_Status_ID=1,
+        )
+        await create_ticket(db, t)
+        tid = t.Ticket_ID
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.post("/tickets/search", json={"q": "JSON Search"})
+        assert resp.status_code == 200
+        ids = [item["Ticket_ID"] for item in resp.json()]
+        assert tid in ids
