@@ -3,7 +3,7 @@ from datetime import datetime, UTC
 
 from db.mssql import SessionLocal
 from db.models import Ticket
-from tools.ticket_tools import create_ticket, list_tickets_expanded, TicketTools
+from tools.ticket_management import TicketManager, TicketTools
 from schemas.filters import AdvancedFilters
 
 
@@ -24,14 +24,14 @@ async def test_date_range_and_sort():
             Ticket_Contact_Email="e@example.com",
             Created_Date=datetime(2023, 1, 10, tzinfo=UTC),
         )
-        await create_ticket(db, t1)
-        await create_ticket(db, t2)
+        await TicketManager().create_ticket(db, t1)
+        await TicketManager().create_ticket(db, t2)
 
         filters = AdvancedFilters(
             created_from=datetime(2023, 1, 5, tzinfo=UTC),
             sort=["-Created_Date"],
         )
-        res = await list_tickets_expanded(db, filters=filters)
+        res = await TicketManager().list_tickets(db, filters=filters)
         ids = [r.Ticket_ID for r in res]
         assert ids == [t2.Ticket_ID]
 
@@ -56,10 +56,10 @@ async def test_multi_value_and_bool_filter():
             Assigned_Email="tech@example.com",
             Created_Date=datetime.now(UTC),
         )
-        await create_ticket(db, t1)
-        await create_ticket(db, t2)
+        await TicketManager().create_ticket(db, t1)
+        await TicketManager().create_ticket(db, t2)
         filters = AdvancedFilters(site_ids=[1, 2], assigned=False)
-        res = await list_tickets_expanded(db, filters=filters)
+        res = await TicketManager().list_tickets(db, filters=filters)
         ids = {t.Ticket_ID for t in res}
         assert ids == {t1.Ticket_ID}
 

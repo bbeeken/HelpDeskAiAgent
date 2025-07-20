@@ -5,7 +5,7 @@ from datetime import datetime, UTC
 from main import app
 from db.mssql import SessionLocal
 from db.models import Ticket, TicketMessage, TicketStatus
-from tools.ticket_tools import create_ticket, get_tickets_by_user
+from tools.ticket_management import TicketManager
 from src.mcp_server import create_enhanced_server
 
 @pytest.mark.asyncio
@@ -41,9 +41,9 @@ async def test_get_tickets_by_user_function():
             Ticket_Contact_Email="z@example.com",
             Created_Date=now,
         )
-        await create_ticket(db, t1)
-        await create_ticket(db, t2)
-        await create_ticket(db, t3)
+        await TicketManager().create_ticket(db, t1)
+        await TicketManager().create_ticket(db, t2)
+        await TicketManager().create_ticket(db, t3)
         t4 = Ticket(
             Subject="D",
             Ticket_Body="b",
@@ -51,7 +51,7 @@ async def test_get_tickets_by_user_function():
             Ticket_Contact_Email="user@example.com",
             Created_Date=now,
         )
-        await create_ticket(db, t4)
+        await TicketManager().create_ticket(db, t4)
         msg = TicketMessage(
             Ticket_ID=t3.Ticket_ID,
             Message="hi",
@@ -61,12 +61,12 @@ async def test_get_tickets_by_user_function():
         )
         db.add(msg)
         await db.commit()
-        res = await get_tickets_by_user(db, "USER@EXAMPLE.COM")
+        res = await TicketManager().get_tickets_by_user(db, "USER@EXAMPLE.COM")
         ids = {r.Ticket_ID for r in res}
         assert ids == {t1.Ticket_ID, t2.Ticket_ID, t3.Ticket_ID, t4.Ticket_ID}
-        limited = await get_tickets_by_user(db, "user@example.com", skip=1, limit=1)
+        limited = await TicketManager().get_tickets_by_user(db, "user@example.com", skip=1, limit=1)
         assert len(limited) == 1
-        closed_only = await get_tickets_by_user(db, "user@example.com", status="closed")
+        closed_only = await TicketManager().get_tickets_by_user(db, "user@example.com", status="closed")
         ids = {t.Ticket_ID for t in closed_only}
         assert ids == {t4.Ticket_ID}
 
@@ -85,7 +85,7 @@ async def test_tickets_by_user_endpoint():
                 Ticket_Contact_Email="endpoint@example.com",
                 Created_Date=now,
             )
-            await create_ticket(db, t)
+            await TicketManager().create_ticket(db, t)
         resp = await ac.get("/tickets/by_user", params={"identifier": "endpoint@example.com"})
         assert resp.status_code == 200
         data = resp.json()
@@ -106,7 +106,7 @@ async def test_tickets_by_user_tool():
             Ticket_Contact_Email="tool@example.com",
             Created_Date=now,
         )
-        await create_ticket(db, t)
+        await TicketManager().create_ticket(db, t)
 
     server = create_enhanced_server()
     tool = next(x for x in server._tools if x.name == "tickets_by_user")
@@ -141,8 +141,8 @@ async def test_status_and_filtering():
                 Site_ID=2,
                 Created_Date=now,
             )
-            await create_ticket(db, open_t)
-            await create_ticket(db, closed_t)
+            await TicketManager().create_ticket(db, open_t)
+            await TicketManager().create_ticket(db, closed_t)
 
         resp = await ac.get(
             "/tickets/by_user",

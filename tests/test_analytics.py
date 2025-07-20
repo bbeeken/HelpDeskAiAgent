@@ -6,7 +6,7 @@ from httpx import AsyncClient, ASGITransport
 from main import app
 from db.models import Ticket, TicketStatus
 from db.mssql import SessionLocal
-from tools.ticket_tools import create_ticket
+from tools.ticket_management import TicketManager
 
 os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
 
@@ -56,7 +56,7 @@ async def _add_ticket(**kwargs):
             Created_Date=kwargs.get("Created_Date", datetime.now(UTC)),
         )
 
-        await create_ticket(db, ticket)
+        await TicketManager().create_ticket(db, ticket)
 
         return ticket
 
