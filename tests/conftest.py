@@ -1,6 +1,7 @@
 from asgi_lifespan import LifespanManager
 from main import app
 import asyncio
+import pytest
 import pytest_asyncio
 from src.core.repositories.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
 from sqlalchemy import text
@@ -9,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 import src.infrastructure.database as mssql
 import os
+import src.core.services.analytics_reporting as analytics_reporting
 
 # Pydantic 1.x fails on Python 3.12 unless this shim is disabled
 os.environ.setdefault("PYDANTIC_DISABLE_STD_TYPES_SHIM", "1")
@@ -23,6 +25,7 @@ mssql.engine = create_async_engine(
     poolclass=StaticPool,
 )
 mssql.SessionLocal = async_sessionmaker(bind=mssql.engine, expire_on_commit=False)
+
 # Ensure the FastAPI app and dependencies use the test engine/session
 import src.api.v1.deps as deps
 deps.SessionLocal = mssql.SessionLocal
@@ -54,3 +57,9 @@ async def db_setup():
     async with mssql.engine.begin() as conn:
         await conn.execute(text("DROP VIEW IF EXISTS V_Ticket_Master_Expanded"))
         await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest.fixture(autouse=True)
+def clear_analytics_cache():
+    analytics_reporting._analytics_cache.clear()
+    yield
