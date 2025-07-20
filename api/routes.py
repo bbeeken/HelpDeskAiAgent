@@ -130,7 +130,6 @@ def extract_filters(
 ticket_router = APIRouter(prefix="/ticket", tags=["tickets"])
 
 
-
 class MessageIn(BaseModel):
     message: str = Field(..., example="Thanks for the update")
     sender_code: str = Field(..., example="USR123")
@@ -197,15 +196,11 @@ async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> Tick
     return TicketExpandedOut.model_validate(ticket)
 
 
-<<<<<<< HEAD
-@ticket_router.get("", response_model=PaginatedResponse[TicketExpandedOut])
-=======
 @ticket_router.get(
     "",
     response_model=PaginatedResponse[TicketExpandedOut],
     operation_id="list_tickets",
 )
->>>>>>> main
 async def list_tickets(
     request: Request,
     skip: int = Query(0, ge=0),
@@ -230,27 +225,8 @@ async def list_tickets(
 
     return PaginatedResponse(items=validated, total=total, skip=skip, limit=limit)
 
-<<<<<<< HEAD
-@ticket_router.get("/search", response_model=List[TicketSearchOut])
-async def search_tickets(
-    q: str = Query(..., min_length=1),
-    limit: int = Query(10, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
-) -> List[TicketSearchOut]:
-    logger.info("Searching tickets for '%s' (limit=%d)", q, limit)
-    results = await search_tickets_expanded(db, q, limit)
-    validated: List[TicketSearchOut] = []
-    for r in results:
-        try:
-            validated.append(TicketSearchOut.model_validate(r))
-        except ValidationError as exc:
-            logger.error("Invalid search result %s: %s", r.get("Ticket_ID", "?"), exc)
-    return validated
 
-@ticket_router.post("", response_model=TicketOut, status_code=201)
-=======
-
-@tickets_router.get(
+@ticket_router.get(
     "/expanded",
     response_model=PaginatedResponse[TicketExpandedOut],
     operation_id="list_expanded_tickets",
@@ -264,44 +240,7 @@ async def list_tickets_expanded_alias(
     return await list_tickets(request, skip, limit, db)
 
 
-<<<<<<< HEAD
-@tickets_router.get("/search", response_model=List[TicketSearchOut])
-=======
-@tickets_router.get(
-    "/search",
-    response_model=List[TicketSearchOut],
-    operation_id="search_tickets_alias",
-)
->>>>>>> main
-async def search_tickets_alias(
-    q: str = Query(..., min_length=1),
-    params: TicketSearchParams = Depends(),
-    limit: int = Query(10, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
-) -> List[TicketSearchOut]:
-    return await search_tickets(q=q, params=params, limit=limit, db=db)
-
-
-@tickets_router.post(
-
-    "/search",
-    response_model=List[TicketSearchOut],
-    operation_id="search_tickets_alias_json",
-)
-async def search_tickets_alias_json(
-    payload: TicketSearchRequest,
-    db: AsyncSession = Depends(get_db),
-) -> List[TicketSearchOut]:
-    return await search_tickets(
-        q=payload.q,
-        params=payload.params or TicketSearchParams(),
-        limit=payload.limit,
-        db=db,
-    )
-
-
-
-@tickets_router.get(
+@ticket_router.get(
     "/by_user",
     response_model=PaginatedResponse[TicketExpandedOut],
     operation_id="tickets_by_user",
@@ -341,17 +280,12 @@ async def tickets_by_user_endpoint(
     return PaginatedResponse(items=validated, total=total, skip=skip, limit=limit)
 
 
-<<<<<<< HEAD
-@ticket_router.post("", response_model=TicketOut, status_code=201)
-=======
 @ticket_router.post(
     "",
     response_model=TicketOut,
     status_code=201,
     operation_id="create_ticket",
 )
->>>>>>> b9d2f38ffe46e291efa5e27a7e999a1e8eda59fe
->>>>>>> main
 async def create_ticket_endpoint(
     ticket: TicketCreate, db: AsyncSession = Depends(get_db)
 ) -> TicketOut:
@@ -364,9 +298,6 @@ async def create_ticket_endpoint(
     return TicketOut.model_validate(result.data)
 
 
-<<<<<<< HEAD
-@ticket_router.put("/{ticket_id}", response_model=TicketOut)
-=======
 @ticket_router.post(
     "/json",
     response_model=TicketExpandedOut,
@@ -394,7 +325,6 @@ async def create_ticket_json(
     response_model=TicketOut,
     operation_id="update_ticket",
 )
->>>>>>> main
 async def update_ticket_endpoint(
     ticket_id: int,
     updates: TicketUpdate,
@@ -458,15 +388,11 @@ async def add_ticket_message(
 lookup_router = APIRouter(prefix="/lookup", tags=["lookup"])
 
 
-<<<<<<< HEAD
-@lookup_router.get("/assets", response_model=List[AssetOut])
-=======
 @lookup_router.get(
     "/assets",
     response_model=List[AssetOut],
     operation_id="list_assets",
 )
->>>>>>> main
 async def list_assets_endpoint(
     request: Request,
     skip: int = Query(0, ge=0),
@@ -479,15 +405,11 @@ async def list_assets_endpoint(
     return [AssetOut.model_validate(a) for a in assets]
 
 
-<<<<<<< HEAD
-@lookup_router.get("/asset/{asset_id}", response_model=AssetOut)
-=======
 @lookup_router.get(
     "/asset/{asset_id}",
     response_model=AssetOut,
     operation_id="get_asset",
 )
->>>>>>> main
 async def get_asset_endpoint(asset_id: int, db: AsyncSession = Depends(get_db)) -> AssetOut:
     a = await get_asset(db, asset_id)
     if not a:
@@ -495,15 +417,11 @@ async def get_asset_endpoint(asset_id: int, db: AsyncSession = Depends(get_db)) 
     return AssetOut.model_validate(a)
 
 
-<<<<<<< HEAD
-@lookup_router.get("/vendors", response_model=List[VendorOut])
-=======
 @lookup_router.get(
     "/vendors",
     response_model=List[VendorOut],
     operation_id="list_vendors",
 )
->>>>>>> main
 async def list_vendors_endpoint(
     request: Request,
     skip: int = Query(0, ge=0),
@@ -516,15 +434,11 @@ async def list_vendors_endpoint(
     return [VendorOut.model_validate(v) for v in vs]
 
 
-<<<<<<< HEAD
-@lookup_router.get("/vendor/{vendor_id}", response_model=VendorOut)
-=======
 @lookup_router.get(
     "/vendor/{vendor_id}",
     response_model=VendorOut,
     operation_id="get_vendor",
 )
->>>>>>> main
 async def get_vendor_endpoint(vendor_id: int, db: AsyncSession = Depends(get_db)) -> VendorOut:
     v = await get_vendor(db, vendor_id)
     if not v:
@@ -532,15 +446,11 @@ async def get_vendor_endpoint(vendor_id: int, db: AsyncSession = Depends(get_db)
     return VendorOut.model_validate(v)
 
 
-<<<<<<< HEAD
-@lookup_router.get("/sites", response_model=List[SiteOut])
-=======
 @lookup_router.get(
     "/sites",
     response_model=List[SiteOut],
     operation_id="list_sites",
 )
->>>>>>> main
 async def list_sites_endpoint(
     request: Request,
     skip: int = Query(0, ge=0),
@@ -553,15 +463,11 @@ async def list_sites_endpoint(
     return [SiteOut.model_validate(s) for s in ss]
 
 
-<<<<<<< HEAD
-@lookup_router.get("/site/{site_id}", response_model=SiteOut)
-=======
 @lookup_router.get(
     "/site/{site_id}",
     response_model=SiteOut,
     operation_id="get_site",
 )
->>>>>>> main
 async def get_site_endpoint(site_id: int, db: AsyncSession = Depends(get_db)) -> SiteOut:
     s = await get_site(db, site_id)
     if not s:
@@ -569,17 +475,6 @@ async def get_site_endpoint(site_id: int, db: AsyncSession = Depends(get_db)) ->
     return SiteOut.model_validate(s)
 
 
-<<<<<<< HEAD
-@lookup_router.get("/categories", response_model=List[TicketCategoryOut])
-async def list_categories_endpoint(db: AsyncSession = Depends(get_db)) -> List[TicketCategoryOut]:
-    cats = await list_categories(db)
-    return [TicketCategoryOut.model_validate(c) for c in cats]
-
-
-@lookup_router.get("/statuses", response_model=List[TicketStatusOut])
-async def list_statuses_endpoint(db: AsyncSession = Depends(get_db)) -> List[TicketStatusOut]:
-    stats = await list_statuses(db)
-=======
 @lookup_router.get(
     "/categories",
     response_model=List[TicketCategoryOut],
@@ -605,7 +500,6 @@ async def list_statuses_endpoint(
     filters = extract_filters(request)
     sort = request.query_params.getlist("sort") or None
     stats = await list_statuses(db, filters=filters or None, sort=sort)
->>>>>>> main
     return [TicketStatusOut.model_validate(s) for s in stats]
 
 
@@ -624,15 +518,6 @@ async def get_ticket_attachments_endpoint(
 
 analytics_router = APIRouter(prefix="/analytics", tags=["analytics"])
 
-<<<<<<< HEAD
-
-@analytics_router.get("/status", response_model=List[StatusCount])
-async def tickets_by_status_endpoint(db: AsyncSession = Depends(get_db)) -> List[StatusCount]:
-    return await tickets_by_status(db)
-
-
-@analytics_router.get("/open_by_site", response_model=List[SiteOpenCount])
-=======
 
 @analytics_router.get(
     "/status",
@@ -652,20 +537,15 @@ async def tickets_by_status_endpoint(db: AsyncSession = Depends(get_db)) -> List
     response_model=List[SiteOpenCount],
     operation_id="open_by_site",
 )
->>>>>>> main
 async def open_by_site_endpoint(db: AsyncSession = Depends(get_db)) -> List[SiteOpenCount]:
     return await open_tickets_by_site(db)
 
 
-<<<<<<< HEAD
-@analytics_router.get("/open_by_assigned_user", response_model=List[UserOpenCount])
-=======
 @analytics_router.get(
     "/open_by_assigned_user",
     response_model=List[UserOpenCount],
     operation_id="open_by_assigned_user",
 )
->>>>>>> main
 async def open_by_assigned_user_endpoint(
     request: Request, db: AsyncSession = Depends(get_db)
 ) -> List[UserOpenCount]:
@@ -701,14 +581,10 @@ async def waiting_on_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[W
     return await tickets_waiting_on_user(db)
 
 
-<<<<<<< HEAD
-@analytics_router.get("/sla_breaches")
-=======
 @analytics_router.get(
     "/sla_breaches",
     operation_id="sla_breaches",
 )
->>>>>>> main
 async def sla_breaches_endpoint(
     request: Request,
     sla_days: int = Query(2, ge=0),
@@ -722,36 +598,6 @@ async def sla_breaches_endpoint(
     return {"breaches": breaches}
 
 
-<<<<<<< HEAD
-@analytics_router.get("/trend", response_model=List[TrendCount])
-async def ticket_trend_endpoint(
-    days: int = Query(7, ge=1), db: AsyncSession = Depends(get_db)
-) -> List[TrendCount]:
-    return await ticket_trend(db, days)
-
-# ─── AI Sub-Router ───────────────────────────────────────────────────────────
-ai_router = APIRouter(prefix="/ai", tags=["ai"])
-
-
-@ai_router.post("/suggest_response", response_model=Dict[str, str])
-@limiter.limit("10/minute")
-async def suggest_response(request: Request, ticket: TicketOut) -> Dict[str, str]:
-    try:
-        return {"response": await ai_suggest_response(ticket.model_dump(), "")}
-    except ValidationError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
-
-
-@ai_router.post("/suggest_response/stream", operation_id="suggest_response_stream")
-@limiter.limit("10/minute")
-async def suggest_response_stream(request: Request, ticket: TicketOut) -> StreamingResponse:
-    ticket.model_validate(ticket.model_dump())
-
-    async def _gen() -> AsyncGenerator[str, None]:
-        async for chunk in ai_stream_response(ticket.model_dump(), ""):
-            yield f"data: {json.dumps(chunk)}\n\n"
-    return StreamingResponse(_gen(), media_type="text/event-stream")
-=======
 @analytics_router.get(
     "/trend",
     response_model=List[TrendCount],
@@ -763,15 +609,7 @@ async def ticket_trend_endpoint(
 ) -> List[TrendCount]:
     return await ticket_trend(db, days)
 
->>>>>>> main
 
-# ─── On-Call Sub-Router ───────────────────────────────────────────────────────
-oncall_router = APIRouter(prefix="/oncall", tags=["oncall"])
-
-<<<<<<< HEAD
-
-@oncall_router.get("", response_model=Optional[OnCallShiftOut])
-=======
 # ─── Agent Enhanced Router ─────────────────────────────────────────────────
 agent_router = APIRouter(prefix="/agent", tags=["agent-enhanced"])
 
@@ -779,6 +617,7 @@ agent_router = APIRouter(prefix="/agent", tags=["agent-enhanced"])
 @agent_router.get(
     "/ticket/{ticket_id}/full-context",
     response_model=TicketFullContext,
+    operation_id="get_ticket_full_context",
     tags=["agent-enhanced"],
 )
 async def get_ticket_full_context_endpoint(
@@ -794,6 +633,7 @@ async def get_ticket_full_context_endpoint(
 @agent_router.get(
     "/system/snapshot",
     response_model=SystemSnapshot,
+    operation_id="get_system_snapshot",
     tags=["agent-enhanced"],
 )
 async def get_system_snapshot_endpoint(db: AsyncSession = Depends(get_db)) -> SystemSnapshot:
@@ -805,6 +645,7 @@ async def get_system_snapshot_endpoint(db: AsyncSession = Depends(get_db)) -> Sy
 @agent_router.get(
     "/user/{user_email}/complete-profile",
     response_model=UserCompleteProfile,
+    operation_id="get_user_complete_profile",
     tags=["agent-enhanced"],
 )
 async def get_user_complete_profile_endpoint(
@@ -819,6 +660,7 @@ async def get_user_complete_profile_endpoint(
 @agent_router.post(
     "/tickets/query-advanced",
     response_model=QueryResult,
+    operation_id="query_tickets_advanced",
     tags=["agent-enhanced"],
 )
 async def query_tickets_advanced_endpoint(
@@ -833,6 +675,7 @@ async def query_tickets_advanced_endpoint(
 @agent_router.post(
     "/operation/validate",
     response_model=ValidationResult,
+    operation_id="validate_operation",
     tags=["agent-enhanced"],
 )
 async def validate_operation_endpoint(
@@ -849,6 +692,7 @@ async def validate_operation_endpoint(
 @agent_router.post(
     "/ticket/{ticket_id}/execute-operation",
     response_model=OperationResult,
+    operation_id="execute_ticket_operation",
     tags=["agent-enhanced"],
 )
 async def execute_ticket_operation_endpoint(
@@ -863,12 +707,15 @@ async def execute_ticket_operation_endpoint(
     return await ops_manager.execute_ticket_operation(operation_type, ticket_id, parameters, skip_validation)
 
 
+# ─── On-Call Sub-Router ───────────────────────────────────────────────────────
+oncall_router = APIRouter(prefix="/oncall", tags=["oncall"])
+
+
 @oncall_router.get(
     "",
     response_model=Optional[OnCallShiftOut],
     operation_id="get_oncall_shift",
 )
->>>>>>> main
 async def get_oncall_shift(db: AsyncSession = Depends(get_db)) -> Optional[OnCallShiftOut]:
     shift = await get_current_oncall(db)
     return OnCallShiftOut.model_validate(shift) if shift else None
