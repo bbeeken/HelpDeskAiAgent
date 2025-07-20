@@ -25,8 +25,12 @@ mssql.engine = create_async_engine(
     poolclass=StaticPool,
 )
 mssql.SessionLocal = async_sessionmaker(bind=mssql.engine, expire_on_commit=False)
+
+# Ensure the FastAPI app and dependencies use the test engine/session
 import src.api.v1.deps as deps
 deps.SessionLocal = mssql.SessionLocal
+import main as main_mod
+main_mod.engine = mssql.engine
 
 
 async def _init_models():

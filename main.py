@@ -47,6 +47,9 @@ START_TIME = datetime.now(UTC)
 # Cache for JSON schema validators keyed by serialized schema
 _validator_cache: Dict[str, Draft7Validator] = {}
 
+# Disable caching during tests to avoid interference
+_validator_cache_enabled = os.getenv("APP_ENV") != "test"
+
 
 class CorrelationIdFilter(logging.Filter):
     """Add correlation ID to log records."""
@@ -259,10 +262,13 @@ async def handle_unexpected(request: Request, exc: Exception):
 def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
     """Build a FastAPI endpoint from an MCP tool."""
     key = json.dumps(schema, sort_keys=True)
-    validator = _validator_cache.get(key)
+    validator = None
+    if _validator_cache_enabled:
+        validator = _validator_cache.get(key)
     if validator is None:
         validator = Draft7Validator(schema)
-        _validator_cache[key] = validator
+        if _validator_cache_enabled:
+            _validator_cache[key] = validator
 
     async def endpoint(request: Request):
         try:
