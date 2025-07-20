@@ -23,17 +23,11 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     ```
    The `driver` name must match an ODBC driver installed on the host machine.
   - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
-    lookups in `tools.user_tools`. When omitted, stub responses are returned.
-  - `MCP_URL` – optional MCP server URL used by AI helper functions
-    (default `http://localhost:8008`).
-  - `MCP_STREAM_TIMEOUT` – timeout in seconds for streaming AI responses
-    (default `30`).
-
-  - `OPENAI_API_KEY` – API key used by OpenAI-based tools.
+    lookups in `tools.user_services`. When omitted, stub responses are returned.
 
 
-  - `ENABLE_RATE_LIMITING` – enable the SlowAPI limiter middleware used by
-    `/ai` endpoints. Set to `false`, `0`, or `no` to disable it (default `true`).
+  - `ENABLE_RATE_LIMITING` – enable the SlowAPI limiter middleware.
+    Set to `false`, `0`, or `no` to disable it (default `true`).
 
   - `ERROR_TRACKING_DSN` – optional DSN for Sentry or another error tracking
     service. When set, the application initializes `sentry_sdk` on startup to
@@ -107,7 +101,7 @@ The MCP server will be available on `http://localhost:8008` when the
 containers are running.
 
 Compose reads variables from `.env`. Copy `.env.example` to `.env` and set
-values for required options such as `DB_CONN_STRING` and `OPENAI_API_KEY`.
+values for required options such as `DB_CONN_STRING`.
 Optional Graph credentials may also be provided in this file. Add any
 environment-specific Python overrides in a `config_env.py` file next to
 `config.py`.
@@ -189,11 +183,13 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Priority_ID;
   `include_closed` to search closed tickets. Returns structured results sorted
   by relevance.
 - `GET /tickets/by_user` - list tickets where the user is the contact,
-  assigned technician or has posted a message. Provide a name or email via the
-  `identifier` query parameter.
+  assigned technician or has posted a message. Provide an `identifier` and
+  optionally filter by `status` (open, closed or progress). Additional query
+  parameters are applied as column filters on `V_Ticket_Master_Expanded`.
+- Lookup endpoints (`/lookup/assets`, `/lookup/vendors`, `/lookup/sites`,
+  `/lookup/categories`, `/lookup/statuses`) now accept arbitrary `filters`
+  and a `sort` parameter to order by any column.
 - `PUT /ticket/{id}` - update an existing ticket
-- `POST /ai/suggest_response` - generate an AI ticket reply
-- `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
 - Ticket body and resolution fields now accept large text values; the previous
   2000-character limit has been removed.
 
@@ -251,16 +247,51 @@ curl "http://localhost:8000/tickets/smart_search?q=unassigned+critical&limit=5"
   ```
 
 
+- `GET /analytics/open_by_site` - count open tickets grouped by site.
+
+
+  Example:
+
+  ```bash
+
+  curl "http://localhost:8000/analytics/open_by_assigned_user?Assigned_Email=tech@example.com"
+
+  curl http://localhost:8000/analytics/open_by_site
+  ```
+
+  ```json
+  [
+    {
+      "site_id": 1,
+      "site_label": "Main",
+      "count": 3
+    }
+  ]
+  ```
+
+- `GET /analytics/open_by_assigned_user` - count open tickets grouped by assigned technician. Supports ticket filtering parameters.
+
+  Example:
+
+  ```bash
+  curl http://localhost:8000/analytics/open_by_assigned_user
+  ```
+
+  ```json
+  [
+    {
+      "assigned_email": "tech@example.com",
+      "assigned_name": "Tech",
+      "count": 2
+    }
+  ]
+
+  ```
+
+
 ## CLI
 
 `tools.cli` provides a small command-line interface to the API. Set `API_BASE_URL` to the server URL (default `http://localhost:8000`).
-
-Stream an AI-generated response:
-
-```bash
-echo '{"Ticket_ID":1,"Subject":"Subj","Ticket_Body":"Body","Ticket_Status_ID":1,"Ticket_Contact_Name":"Name","Ticket_Contact_Email":"a@example.com"}' | \
-python -m tools.cli stream-response
-```
 
 Create a ticket:
 
@@ -313,7 +344,8 @@ Run `verify_tools.py` after deploying to ensure the server exposes the expected
 set of tool endpoints. The `/tools` route now returns an object with a `tools`
 key containing the available tools. The verification script fetches this route
 and compares the returned names against a predefined mapping. It exits with a
-non-zero status when any tools are missing or unexpected.
+non-zero status when any tools are missing or unexpected. The default mapping
+checks for the ``g_ticket`` and ``l_tkts`` endpoints.
 
 ```bash
 python verify_tools.py http://localhost:8000
@@ -324,11 +356,28 @@ Include this check in deployment pipelines to catch configuration issues early.
 ### Tool Reference
 
 The MCP server exposes several JSON-RPC tools. `tickets_by_user` returns
-expanded ticket records related to a specific user.
+expanded ticket records for a user. It accepts an `identifier`, optional
+`status` and arbitrary `filters`.
 
 ```bash
-curl "http://localhost:8000/tickets/by_user?identifier=user@example.com"
+curl "http://localhost:8000/tickets/by_user?identifier=user@example.com&status=open"
 ```
+
+Tool endpoints validate request bodies against each tool's `inputSchema` using
+JSON Schema. Payloads missing required fields or with incorrect types return a
+`422 Unprocessable Entity` response.
+
+`tickets_by_timeframe` lists tickets filtered by status and age. Provide a
+number of `days` and optional `status` such as `open` or `closed`.
+
+```bash
+curl -X POST http://localhost:8000/tickets_by_timeframe \
+  -d '{"status": "open", "days": 7, "limit": 5}'
+```
+
+Request bodies are validated against each tool's `inputSchema` using the
+`jsonschema` library. Missing or incorrectly typed fields result in a `422`
+response.
 
 ## License
 

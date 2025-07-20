@@ -15,7 +15,6 @@ from .mcp_server import Tool
 
 # Business logic modules
 from tools import (
-    ai_tools,
     analysis_tools,
     asset_tools,
     attachment_tools,
@@ -59,82 +58,139 @@ async def _search_tickets_smart(
     )
 
 
+async def _open_tickets_by_user_tool(db: Any, **kwargs: Any) -> Any:
+    """Pass kwargs as filters to open_tickets_by_user."""
+    filters = kwargs or None
+    return await analysis_tools.open_tickets_by_user(db, filters=filters)
+
+
 ENHANCED_TOOLS: List[Tool] = [
     Tool(
-        name="get_asset",
+        name="g_asset",
         description="Retrieve an asset by ID",
         inputSchema={"type": "object", "properties": {"asset_id": {"type": "integer"}}, "required": ["asset_id"]},
         _implementation=_db_wrapper(asset_tools.get_asset),
     ),
     Tool(
-        name="list_assets",
+        name="l_assets",
         description="List assets",
-        inputSchema={"type": "object", "properties": {"skip": {"type": "integer"}, "limit": {"type": "integer"}}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": [],
+        },
         _implementation=_db_wrapper(asset_tools.list_assets),
     ),
     Tool(
-        name="get_vendor",
+        name="g_vendor",
         description="Retrieve a vendor by ID",
         inputSchema={"type": "object", "properties": {"vendor_id": {"type": "integer"}}, "required": ["vendor_id"]},
         _implementation=_db_wrapper(vendor_tools.get_vendor),
     ),
     Tool(
-        name="list_vendors",
+        name="l_vends",
         description="List vendors",
-        inputSchema={"type": "object", "properties": {"skip": {"type": "integer"}, "limit": {"type": "integer"}}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": [],
+        },
         _implementation=_db_wrapper(vendor_tools.list_vendors),
     ),
     Tool(
-        name="get_site",
+        name="g_site",
         description="Retrieve a site by ID",
         inputSchema={"type": "object", "properties": {"site_id": {"type": "integer"}}, "required": ["site_id"]},
         _implementation=_db_wrapper(site_tools.get_site),
     ),
     Tool(
-        name="list_sites",
+        name="l_sites",
         description="List sites",
-        inputSchema={"type": "object", "properties": {"skip": {"type": "integer"}, "limit": {"type": "integer"}}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": [],
+        },
         _implementation=_db_wrapper(site_tools.list_sites),
     ),
     Tool(
-        name="list_categories",
+        name="l_cats",
         description="List ticket categories",
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": [],
+        },
         _implementation=_db_wrapper(category_tools.list_categories),
     ),
     Tool(
-        name="list_statuses",
+        name="l_status",
         description="List ticket statuses",
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": [],
+        },
         _implementation=_db_wrapper(status_tools.list_statuses),
     ),
     Tool(
-        name="get_ticket",
+        name="g_ticket",
         description="Get expanded ticket by ID",
         inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
         _implementation=_db_wrapper(ticket_tools.get_ticket_expanded),
     ),
     Tool(
-        name="list_tickets",
+        name="l_tkts",
         description="List expanded tickets",
         inputSchema={
             "type": "object",
             "properties": {
                 "skip": {"type": "integer"},
                 "limit": {"type": "integer"},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
             },
             "required": [],
         },
         _implementation=_db_wrapper(ticket_tools.list_tickets_expanded),
     ),
     Tool(
-        name="search_tickets",
+        name="s_tkts",
         description="Search tickets",
-        inputSchema={"type": "object", "properties": {"query": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["query"]},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "limit": {"type": "integer"},
+                "params": {"type": "object"},
+            },
+            "required": ["query"],
+        },
         _implementation=_db_wrapper(ticket_tools.search_tickets_expanded),
     ),
     Tool(
-        name="search_tickets_smart",
+        name="s_tk_sm",
         description="Search tickets using natural language",
         inputSchema={
             "type": "object",
@@ -149,31 +205,31 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_db_wrapper(_search_tickets_smart),
     ),
     Tool(
-        name="create_ticket",
+        name="c_ticket",
         description="Create a ticket",
         inputSchema={"type": "object", "properties": {"ticket_obj": {"type": "object"}}, "required": ["ticket_obj"]},
         _implementation=_db_wrapper(ticket_tools.create_ticket),
     ),
     Tool(
-        name="update_ticket",
+        name="u_ticket",
         description="Update a ticket",
         inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}, "updates": {"type": "object"}}, "required": ["ticket_id", "updates"]},
         _implementation=_db_wrapper(ticket_tools.update_ticket),
     ),
     Tool(
-        name="delete_ticket",
+        name="d_ticket",
         description="Delete a ticket",
         inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
         _implementation=_db_wrapper(ticket_tools.delete_ticket),
     ),
     Tool(
-        name="get_ticket_messages",
+        name="g_tmsg",
         description="List messages for a ticket",
         inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
         _implementation=_db_wrapper(message_tools.get_ticket_messages),
     ),
     Tool(
-        name="post_ticket_message",
+        name="p_tmsg",
         description="Post a new ticket message",
         inputSchema={
             "type": "object",
@@ -188,31 +244,38 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_db_wrapper(message_tools.post_ticket_message),
     ),
     Tool(
-        name="ticket_attachments",
+        name="t_attach",
         description="Get attachments for a ticket",
         inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
         _implementation=_db_wrapper(attachment_tools.get_ticket_attachments),
     ),
     Tool(
-        name="tickets_by_status",
+        name="t_status",
         description="Count tickets by status",
         inputSchema={"type": "object", "properties": {}, "required": []},
         _implementation=_db_wrapper(analysis_tools.tickets_by_status),
     ),
     Tool(
-        name="open_tickets_by_site",
+        name="op_site",
         description="Open ticket counts by site",
         inputSchema={"type": "object", "properties": {}, "required": []},
         _implementation=_db_wrapper(analysis_tools.open_tickets_by_site),
     ),
     Tool(
-        name="open_tickets_by_user",
+        name="op_user",
         description="Open ticket counts by user",
-        inputSchema={"type": "object", "properties": {}, "required": []},
-        _implementation=_db_wrapper(analysis_tools.open_tickets_by_user),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "Assigned_Email": {"type": "string"},
+                "Assigned_Name": {"type": "string"},
+            },
+            "required": [],
+        },
+        _implementation=_db_wrapper(_open_tickets_by_user_tool),
     ),
     Tool(
-        name="tickets_by_user",
+        name="by_user",
         description="List tickets related to a user",
         inputSchema={
             "type": "object",
@@ -220,13 +283,29 @@ ENHANCED_TOOLS: List[Tool] = [
                 "identifier": {"type": "string"},
                 "skip": {"type": "integer"},
                 "limit": {"type": "integer"},
+                "status": {"type": "string"},
+                "filters": {"type": "object"},
             },
             "required": ["identifier"],
         },
         _implementation=_db_wrapper(ticket_tools.get_tickets_by_user),
     ),
     Tool(
-        name="staff_ticket_report",
+        name="tickets_by_timeframe",
+        description="List tickets by timeframe and status",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "status": {"type": "string"},
+                "days": {"type": "integer"},
+                "limit": {"type": "integer"},
+            },
+            "required": [],
+        },
+        _implementation=_db_wrapper(ticket_tools.tickets_by_timeframe),
+    ),
+    Tool(
+        name="staff_rp",
         description="Summary counts of tickets for a technician",
         inputSchema={
             "type": "object",
@@ -240,49 +319,54 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_db_wrapper(analysis_tools.get_staff_ticket_report),
     ),
     Tool(
-        name="tickets_waiting_user",
+        name="wait_usr",
         description="Tickets waiting on user",
         inputSchema={"type": "object", "properties": {}, "required": []},
         _implementation=_db_wrapper(analysis_tools.tickets_waiting_on_user),
     ),
     Tool(
-        name="sla_breaches",
+        name="sla_brch",
         description="Count SLA breaches",
         inputSchema={
             "type": "object",
             "properties": {
                 "sla_days": {"type": "integer"},
+                "filters": {"type": "object"},
+                "status_id": {"oneOf": [{"type": "integer"}, {"type": "array", "items": {"type": "integer"}}]},
             },
             "required": [],
         },
         _implementation=_db_wrapper(analysis_tools.sla_breaches),
     ),
     Tool(
-        name="ticket_trend",
+        name="t_trend",
         description="Ticket trend",
         inputSchema={"type": "object", "properties": {"days": {"type": "integer"}}, "required": []},
         _implementation=_db_wrapper(analysis_tools.ticket_trend),
     ),
     Tool(
-        name="get_current_oncall",
+        name="oc_now",
         description="Get current on-call shift",
         inputSchema={"type": "object", "properties": {}, "required": []},
         _implementation=_db_wrapper(oncall_tools.get_current_oncall),
     ),
     Tool(
-        name="list_oncall_schedule",
+        name="oc_sched",
         description="List on-call schedule",
-        inputSchema={"type": "object", "properties": {"skip": {"type": "integer"}, "limit": {"type": "integer"}}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": [],
+        },
         _implementation=_db_wrapper(oncall_tools.list_oncall_schedule),
     ),
     Tool(
-        name="ai_suggest_response",
-        description="AI suggested ticket response",
-        inputSchema={"type": "object", "properties": {"ticket": {"type": "object"}}, "required": ["ticket"]},
-        _implementation=ai_tools.ai_suggest_response,
-    ),
-    Tool(
-        name="get_user_by_email",
+        name="user_eml",
         description="Look up user information by email",
         inputSchema={"type": "object", "properties": {"email": {"type": "string"}}, "required": ["email"]},
         _implementation=user_tools.get_user_by_email,

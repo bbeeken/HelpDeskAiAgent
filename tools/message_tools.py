@@ -1,73 +1,36 @@
-"""Database helpers for reading and posting ticket messages."""
+"""Deprecated - use :mod:`tools.ticket_management` instead."""
 
+from __future__ import annotations
+
+import warnings
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
-
-from fastapi import HTTPException
 
 from db.models import TicketMessage
-from datetime import datetime, UTC
-import logging
 
-logger = logging.getLogger(__name__)
+from .ticket_management import TicketManager
 
-
+_manager = TicketManager()
 
 
 async def get_ticket_messages(db: AsyncSession, ticket_id: int) -> list[TicketMessage]:
-    """Retrieve all messages for a ticket ordered chronologically.
-
-    Args:
-        db: Async SQLAlchemy session used for the query.
-        ticket_id: Identifier of the ticket whose messages are requested.
-
-    Returns:
-        A list of ``TicketMessage`` instances sorted by timestamp.
-    """
-
-    result = await db.execute(
-        select(TicketMessage)
-        .filter(TicketMessage.Ticket_ID == ticket_id)
-        .order_by(TicketMessage.DateTimeStamp)
+    warnings.warn(
+        "get_ticket_messages is deprecated; use TicketManager.get_messages",
+        DeprecationWarning,
+        stacklevel=2,
     )
-    return list(result.scalars().all())
+    return await _manager.get_messages(db, ticket_id)
 
 
 async def post_ticket_message(
-    db: AsyncSession, ticket_id: int, message: str, sender_code: str, sender_name: str
+    db: AsyncSession,
+    ticket_id: int,
+    message: str,
+    sender_code: str,
+    sender_name: str,
 ) -> TicketMessage:
-    """Persist a new message to a ticket.
-
-    Args:
-        db: Async SQLAlchemy session used for the insert.
-        ticket_id: Identifier of the ticket to post to.
-        message: Body text of the ticket message.
-        sender_code: User code of the sender.
-        sender_name: Display name of the sender.
-
-    Returns:
-        The saved ``TicketMessage`` instance.
-    """
-
-    msg = TicketMessage(
-        Ticket_ID=ticket_id,
-        Message=message,
-        SenderUserCode=sender_code,
-        SenderUserName=sender_name,
-        DateTimeStamp=datetime.now(UTC),
+    warnings.warn(
+        "post_ticket_message is deprecated; use TicketManager.post_message",
+        DeprecationWarning,
+        stacklevel=2,
     )
-
-    db.add(msg)
-    try:
-        await db.commit()
-        await db.refresh(msg)
-        logger.info("Posted message to ticket %s", ticket_id)
-
-    except SQLAlchemyError as e:
-        await db.rollback()
-
-        logger.exception("Failed to save ticket message for %s", ticket_id)
-        raise HTTPException(status_code=500, detail=f"Failed to save message: {e}")
-
-    return msg
+    return await _manager.post_message(db, ticket_id, message, sender_code, sender_name)

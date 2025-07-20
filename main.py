@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
+import jsonschema
 from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
 from fastapi_mcp import FastApiMCP
@@ -22,6 +23,7 @@ from db.models import Base
 from db.mssql import engine
 from config import ERROR_TRACKING_DSN
 import sentry_sdk
+from jsonschema import Draft7Validator, ValidationError as JsonSchemaError
 
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
@@ -31,8 +33,7 @@ import uuid
 import asyncio
 from typing import List, Dict, Any
 
-# Configure root logger so messages are output when running with uvicorn
-logging.basicConfig(level=logging.INFO)
+# Configure logger for this module
 logger = logging.getLogger(__name__)
 
 # Correlation ID context variable for log records
@@ -66,6 +67,8 @@ async def lifespan(app: FastAPI):
         logger.info("Sentry error tracking enabled")
 
     app.state.limiter = limiter
+    app.state.mcp = FastApiMCP(app)
+    app.state.mcp.mount()
 
     global START_TIME
     START_TIME = datetime.now(UTC)
@@ -74,6 +77,7 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     yield
+    await engine.dispose()
 
 app = FastAPI(title="Truck Stop MCP Helpdesk API", lifespan=lifespan)
 app.add_exception_handler(
@@ -109,6 +113,7 @@ def custom_openapi() -> Dict[str, Any]:
 
 app.openapi = custom_openapi
 
+
 # --- Dynamically expose MCP tools as HTTP endpoints ---
 server = create_enhanced_server()
 logger.info(
@@ -117,13 +122,25 @@ logger.info(
 
 
 def build_endpoint(tool: Tool, schema: Dict[str, Any]):
+    validator = Draft7Validator(schema)
+
     async def endpoint(request: Request):
         data = await request.json()
         allowed = set(schema.get("properties", {}).keys())
         extra = set(data) - allowed
         if extra:
             return JSONResponse(status_code=422, content={"detail": "Unexpected parameters"})
+        try:
+            jsonschema.validate(instance=data, schema=schema)
+        except jsonschema.exceptions.ValidationError as exc:
+            return JSONResponse(status_code=422, content={"detail": exc.message})
         filtered = {k: data[k] for k in allowed if k in data}
+
+        try:
+            validator.validate(filtered)
+        except JsonSchemaError as exc:
+            return JSONResponse(status_code=422, content={"detail": str(exc.message)})
+
         return await tool._implementation(**filtered)
 
     return endpoint
@@ -131,7 +148,16 @@ def build_endpoint(tool: Tool, schema: Dict[str, Any]):
 
 for tool in TOOLS:
     schema = tool.inputSchema if isinstance(tool.inputSchema, dict) else {}
-    app.post(f"/{tool.name}", operation_id=tool.name)(build_endpoint(tool, schema))
+    app.post(
+        f"/{tool.name}",
+        operation_id=tool.name,
+        summary=tool.description,
+        openapi_extra={
+            "requestBody": {
+                "content": {"application/json": {"schema": schema}}
+            }
+        },
+    )(build_endpoint(tool, schema))
 
 
 @app.get("/tools")
@@ -142,6 +168,7 @@ async def list_tools() -> Dict[str, List[Dict[str, Any]]]:
 
 app.state.mcp = FastApiMCP(app)
 app.state.mcp.mount()
+
 
 
 @app.middleware("http")
