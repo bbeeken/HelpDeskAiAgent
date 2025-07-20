@@ -296,7 +296,7 @@ def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
         validator = Draft7Validator(schema)
 
         if _validator_cache_enabled:
-            _validator_cache[key] = validator
+            _validator_cache.set(key, validator)
 
 
     async def endpoint(request: Request):
