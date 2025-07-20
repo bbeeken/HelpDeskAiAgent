@@ -306,13 +306,14 @@ class TicketManager:
         db: AsyncSession,
         ticket_id: int,
         message: str,
-        sender: str,
+        sender_code: str,
+        sender_name: str,
     ) -> TicketMessage:
         msg = TicketMessage(
             Ticket_ID=ticket_id,
             Message=message,
-            SenderUserCode=sender,
-            SenderUserName=sender,
+            SenderUserCode=sender_code,
+            SenderUserName=sender_name,
             DateTimeStamp=datetime.now(timezone.utc),
         )
         db.add(msg)

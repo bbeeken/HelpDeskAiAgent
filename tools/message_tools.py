@@ -33,4 +33,4 @@ async def post_ticket_message(
         DeprecationWarning,
         stacklevel=2,
     )
-    return await _manager.post_message(db, ticket_id, message, sender_code)
+    return await _manager.post_message(db, ticket_id, message, sender_code, sender_name)
