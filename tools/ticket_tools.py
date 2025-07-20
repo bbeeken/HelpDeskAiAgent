@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import Ticket, VTicketMasterExpanded
+from schemas.search_params import TicketSearchParams
 
 from .ticket_management import TicketManager, TicketTools
 
@@ -49,6 +50,8 @@ async def search_tickets_expanded(
         DeprecationWarning,
         stacklevel=2,
     )
+    if params is not None and not isinstance(params, TicketSearchParams):
+        params = TicketSearchParams(**params)
     return await _manager.search_tickets(db, query=query, limit=limit, params=params)
 
 

@@ -186,6 +186,9 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Priority_ID;
   assigned technician or has posted a message. Provide an `identifier` and
   optionally filter by `status` (open, closed or progress). Additional query
   parameters are applied as column filters on `V_Ticket_Master_Expanded`.
+- Lookup endpoints (`/lookup/assets`, `/lookup/vendors`, `/lookup/sites`,
+  `/lookup/categories`, `/lookup/statuses`) now accept arbitrary `filters`
+  and a `sort` parameter to order by any column.
 - `PUT /ticket/{id}` - update an existing ticket
 - Ticket body and resolution fields now accept large text values; the previous
   2000-character limit has been removed.
