@@ -5,6 +5,8 @@ from __future__ import annotations
 import importlib
 import logging
 
+logger = logging.getLogger(__name__)
+
 from dotenv import load_dotenv
 from pydantic import ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -50,9 +52,6 @@ class Settings(BaseSettings):
                 return "UTC"
             return v
 
-    class Config:
-        case_sensitive = False
-        env_file = ".env"
 
     @field_validator("API_BASE_URL")
     @classmethod
