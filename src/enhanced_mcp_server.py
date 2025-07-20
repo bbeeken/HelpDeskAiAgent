@@ -14,9 +14,6 @@ from mcp import types
 
 from .mcp_server import Tool
 
-from mcp.server import Server
-from .mcp_server import Tool
-
 
 @dataclass
 class DatabaseConfig:
