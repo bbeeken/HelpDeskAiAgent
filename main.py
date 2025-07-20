@@ -109,8 +109,7 @@ def custom_openapi() -> Dict[str, Any]:
 
 app.openapi = custom_openapi
 
-<<<<<<< HEAD
-=======
+
 # --- Dynamically expose MCP tools as HTTP endpoints ---
 server = create_enhanced_server()
 logger.info(
@@ -170,7 +169,7 @@ app.state.mcp = FastApiMCP(app)
 app.state.mcp.mount()
 
 
->>>>>>> b9d2f38ffe46e291efa5e27a7e999a1e8eda59fe
+
 @app.middleware("http")
 async def timeout_middleware(request: Request, call_next):
     """Add request timeout to prevent hanging requests."""
@@ -205,11 +204,6 @@ async def add_correlation_id(request: Request, call_next):
     response.headers["X-Request-ID"] = correlation_id
     return response
 
-<<<<<<< HEAD
-4
-
-=======
->>>>>>> b9d2f38ffe46e291efa5e27a7e999a1e8eda59fe
 @app.exception_handler(NotFoundError)
 async def handle_not_found(request: Request, exc: NotFoundError):
     resp = ErrorResponse(
