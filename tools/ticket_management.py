@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, or_, and_, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException
+from errors import DatabaseError
 
 from db.models import (
     Ticket,
@@ -158,7 +158,9 @@ class TicketManager:
         for key, value in filters.items():
             if hasattr(VTicketMasterExpanded, key):
                 col = getattr(VTicketMasterExpanded, key)
-                stmt = stmt.filter(col.ilike(f"%{value}%") if isinstance(value, str) else col == value)
+                stmt = stmt.filter(
+                    col.ilike(f"%{value}%") if isinstance(value, str) else col == value
+                )  # noqa: E501
         if sort_value == "oldest":
             stmt = stmt.order_by(VTicketMasterExpanded.Created_Date.asc())
         else:
@@ -212,7 +214,9 @@ class TicketManager:
         ticket_ids.update(row[0] for row in result.all())
         if not ticket_ids:
             return []
-        query = select(VTicketMasterExpanded).filter(VTicketMasterExpanded.Ticket_ID.in_(ticket_ids))
+        query = select(VTicketMasterExpanded).filter(
+            VTicketMasterExpanded.Ticket_ID.in_(ticket_ids)
+        )  # noqa: E501
         query = query.order_by(VTicketMasterExpanded.Ticket_ID)
         if status:
             query = query.join(
@@ -306,13 +310,14 @@ class TicketManager:
         db: AsyncSession,
         ticket_id: int,
         message: str,
-        sender: str,
+        sender_code: str,
+        sender_name: str,
     ) -> TicketMessage:
         msg = TicketMessage(
             Ticket_ID=ticket_id,
             Message=message,
-            SenderUserCode=sender,
-            SenderUserName=sender,
+            SenderUserCode=sender_code,
+            SenderUserName=sender_name,
             DateTimeStamp=datetime.now(timezone.utc),
         )
         db.add(msg)
@@ -323,7 +328,7 @@ class TicketManager:
         except SQLAlchemyError as e:
             await db.rollback()
             logger.exception("Failed to save ticket message for %s", ticket_id)
-            raise HTTPException(status_code=500, detail=f"Failed to save message: {e}")
+            raise DatabaseError("Failed to save message", details=str(e))
         return msg
 
     async def get_attachments(self, db: AsyncSession, ticket_id: int) -> List[TicketAttachment]:
@@ -440,5 +445,11 @@ class TicketTools:
         db_ticket = await TicketManager().create_ticket(self.db, ticket)
         return db_ticket
 
-__all__ = ["TicketManager", "TicketTools", "TicketPriority", "TicketStatus", "TicketSearchResult"]
 
+__all__ = [
+    "TicketManager",
+    "TicketTools",
+    "TicketPriority",
+    "TicketStatus",
+    "TicketSearchResult",
+]
