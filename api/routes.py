@@ -114,6 +114,8 @@ def extract_filters(
 
 # ─── Tickets Sub-Router ───────────────────────────────────────────────────────
 ticket_router = APIRouter(prefix="/ticket", tags=["tickets"])
+# Additional router exposing the same endpoints under the legacy "/tickets" prefix
+tickets_router = APIRouter(prefix="/tickets", tags=["tickets"])
 
 
 class MessageIn(BaseModel):
@@ -366,9 +368,69 @@ async def add_ticket_message(
     db: AsyncSession = Depends(get_db),
 ) -> TicketMessageOut:
     created = await TicketManager().post_message(
-        db, ticket_id, msg.message, msg.sender_code
+        db, ticket_id, msg.message, msg.sender_code, msg.sender_name
     )
     return TicketMessageOut.model_validate(created)
+
+
+# ─── Legacy /tickets router with same endpoints ──────────────────────────────
+
+
+@tickets_router.get(
+    "/search",
+    response_model=List[TicketSearchOut],
+    operation_id="search_tickets_legacy",
+)
+async def search_tickets_legacy(
+    q: str = Query(..., min_length=1),
+    params: TicketSearchParams = Depends(),
+    limit: int = Query(10, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+) -> List[TicketSearchOut]:
+    return await search_tickets(q, params, limit, db)
+
+
+@tickets_router.post(
+    "/search",
+    response_model=List[TicketSearchOut],
+    operation_id="search_tickets_json_legacy",
+)
+async def search_tickets_json_legacy(
+    payload: TicketSearchRequest,
+    db: AsyncSession = Depends(get_db),
+) -> List[TicketSearchOut]:
+    return await search_tickets_json(payload, db)
+
+
+@tickets_router.get(
+    "/expanded",
+    response_model=PaginatedResponse[TicketExpandedOut],
+    operation_id="list_expanded_tickets_legacy",
+)
+async def list_tickets_expanded_legacy(
+    request: Request,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedResponse[TicketExpandedOut]:
+    return await list_tickets(request, skip, limit, db)
+
+
+@tickets_router.get(
+    "/by_user",
+    response_model=PaginatedResponse[TicketExpandedOut],
+    operation_id="tickets_by_user_legacy",
+)
+async def tickets_by_user_legacy(
+    request: Request,
+    identifier: str = Query(..., min_length=1),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1),
+    status: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedResponse[TicketExpandedOut]:
+    return await tickets_by_user_endpoint(request, identifier, skip, limit, status, db)
+
 
 # ─── Lookup Sub-Router ────────────────────────────────────────────────────────
 lookup_router = APIRouter(prefix="/lookup", tags=["lookup"])
@@ -712,6 +774,7 @@ async def get_oncall_shift(db: AsyncSession = Depends(get_db)) -> Optional[OnCal
 
 def register_routes(app: FastAPI) -> None:
     app.include_router(ticket_router)
+    app.include_router(tickets_router)
     app.include_router(lookup_router)
     app.include_router(analytics_router)
     app.include_router(oncall_router)
