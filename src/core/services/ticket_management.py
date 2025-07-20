@@ -141,6 +141,12 @@ class TicketManager:
         result = await db.execute(query)
         return result.scalars().all()
 
+    def _escape_like_pattern(self, value: str) -> str:
+        """Escape LIKE wildcard characters in a filter value."""
+        return (
+            value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+
     async def search_tickets(
         self,
         db: AsyncSession,
@@ -164,9 +170,8 @@ class TicketManager:
             if hasattr(VTicketMasterExpanded, key):
                 col = getattr(VTicketMasterExpanded, key)
                 if isinstance(value, str):
-                    stmt = stmt.filter(
-                        col.ilike(text(":value")).params(value=f"%{value}%")
-                    )
+                    escaped_value = self._escape_like_pattern(value)
+                    stmt = stmt.filter(col.ilike(f"%{escaped_value}%"))
                 else:
                     stmt = stmt.filter(col == value)
         if sort_value == "oldest":
