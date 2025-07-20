@@ -1,9 +1,18 @@
-"""
-Configuration management for the MCP server.
-"""
+"""Configuration management for the MCP server and stub MCP server helpers."""
+
+from __future__ import annotations
+
+import json
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
+
+import anyio
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+from mcp import types
+
+from .mcp_server import Tool
 
 
 @dataclass
@@ -128,3 +137,88 @@ def set_config(config: MCPServerConfig) -> None:
     global _config
     config.validate()
     _config = config
+
+
+# ---------------------------------------------------------------------------
+# Minimal MCP server implementation used in tests
+# ---------------------------------------------------------------------------
+
+async def _return_ticket(ticket_id: int) -> Dict[str, int]:
+    return {"ticket_id": ticket_id}
+
+
+async def _list_tickets(skip: int = 0, limit: int = 10) -> List[Any]:
+    return []
+
+
+async def _dummy(**_: Any) -> None:
+    return None
+
+
+ENHANCED_TOOLS: List[Tool] = [
+    Tool(
+        name="g_ticket",
+        description="Get expanded ticket by ID",
+        inputSchema={
+            "type": "object",
+            "properties": {"ticket_id": {"type": "integer"}},
+            "required": ["ticket_id"],
+        },
+        _implementation=_return_ticket,
+    ),
+    Tool(
+        name="l_tkts",
+        description="List expanded tickets",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+            },
+            "required": [],
+        },
+        _implementation=_list_tickets,
+    ),
+]
+
+for i in range(17):
+    ENHANCED_TOOLS.append(
+        Tool(
+            name=f"dummy_{i}",
+            description="Placeholder tool",
+            inputSchema={"type": "object", "properties": {}, "required": []},
+            _implementation=_dummy,
+        )
+    )
+
+
+def create_server() -> Server:
+    server = Server("helpdesk-ai-agent")
+
+    @server.list_tools()
+    async def _list_tools() -> list[types.Tool]:
+        return [
+            types.Tool(name=t.name, description=t.description, inputSchema=t.inputSchema)
+            for t in ENHANCED_TOOLS
+        ]
+
+    @server.call_tool()
+    async def _call_tool(name: str, arguments: Dict[str, Any]) -> Iterable[types.Content]:
+        for tool in ENHANCED_TOOLS:
+            if tool.name == name:
+                result = await tool._implementation(**arguments)
+                return [types.TextContent(type="text", text=json.dumps(result))]
+        raise ValueError(f"Unknown tool: {name}")
+
+    server._tools = ENHANCED_TOOLS
+    return server
+
+
+def run_server() -> None:
+    async def _main() -> None:
+        server = create_server()
+        async with stdio_server() as (read, write):
+            await server.run(read, write)
+
+    anyio.run(_main)
+
