@@ -113,11 +113,17 @@ if os.getenv("ENABLE_RATE_LIMITING", "true").lower() not in {"0", "false", "no"}
 @app.middleware("http")
 async def add_correlation_id(request: Request, call_next):
     """Add correlation ID to each request for tracing."""
-    correlation_id = request.headers.get("X-Request-ID", uuid.uuid4().hex)
+    correlation_id = (
+        request.headers.get("X-Request-ID")
+        or request.headers.get("X-Correlation-ID")
+        or uuid.uuid4().hex
+    )
+    request.state.correlation_id = correlation_id
     token = _correlation_id_var.set(correlation_id)
     try:
         response = await call_next(request)
         response.headers["X-Request-ID"] = correlation_id
+        response.headers["X-Correlation-ID"] = correlation_id
         return response
     finally:
         _correlation_id_var.reset(token)
