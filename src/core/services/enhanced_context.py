@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 
 from src.core.repositories.models import (
     Ticket,
@@ -691,6 +692,18 @@ class EnhancedContextManager:
 
     # ------------------------------------------------------------------
     # User profile helpers - robust implementations with error handling
+
+    def _get_default_user_stats(self) -> Dict[str, Any]:
+        """Return default user ticket statistics indicating an error."""
+        return {
+            "total_tickets": 0,
+            "open_tickets": 0,
+            "closed_tickets": 0,
+            "avg_resolution_hours": 0.0,
+            "ticket_frequency": "normal",
+            "error": True,
+        }
+
     async def _calculate_user_ticket_statistics(self, user_email: str) -> Dict[str, Any]:
         """Calculate ticket statistics for a user with error handling."""
         try:
@@ -749,16 +762,28 @@ class EnhancedContextManager:
                 "closed_tickets": total_tickets - open_tickets,
                 "avg_resolution_hours": round(avg_resolution_hours, 2),
                 "ticket_frequency": "high" if total_tickets > 20 else "normal",
+                "error": False,
             }
-        except Exception as e:
-            logger.error(f"Error calculating user ticket statistics for {user_email}: {e}")
-            return {
-                "total_tickets": 0,
-                "open_tickets": 0,
-                "closed_tickets": 0,
-                "avg_resolution_hours": 0.0,
-                "ticket_frequency": "normal",
-            }
+        except OperationalError as e:
+            logger.error(
+                f"Database connection error calculating stats for {user_email}: {e}"
+            )
+            return self._get_default_user_stats()
+        except IntegrityError as e:
+            logger.error(
+                f"Data integrity error calculating stats for {user_email}: {e}"
+            )
+            return self._get_default_user_stats()
+        except SQLAlchemyError as e:
+            logger.error(
+                f"General SQLAlchemy error calculating stats for {user_email}: {e}"
+            )
+            return self._get_default_user_stats()
+        except Exception:
+            logger.exception(
+                f"Unexpected error calculating user ticket statistics for {user_email}"
+            )
+            return self._get_default_user_stats()
 
     async def _analyze_user_communication_patterns(self, user_email: str) -> Dict[str, Any]:
         """Analyze user's communication patterns with error handling."""
