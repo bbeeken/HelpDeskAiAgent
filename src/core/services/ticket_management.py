@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import html
+import re
 from typing import Any, Sequence, Dict, List, Optional
 from dataclasses import dataclass
 from enum import Enum
@@ -141,6 +143,15 @@ class TicketManager:
         result = await db.execute(query)
         return result.scalars().all()
 
+    def _sanitize_search_input(self, query: str) -> str:
+        """Clean potentially unsafe search strings."""
+        if not query:
+            return ""
+        cleaned = query.strip()
+        cleaned = re.sub(r"<script.*?>.*?</script>", "", cleaned, flags=re.IGNORECASE | re.DOTALL)
+        cleaned = html.escape(cleaned)
+        return cleaned[:500]
+
     async def search_tickets(
         self,
         db: AsyncSession,
@@ -148,7 +159,10 @@ class TicketManager:
         limit: int = 10,
         params: TicketSearchParams | None = None,
     ) -> List[dict[str, Any]]:
-        like = f"%{query}%"
+        sanitized = self._sanitize_search_input(query)
+        if not sanitized:
+            return []
+        like = f"%{sanitized}%"
         stmt = select(VTicketMasterExpanded).filter(
             and_(
                 or_(
