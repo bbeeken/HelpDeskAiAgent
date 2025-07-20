@@ -59,4 +59,29 @@ This document lists the available HTTP endpoints provided by the HelpDesk servic
 - `GET /health/mcp` – MCP subsystem health.
 - `GET /` – API root.
 
+### MCP Tool Routes
+
+The following POST endpoints are generated from the MCP tools. Each expects a
+JSON body matching the tool's schema.
+
+- `POST /g_ticket` – Get a ticket by ID. Example: `{"ticket_id": 123}`
+- `POST /l_tkts` – List recent tickets. Example: `{"limit": 5}`
+- `POST /tickets_by_user` – List tickets for a user. Example: `{"identifier": "user@example.com"}`
+- `POST /by_user` – Alias of `tickets_by_user`.
+- `POST /open_by_site` – Open tickets by site. Example: `{}`
+- `POST /open_by_assigned_user` – Open tickets by technician. Example: `{"filters": {}}`
+- `POST /tickets_by_status` – Ticket counts by status. Example: `{}`
+- `POST /ticket_trend` – Ticket trend information. Example: `{"days": 7}`
+- `POST /waiting_on_user` – Tickets waiting on user. Example: `{}`
+- `POST /sla_breaches` – Count SLA breaches. Example: `{"days": 2}`
+- `POST /staff_report` – Technician ticket report. Example: `{"assigned_email": "tech@example.com"}`
+- `POST /tickets_by_timeframe` – Tickets filtered by status and age. Example: `{"days": 7}`
+- `POST /search_tickets` – Search tickets. Example: `{"query": "printer"}`
+- `POST /list_sites` – List sites. Example: `{"limit": 10}`
+- `POST /list_assets` – List assets. Example: `{"limit": 10}`
+- `POST /list_vendors` – List vendors. Example: `{"limit": 10}`
+- `POST /list_categories` – List categories. Example: `{}`
+- `POST /get_ticket_full_context` – Full context for a ticket. Example: `{"ticket_id": 123}`
+- `POST /get_system_snapshot` – System snapshot. Example: `{}`
+
 Endpoints under `/mcp-tools` are also exposed as HTTP routes with the same names as the MCP tools. Refer to the OpenAPI schema or `/docs` endpoint when running the application for the full specification.
