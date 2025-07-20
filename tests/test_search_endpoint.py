@@ -6,7 +6,7 @@ from httpx import AsyncClient, ASGITransport
 from main import app
 from db.mssql import SessionLocal
 from db.models import Ticket
-from tools.ticket_tools import create_ticket
+from tools.ticket_management import TicketManager
 
 
 @pytest.mark.asyncio
@@ -28,8 +28,8 @@ async def test_search_skips_oversized_ticket_body():
             Created_Date=datetime.now(UTC),
             Ticket_Status_ID=1,
         )
-        await create_ticket(db, valid)
-        await create_ticket(db, invalid)
+        await TicketManager().create_ticket(db, valid)
+        await TicketManager().create_ticket(db, invalid)
         valid_id = valid.Ticket_ID
 
     transport = ASGITransport(app=app)
@@ -65,8 +65,8 @@ async def test_search_filters_and_sort():
             Ticket_Status_ID=1,
             Site_ID=2,
         )
-        await create_ticket(db, first)
-        await create_ticket(db, second)
+        await TicketManager().create_ticket(db, first)
+        await TicketManager().create_ticket(db, second)
         first_id = first.Ticket_ID
         second_id = second.Ticket_ID
 
@@ -96,7 +96,7 @@ async def test_search_accepts_json():
             Created_Date=datetime.now(UTC),
             Ticket_Status_ID=1,
         )
-        await create_ticket(db, t)
+        await TicketManager().create_ticket(db, t)
         tid = t.Ticket_ID
 
     transport = ASGITransport(app=app)
