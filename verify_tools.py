@@ -4,8 +4,8 @@ from typing import Set
 
 # Expected tool names exposed by the server
 EXPECTED_TOOLS: Set[str] = {
-    "g_ticket",
-    "l_tkts",
+    "get_ticket",
+    "list_tickets",
 }
 
 
