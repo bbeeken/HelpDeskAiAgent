@@ -74,6 +74,7 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     yield
+    await engine.dispose()
 
 app = FastAPI(title="Truck Stop MCP Helpdesk API", lifespan=lifespan)
 app.add_exception_handler(
