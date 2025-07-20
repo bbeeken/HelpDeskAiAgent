@@ -66,8 +66,9 @@ Start the development server with Uvicorn:
 ```bash
 uvicorn main:app --reload
 ```
+## API Documentation
 
-
+Detailed endpoint descriptions are provided in [docs/API.md](docs/API.md).
 ## Running tests
 
 Install the dependencies from `requirements.txt` and the package itself before
