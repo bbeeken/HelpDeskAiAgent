@@ -164,12 +164,37 @@ from src.core.services.enhanced_context import EnhancedContextManager
 
 
 async def _g_ticket(ticket_id: int) -> _Dict[str, Any] | None:
+    """Fetch a single ticket by ID.
+
+    Parameters
+    ----------
+    ticket_id:
+        The ID of the ticket to retrieve.
+
+    Returns
+    -------
+    dict | None
+        A dictionary containing ``ticket_id`` if the ticket exists, otherwise
+        ``None``.
+    """
     async with db.SessionLocal() as db_session:
         ticket = await TicketManager().get_ticket(db_session, ticket_id)
         return {"ticket_id": ticket.Ticket_ID} if ticket else None
 
 
 async def _l_tkts(limit: int = 10) -> list[_Dict[str, Any]]:
+    """List the most recent tickets.
+
+    Parameters
+    ----------
+    limit:
+        Maximum number of tickets to return. Defaults to ``10``.
+
+    Returns
+    -------
+    list[dict]
+        A list of dictionaries, each containing ``ticket_id`` for a ticket.
+    """
     async with db.SessionLocal() as db_session:
         tickets = await TicketManager().list_tickets(db_session, limit=limit)
         return [{"ticket_id": t.Ticket_ID} for t in tickets]
