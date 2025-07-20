@@ -7,9 +7,12 @@ from main import app
 from src.infrastructure.database import engine
 
 # Override the autouse app_lifespan fixture from conftest
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def app_lifespan():
     yield
+
 
 @pytest.mark.asyncio
 async def test_engine_disposed_on_shutdown(monkeypatch):

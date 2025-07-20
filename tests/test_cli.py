@@ -42,7 +42,6 @@ async def test_create_ticket_cli(cli_setup, capsys, monkeypatch):
     assert "Ticket_ID" in data
 
 
-
 @pytest.mark.asyncio
 async def test_create_ticket_cli_http_error(cli_setup, capsys, monkeypatch):
     class FailingClient:
@@ -59,5 +58,3 @@ async def test_create_ticket_cli_http_error(cli_setup, capsys, monkeypatch):
     monkeypatch.setattr(cli.sys, "stdin", io.StringIO("{}"))
     await cli.create_ticket(argparse.Namespace())
     assert capsys.readouterr().out == ""
-
-

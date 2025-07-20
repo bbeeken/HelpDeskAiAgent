@@ -21,4 +21,3 @@ async def test_tool_request_body_present():
         assert "requestBody" in g_ticket_post
         content = g_ticket_post["requestBody"]["content"]
         assert "application/json" in content
-
