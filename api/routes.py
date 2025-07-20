@@ -7,15 +7,15 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.mssql import SessionLocal
-from db.models import VTicketMasterExpanded
+from src.infrastructure.database import SessionLocal
+from src.core.repositories.models import VTicketMasterExpanded
 
 
 # Managers / Analytics
-from tools.ticket_management import TicketManager
-from tools.reference_data import ReferenceDataManager
-from tools.user_services import UserManager
-from tools.analytics_reporting import (
+from src.core.services.ticket_management import TicketManager
+from src.core.services.reference_data import ReferenceDataManager
+from src.core.services.user_services import UserManager
+from src.core.services.analytics_reporting import (
     tickets_by_status,
     open_tickets_by_site,
     open_tickets_by_user,
@@ -27,7 +27,7 @@ from tools.analytics_reporting import (
 
 # Schemas
 # Ticket schemas
-from schemas import (
+from src.shared.schemas import (
     TicketCreate,
     TicketOut,
     TicketUpdate,
@@ -35,8 +35,8 @@ from schemas import (
     TicketSearchOut,
     TicketSearchRequest,
 )
-from schemas.search_params import TicketSearchParams
-from schemas.basic import (
+from src.shared.schemas.search_params import TicketSearchParams
+from src.shared.schemas.basic import (
     AssetOut,
     VendorOut,
     SiteOut,
@@ -45,7 +45,7 @@ from schemas.basic import (
     TicketAttachmentOut,
     TicketMessageOut,
 )
-from schemas.analytics import (
+from src.shared.schemas.analytics import (
     StatusCount,
     SiteOpenCount,
     UserOpenCount,
@@ -53,9 +53,9 @@ from schemas.analytics import (
     TrendCount,
     StaffTicketReport,
 )
-from schemas.oncall import OnCallShiftOut
-from schemas.paginated import PaginatedResponse
-from schemas.agent_data import (
+from src.shared.schemas.oncall import OnCallShiftOut
+from src.shared.schemas.paginated import PaginatedResponse
+from src.shared.schemas.agent_data import (
     TicketFullContext,
     SystemSnapshot,
     UserCompleteProfile,
@@ -65,9 +65,9 @@ from schemas.agent_data import (
     ValidationResult,
 )
 
-from tools.enhanced_context import EnhancedContextManager
-from tools.advanced_query import AdvancedQueryManager
-from tools.enhanced_operations import EnhancedOperationsManager
+from src.core.services.enhanced_context import EnhancedContextManager
+from src.core.services.advanced_query import AdvancedQueryManager
+from src.core.services.enhanced_operations import EnhancedOperationsManager
 
 logger = logging.getLogger(__name__)
 

@@ -7,7 +7,7 @@ import httpx
 from httpx import AsyncClient, ASGITransport
 from main import app
 
-import tools.cli as cli
+import src.core.services.cli as cli
 
 import pytest_asyncio
 

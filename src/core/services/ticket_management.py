@@ -8,15 +8,15 @@ from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime, timezone, timedelta
 
-from schemas.search_params import TicketSearchParams
-from schemas.filters import AdvancedFilters, apply_advanced_filters
+from src.shared.schemas.search_params import TicketSearchParams
+from src.shared.schemas.filters import AdvancedFilters, apply_advanced_filters
 from pydantic import BaseModel
 from sqlalchemy import select, or_, and_, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from errors import DatabaseError
+from src.shared.exceptions import DatabaseError
 
-from db.models import (
+from src.core.repositories.models import (
     Ticket,
     TicketMessage,
     TicketAttachment,

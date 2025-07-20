@@ -3,9 +3,9 @@ from httpx import AsyncClient, ASGITransport
 from datetime import datetime, UTC
 
 from main import app
-from db.mssql import SessionLocal
-from db.models import Ticket, TicketMessage, TicketStatus
-from tools.ticket_management import TicketManager
+from src.infrastructure.database import SessionLocal
+from src.core.repositories.models import Ticket, TicketMessage, TicketStatus
+from src.core.services.ticket_management import TicketManager
 from src.mcp_server import create_enhanced_server
 
 

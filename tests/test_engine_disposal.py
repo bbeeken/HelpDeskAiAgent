@@ -4,7 +4,7 @@ from asgi_lifespan import LifespanManager
 from unittest.mock import AsyncMock
 
 from main import app
-from db.mssql import engine
+from src.infrastructure.database import engine
 
 # Override the autouse app_lifespan fixture from conftest
 @pytest_asyncio.fixture(autouse=True)

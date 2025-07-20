@@ -2,12 +2,12 @@ from asgi_lifespan import LifespanManager
 from main import app
 import asyncio
 import pytest_asyncio
-from db.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
+from src.core.repositories.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
 from sqlalchemy import text
-from db.models import Base
+from src.core.repositories.models import Base
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-import db.mssql as mssql
+import src.infrastructure.database as mssql
 import os
 
 # Pydantic 1.x fails on Python 3.12 unless this shim is disabled

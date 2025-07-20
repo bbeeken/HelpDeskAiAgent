@@ -1,11 +1,11 @@
-from schemas.ticket import TicketExpandedOut
+from src.shared.schemas.ticket import TicketExpandedOut
 import pytest
 from httpx import AsyncClient, ASGITransport
 import pytest_asyncio
 from main import app
-from db.mssql import engine
-from db.models import VTicketMasterExpanded
-from db.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL as CREATE_VIEW_SQL
+from src.infrastructure.database import engine
+from src.core.repositories.models import VTicketMasterExpanded
+from src.core.repositories.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL as CREATE_VIEW_SQL
 
 DROP_VIEW_SQL = "DROP VIEW IF EXISTS V_Ticket_Master_Expanded"
 

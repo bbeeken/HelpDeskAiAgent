@@ -32,12 +32,7 @@ def fake_server(data):
 
 
 def test_verify_tools_success():
-<<<<<<< HEAD
-    data = {"tools": [{"name": "get_ticket"}, {
-        "name": "list_tickets"}, {"name": "ai_suggest_response"}]}
-=======
     data = {"tools": [{"name": "g_ticket"}, {"name": "l_tkts"}]}
->>>>>>> main
     with fake_server(data) as url:
         assert verify_tools.verify(url)
 
@@ -46,3 +41,4 @@ def test_verify_tools_missing():
     data = {"tools": [{"name": "g_ticket"}]}
     with fake_server(data) as url:
         assert not verify_tools.verify(url)
+

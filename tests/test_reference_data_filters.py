@@ -1,10 +1,10 @@
 import pytest
 from datetime import datetime, UTC
 
-from db.mssql import SessionLocal
-from db.models import Asset, Vendor, Site, Ticket
-from tools.reference_data import ReferenceDataManager
-from tools.ticket_management import TicketManager
+from src.infrastructure.database import SessionLocal
+from src.core.repositories.models import Asset, Vendor, Site, Ticket
+from src.core.services.reference_data import ReferenceDataManager
+from src.core.services.ticket_management import TicketManager
 
 
 @pytest.mark.asyncio

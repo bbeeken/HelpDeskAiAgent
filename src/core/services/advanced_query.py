@@ -7,8 +7,8 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy import select, func, and_, or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import VTicketMasterExpanded, TicketMessage, TicketAttachment
-from schemas.agent_data import AdvancedQuery, QueryResult
+from src.core.repositories.models import VTicketMasterExpanded, TicketMessage, TicketAttachment
+from src.shared.schemas.agent_data import AdvancedQuery, QueryResult
 from .enhanced_context import EnhancedContextManager
 
 logger = logging.getLogger(__name__)

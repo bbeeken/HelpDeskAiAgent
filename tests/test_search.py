@@ -1,12 +1,12 @@
 import os
 import asyncio
 import pytest
-from db.models import Base, Ticket
-from db.mssql import engine, SessionLocal
+from src.core.repositories.models import Base, Ticket
+from src.infrastructure.database import engine, SessionLocal
 from datetime import datetime, UTC
-from tools.ticket_management import TicketManager
-from schemas.search_params import TicketSearchParams
-from db.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
+from src.core.services.ticket_management import TicketManager
+from src.shared.schemas.search_params import TicketSearchParams
+from src.core.repositories.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
 from httpx import AsyncClient, ASGITransport
 from main import app
 

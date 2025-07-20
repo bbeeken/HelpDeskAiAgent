@@ -1,10 +1,10 @@
 import pytest
 from datetime import datetime, UTC
 
-from db.mssql import SessionLocal
-from db.models import Ticket
-from tools.ticket_management import TicketManager, TicketTools
-from schemas.filters import AdvancedFilters
+from src.infrastructure.database import SessionLocal
+from src.core.repositories.models import Ticket
+from src.core.services.ticket_management import TicketManager, TicketTools
+from src.shared.schemas.filters import AdvancedFilters
 
 
 @pytest.mark.asyncio
