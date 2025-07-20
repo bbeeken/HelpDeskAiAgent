@@ -3,8 +3,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from schemas.oncall import OnCallShiftOut
-from tools.user_services import UserManager
+from src.shared.schemas.oncall import OnCallShiftOut
+from src.core.services.user_services import UserManager
 
 from .deps import get_db
 

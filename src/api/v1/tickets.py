@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import VTicketMasterExpanded
-from schemas import (
+from src.core.repositories.models import VTicketMasterExpanded
+from src.shared.schemas import (
     TicketCreate,
     TicketOut,
     TicketUpdate,
@@ -18,10 +18,10 @@ from schemas import (
     TicketSearchOut,
     TicketSearchRequest,
 )
-from schemas.search_params import TicketSearchParams
-from schemas.basic import TicketMessageOut
-from schemas.paginated import PaginatedResponse
-from tools.ticket_management import TicketManager
+from src.shared.schemas.search_params import TicketSearchParams
+from src.shared.schemas.basic import TicketMessageOut
+from src.shared.schemas.paginated import PaginatedResponse
+from src.core.services.ticket_management import TicketManager
 
 from .deps import get_db, extract_filters
 
