@@ -7,7 +7,7 @@ import logging
 
 from dotenv import load_dotenv
 from pydantic import ValidationError, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 load_dotenv()
 
@@ -15,7 +15,7 @@ load_dotenv()
 class Settings(BaseSettings):
     """Configuration loaded from environment variables."""
 
-    DB_CONN_STRING: str | None = None
+    DB_CONN_STRING: str
     ERROR_TRACKING_DSN: str | None = None
     GRAPH_CLIENT_ID: str | None = None
     GRAPH_CLIENT_SECRET: str | None = None
@@ -25,14 +25,25 @@ class Settings(BaseSettings):
 
     @field_validator("DB_CONN_STRING")
     @classmethod
-    def check_async_driver(cls, value: str | None) -> str | None:
-        if value and value.startswith("mssql+pyodbc"):
+    def validate_db_conn_string(cls, value: str) -> str:
+        if not value:
+            raise ValueError("DB_CONN_STRING must not be empty")
+        if value.startswith("mssql+pyodbc"):
             raise ValueError("Synchronous driver 'mssql+pyodbc' is not supported")
         return value
 
-    class Config:
-        case_sensitive = False
-        env_file = ".env"
+    @field_validator("API_BASE_URL")
+    @classmethod
+    def validate_api_base_url(cls, value: str) -> str:
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("API_BASE_URL must start with http:// or https://")
+        return value.rstrip("/")
+
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_file=".env",
+        validate_assignment=True,
+    )
 
 
 try:
