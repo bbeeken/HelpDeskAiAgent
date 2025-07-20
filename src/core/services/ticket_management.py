@@ -150,8 +150,13 @@ class TicketManager:
     ) -> List[dict[str, Any]]:
         like = f"%{query}%"
         stmt = select(VTicketMasterExpanded).filter(
-            VTicketMasterExpanded.Subject.ilike(like)
-            | VTicketMasterExpanded.Ticket_Body.ilike(like)
+            and_(
+                or_(
+                    VTicketMasterExpanded.Subject.ilike(like),
+                    VTicketMasterExpanded.Ticket_Body.ilike(like),
+                ),
+                func.length(VTicketMasterExpanded.Ticket_Body) <= 2000,
+            )
         )
         filters = params.model_dump(exclude_none=True) if params else {}
         sort_value = filters.pop("sort", None)
@@ -170,20 +175,16 @@ class TicketManager:
             stmt = stmt.order_by(VTicketMasterExpanded.Created_Date.desc())
         stmt = stmt.limit(limit)
         result = await db.execute(stmt)
-        summaries: list[dict[str, Any]] = []
-        for row in result.scalars().all():
-            body = row.Ticket_Body or ""
-            if len(body) > 2000:
-                continue
-            summaries.append(
-                {
-                    "Ticket_ID": row.Ticket_ID,
-                    "Subject": row.Subject,
-                    "body_preview": body[:200],
-                    "status_label": row.Ticket_Status_Label,
-                    "priority_level": row.Priority_Level,
-                }
-            )
+        summaries: list[dict[str, Any]] = [
+            {
+                "Ticket_ID": row.Ticket_ID,
+                "Subject": row.Subject,
+                "body_preview": (row.Ticket_Body or "")[:200],
+                "status_label": row.Ticket_Status_Label,
+                "priority_level": row.Priority_Level,
+            }
+            for row in result.scalars().all()
+        ]
         return summaries
 
     async def get_tickets_by_user(
