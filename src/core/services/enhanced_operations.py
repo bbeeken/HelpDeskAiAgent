@@ -186,19 +186,170 @@ class EnhancedOperationsManager:
     # Validation methods
     async def _validate_ticket_update(self, current_ticket, parameters: Dict[str, Any]) -> ValidationResult:
         """Validate ticket update parameters."""
-        # Implementation details for update validation
-        # Check field validity, permission requirements, etc.
-        pass
+
+        blocking_errors: List[str] = []
+        warnings: List[str] = []
+        context_notes: List[str] = []
+        recommendations: List[str] = []
+
+        try:
+            update_data = TicketUpdate(**parameters)
+        except Exception as exc:  # Pydantic ValidationError
+            logger.warning("Invalid update payload: %s", exc)
+            blocking_errors.append(str(exc))
+            return ValidationResult(
+                is_valid=False,
+                confidence=0.0,
+                blocking_errors=blocking_errors,
+                warnings=warnings,
+                context_notes=context_notes,
+                recommendations=recommendations,
+                estimated_impact={"risk": "high", "reason": "invalid_parameters"},
+            )
+
+        if not update_data.model_fields_set:
+            blocking_errors.append("No fields provided for update")
+            return ValidationResult(
+                is_valid=False,
+                confidence=0.0,
+                blocking_errors=blocking_errors,
+                warnings=warnings,
+                context_notes=context_notes,
+                recommendations=recommendations,
+                estimated_impact={"risk": "low"},
+            )
+
+        for field in update_data.model_fields_set:
+            new_val = getattr(update_data, field)
+            if getattr(current_ticket, field, None) == new_val:
+                warnings.append(f"{field} already set to {new_val}")
+
+        return ValidationResult(
+            is_valid=True,
+            confidence=1.0,
+            blocking_errors=blocking_errors,
+            warnings=warnings,
+            context_notes=context_notes,
+            recommendations=recommendations,
+            estimated_impact={"risk": "low"},
+        )
 
     async def _validate_ticket_assignment(self, ticket_id: int, parameters: Dict[str, Any]) -> ValidationResult:
         """Validate ticket assignment."""
-        # Implementation details for assignment validation
-        pass
+
+        blocking_errors: List[str] = []
+        warnings: List[str] = []
+        context_notes: List[str] = []
+        recommendations: List[str] = []
+
+        ticket = await self.ticket_manager.get_ticket(self.db, ticket_id)
+        if not ticket:
+            blocking_errors.append(f"Ticket {ticket_id} not found")
+            return ValidationResult(
+                is_valid=False,
+                confidence=0.0,
+                blocking_errors=blocking_errors,
+                warnings=warnings,
+                context_notes=context_notes,
+                recommendations=recommendations,
+                estimated_impact={"risk": "high", "reason": "ticket_not_found"},
+            )
+
+        assignee_email = parameters.get("assignee_email")
+        try:
+            TicketUpdate(
+                Assigned_Email=assignee_email,
+                Assigned_Name=parameters.get("assignee_name"),
+            )
+        except Exception as exc:
+            blocking_errors.append(str(exc))
+            return ValidationResult(
+                is_valid=False,
+                confidence=0.0,
+                blocking_errors=blocking_errors,
+                warnings=warnings,
+                context_notes=context_notes,
+                recommendations=recommendations,
+                estimated_impact={"risk": "high", "reason": "invalid_parameters"},
+            )
+
+        if not assignee_email:
+            blocking_errors.append("assignee_email is required")
+            return ValidationResult(
+                is_valid=False,
+                confidence=0.0,
+                blocking_errors=blocking_errors,
+                warnings=warnings,
+                context_notes=context_notes,
+                recommendations=recommendations,
+                estimated_impact={"risk": "high"},
+            )
+
+        if ticket.Assigned_Email == assignee_email:
+            warnings.append("ticket already assigned to this email")
+
+        return ValidationResult(
+            is_valid=True,
+            confidence=1.0,
+            blocking_errors=blocking_errors,
+            warnings=warnings,
+            context_notes=context_notes,
+            recommendations=recommendations,
+            estimated_impact={"risk": "low"},
+        )
 
     async def _validate_ticket_closure(self, ticket_id: int, parameters: Dict[str, Any]) -> ValidationResult:
         """Validate ticket closure."""
-        # Implementation details for closure validation
-        pass
+
+        blocking_errors: List[str] = []
+        warnings: List[str] = []
+        context_notes: List[str] = []
+        recommendations: List[str] = []
+
+        ticket = await self.ticket_manager.get_ticket(self.db, ticket_id)
+        if not ticket:
+            blocking_errors.append(f"Ticket {ticket_id} not found")
+            return ValidationResult(
+                is_valid=False,
+                confidence=0.0,
+                blocking_errors=blocking_errors,
+                warnings=warnings,
+                context_notes=context_notes,
+                recommendations=recommendations,
+                estimated_impact={"risk": "high", "reason": "ticket_not_found"},
+            )
+
+        status_id = parameters.get("status_id", 4)
+        resolution = parameters.get("resolution")
+        try:
+            TicketUpdate(Ticket_Status_ID=status_id, Resolution=resolution)
+        except Exception as exc:
+            blocking_errors.append(str(exc))
+            return ValidationResult(
+                is_valid=False,
+                confidence=0.0,
+                blocking_errors=blocking_errors,
+                warnings=warnings,
+                context_notes=context_notes,
+                recommendations=recommendations,
+                estimated_impact={"risk": "high", "reason": "invalid_parameters"},
+            )
+
+        if ticket.Ticket_Status_ID == status_id:
+            warnings.append("ticket already closed")
+
+        if not resolution:
+            warnings.append("resolution text not provided")
+
+        return ValidationResult(
+            is_valid=True,
+            confidence=1.0 if resolution else 0.8,
+            blocking_errors=blocking_errors,
+            warnings=warnings,
+            context_notes=context_notes,
+            recommendations=recommendations,
+            estimated_impact={"risk": "medium" if not resolution else "low"},
+        )
 
     # Execution methods
     async def _execute_ticket_update(self, ticket_id: int, parameters: Dict[str, Any]) -> Dict[str, Any]:
