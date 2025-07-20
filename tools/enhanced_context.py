@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import (
     Ticket, VTicketMasterExpanded, TicketMessage, TicketAttachment,
-    Asset, Site, TicketCategory, TicketStatus
+    Asset, Site, TicketCategory, TicketStatus  # Add TicketStatus here
 )
 from schemas.agent_data import (
     TicketFullContext, SystemSnapshot, UserCompleteProfile
