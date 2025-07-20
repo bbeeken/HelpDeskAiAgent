@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import uuid
+import json
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from datetime import datetime, UTC
@@ -42,6 +43,9 @@ _correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="-")
 
 # Record startup time to report uptime
 START_TIME = datetime.now(UTC)
+
+# Cache for JSON schema validators keyed by serialized schema
+_validator_cache: Dict[str, Draft7Validator] = {}
 
 
 class CorrelationIdFilter(logging.Filter):
@@ -248,7 +252,11 @@ async def handle_unexpected(request: Request, exc: Exception):
 # MCP Tools Integration
 def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
     """Build a FastAPI endpoint from an MCP tool."""
-    validator = Draft7Validator(schema)
+    key = json.dumps(schema, sort_keys=True)
+    validator = _validator_cache.get(key)
+    if validator is None:
+        validator = Draft7Validator(schema)
+        _validator_cache[key] = validator
 
     async def endpoint(request: Request):
         try:
