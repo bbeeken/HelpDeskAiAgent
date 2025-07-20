@@ -92,7 +92,6 @@ def extract_filters(
 
 # ─── Tickets Sub-Router ───────────────────────────────────────────────────────
 ticket_router = APIRouter(prefix="/ticket", tags=["tickets"])
-tickets_router = APIRouter(prefix="/tickets", tags=["tickets"])
 
 class MessageIn(BaseModel):
     message: str = Field(..., example="Thanks for the update")
@@ -132,24 +131,6 @@ async def list_tickets(
 
     return PaginatedResponse(items=validated, total=total, skip=skip, limit=limit)
 
-@tickets_router.get("", response_model=PaginatedResponse[TicketExpandedOut])
-async def list_tickets_alias(
-    request: Request,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1),
-    db: AsyncSession = Depends(get_db),
-) -> PaginatedResponse[TicketExpandedOut]:
-    return await list_tickets(request, skip, limit, db)
-
-@tickets_router.get("/expanded", response_model=PaginatedResponse[TicketExpandedOut])
-async def list_tickets_expanded_alias(
-    request: Request,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1),
-    db: AsyncSession = Depends(get_db),
-) -> PaginatedResponse[TicketExpandedOut]:
-    return await list_tickets(request, skip, limit, db)
-
 @ticket_router.get("/search", response_model=List[TicketSearchOut])
 async def search_tickets(
     q: str = Query(..., min_length=1),
@@ -165,14 +146,6 @@ async def search_tickets(
         except ValidationError as exc:
             logger.error("Invalid search result %s: %s", r.get("Ticket_ID", "?"), exc)
     return validated
-
-@tickets_router.get("/search", response_model=List[TicketSearchOut])
-async def search_tickets_alias(
-    q: str = Query(..., min_length=1),
-    limit: int = Query(10, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
-) -> List[TicketSearchOut]:
-    return await search_tickets(q=q, limit=limit, db=db)
 
 @ticket_router.post("", response_model=TicketOut, status_code=201)
 async def create_ticket_endpoint(
@@ -347,7 +320,6 @@ async def get_oncall_shift(db: AsyncSession = Depends(get_db)) -> Optional[OnCal
 # ─── Application Registration ─────────────────────────────────────────────────
 def register_routes(app: FastAPI) -> None:
     app.include_router(ticket_router)
-    app.include_router(tickets_router)
     app.include_router(lookup_router)
     app.include_router(analytics_router)
     app.include_router(ai_router)
