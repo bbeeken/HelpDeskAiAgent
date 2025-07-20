@@ -50,7 +50,6 @@ async def test_user_tools_graph_calls(monkeypatch):
     )
     um = us.UserManager()
 
-
     class DummyResponse(SimpleNamespace):
         def raise_for_status(self):
             pass
@@ -88,7 +87,6 @@ async def test_user_tools_graph_calls(monkeypatch):
                 json=lambda: data,
             )
 
-
     FakeAsyncClient = DummyClient
 
     monkeypatch.setattr(us.httpx, "AsyncClient", FakeAsyncClient)
@@ -96,6 +94,7 @@ async def test_user_tools_graph_calls(monkeypatch):
 
 
     token = await um._get_token()
+
     assert token == "tok"
 
     user = await um.get_user_by_email("u@e.com")

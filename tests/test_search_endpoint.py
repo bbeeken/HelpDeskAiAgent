@@ -13,9 +13,9 @@ from tools.ticket_management import TicketManager
 async def test_search_skips_oversized_ticket_body():
     async with SessionLocal() as db:
         valid = Ticket(
-            Subject="Query", 
-            Ticket_Body="valid", 
-            Ticket_Contact_Name="T", 
+            Subject="Query",
+            Ticket_Body="valid",
+            Ticket_Contact_Name="T",
             Ticket_Contact_Email="t@example.com",
             Created_Date=datetime.now(UTC),
             Ticket_Status_ID=1,
@@ -40,7 +40,8 @@ async def test_search_skips_oversized_ticket_body():
         assert len(data) == 1
         item = data[0]
         assert item["Ticket_ID"] == valid_id
-        assert set(["Ticket_ID", "Subject", "body_preview", "status_label", "priority_level"]) <= item.keys()
+        assert set(["Ticket_ID", "Subject", "body_preview",
+                   "status_label", "priority_level"]) <= item.keys()
 
 
 @pytest.mark.asyncio
