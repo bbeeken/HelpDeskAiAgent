@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 from src.shared.schemas.search_params import TicketSearchParams
 from src.shared.schemas.filters import AdvancedFilters, apply_advanced_filters
 from pydantic import BaseModel
-from sqlalchemy import select, or_, and_, func
+from sqlalchemy import select, or_, and_, func, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.shared.exceptions import DatabaseError
@@ -158,9 +158,12 @@ class TicketManager:
         for key, value in filters.items():
             if hasattr(VTicketMasterExpanded, key):
                 col = getattr(VTicketMasterExpanded, key)
-                stmt = stmt.filter(
-                    col.ilike(f"%{value}%") if isinstance(value, str) else col == value
-                )  # noqa: E501
+                if isinstance(value, str):
+                    stmt = stmt.filter(
+                        col.ilike(text(":value")).params(value=f"%{value}%")
+                    )
+                else:
+                    stmt = stmt.filter(col == value)
         if sort_value == "oldest":
             stmt = stmt.order_by(VTicketMasterExpanded.Created_Date.asc())
         else:
