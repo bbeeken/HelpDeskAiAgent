@@ -114,6 +114,8 @@ def extract_filters(
 
 # ─── Tickets Sub-Router ───────────────────────────────────────────────────────
 ticket_router = APIRouter(prefix="/ticket", tags=["tickets"])
+# Additional router exposing the same endpoints under the legacy "/tickets" prefix
+tickets_router = APIRouter(prefix="/tickets", tags=["tickets"])
 
 
 class MessageIn(BaseModel):
@@ -211,25 +213,7 @@ async def list_tickets(
 
     return PaginatedResponse(items=validated, total=total, skip=skip, limit=limit)
 
-<<<<<<< HEAD
-@ticket_router.get("/search", response_model=List[TicketSearchOut])
-async def search_tickets(
-    q: str = Query(..., min_length=1),
-    limit: int = Query(10, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
-) -> List[TicketSearchOut]:
-    logger.info("Searching tickets for '%s' (limit=%d)", q, limit)
-    results = await search_tickets_expanded(db, q, limit)
-    validated: List[TicketSearchOut] = []
-    for r in results:
-        try:
-            validated.append(TicketSearchOut.model_validate(r))
-        except ValidationError as exc:
-            logger.error("Invalid search result %s: %s", r.get("Ticket_ID", "?"), exc)
-    return validated
 
-@ticket_router.post("", response_model=TicketOut, status_code=201)
-=======
 
 @tickets_router.get(
     "/expanded",
@@ -324,7 +308,6 @@ async def tickets_by_user_endpoint(
     status_code=201,
     operation_id="create_ticket",
 )
->>>>>>> b9d2f38ffe46e291efa5e27a7e999a1e8eda59fe
 async def create_ticket_endpoint(
     ticket: TicketCreate, db: AsyncSession = Depends(get_db)
 ) -> TicketOut:
@@ -758,6 +741,7 @@ async def get_oncall_shift(db: AsyncSession = Depends(get_db)) -> Optional[OnCal
 
 def register_routes(app: FastAPI) -> None:
     app.include_router(ticket_router)
+    app.include_router(tickets_router)
     app.include_router(lookup_router)
     app.include_router(analytics_router)
     app.include_router(oncall_router)

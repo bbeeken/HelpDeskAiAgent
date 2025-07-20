@@ -163,10 +163,8 @@ async def list_tools() -> Dict[str, List[Dict[str, Any]]]:
 
     
 
-    return {"tools": [t.to_dict() for t in TOOLS]}
 
-app.state.mcp = FastApiMCP(app)
-app.state.mcp.mount()
+    return {"tools": [t.to_dict() for t in TOOLS]}
 
 
 
