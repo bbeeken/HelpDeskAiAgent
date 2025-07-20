@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from schemas.analytics import (
+from src.shared.schemas.analytics import (
     StatusCount,
     SiteOpenCount,
     UserOpenCount,
@@ -13,7 +13,7 @@ from schemas.analytics import (
     TrendCount,
     StaffTicketReport,
 )
-from tools.analytics_reporting import (
+from src.core.services.analytics_reporting import (
     tickets_by_status,
     open_tickets_by_site,
     open_tickets_by_user,

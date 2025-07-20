@@ -4,7 +4,7 @@ from typing import Any, AsyncGenerator, Dict, Sequence
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.mssql import SessionLocal
+from src.infrastructure.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
