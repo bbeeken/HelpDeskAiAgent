@@ -13,7 +13,7 @@ def create_sample_ticket():
         "Ticket_Contact_Email": "tester@example.com",
     }
     response = client.post("/ticket", json=payload)
-    assert response.status_code == 200
+    assert response.status_code == 201
     return response.json()
 
 
@@ -38,9 +38,6 @@ def test_ticket_full_lifecycle():
     assert close_resp.status_code == 200
     assert close_resp.json()["Ticket_Status_ID"] == 3
 
-    delete_resp = client.delete(f"/ticket/{tid}")
-    assert delete_resp.status_code == 200
-    assert delete_resp.json() == {"deleted": True}
 
 
 def test_update_ticket_not_found():
@@ -48,9 +45,9 @@ def test_update_ticket_not_found():
     assert resp.status_code == 404
 
 
-def test_delete_ticket_not_found():
+def test_delete_ticket_not_allowed():
     resp = client.delete("/ticket/99999")
-    assert resp.status_code == 404
+    assert resp.status_code == 405
 
 
 def test_create_ticket_validation_error():

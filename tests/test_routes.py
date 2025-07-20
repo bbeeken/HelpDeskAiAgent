@@ -56,11 +56,11 @@ async def _add_site(label: str = "Site1") -> Site:
 @pytest.mark.asyncio
 async def test_create_and_get_ticket(client: AsyncClient):
     resp = await _create_ticket(client)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     created = resp.json()
     tid = created["Ticket_ID"]
 
-    list_resp = await client.get("/tickets")
+    list_resp = await client.get("/tickets/expanded")
     assert list_resp.status_code == 200
     data = list_resp.json()
     assert data["total"] == 1
@@ -88,7 +88,7 @@ async def test_get_ticket_not_found(client: AsyncClient):
 async def test_update_ticket(client: AsyncClient):
 
     resp = await _create_ticket(client)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     ticket = resp.json()
     tid = ticket["Ticket_ID"]
 
@@ -103,7 +103,7 @@ async def test_update_ticket(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_update_ticket_invalid_field(client: AsyncClient):
     resp = await _create_ticket(client)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     ticket = resp.json()
     tid = ticket["Ticket_ID"]
 
@@ -146,7 +146,7 @@ async def test_asset_vendor_site_routes(client: AsyncClient):
 @pytest_asyncio.fixture
 async def ticket_attachments(client: AsyncClient):
     resp = await _create_ticket(client)
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     tid = resp.json()["Ticket_ID"]
     now = datetime.now(UTC)
     async with SessionLocal() as db:
@@ -174,7 +174,7 @@ async def test_ticket_attachments_endpoint(
     client: AsyncClient, ticket_attachments
 ):
     tid, created = ticket_attachments
-    resp = await client.get(f"/ticket/{tid}/attachments")
+    resp = await client.get(f"/lookup/ticket/{tid}/attachments")
     assert resp.status_code == 200
     data = sorted(resp.json(), key=lambda d: d["ID"])
     expected = sorted(

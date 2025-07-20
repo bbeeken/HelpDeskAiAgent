@@ -6,8 +6,9 @@ dependencies = [
     "uvicorn==0.35.0",
     "sqlalchemy==2.0.41",
     "pydantic==2.11.7",
-    "fastmcp==2.10.1",
-    "fastapi-mcp==0.3.4",
+    "jsonschema==4.22.0",
+    "mcp>=1.9.4",
+    "fastapi-mcp>=0.3.4",
     "python-dotenv==1.1.1",
     "pytest==8.4.1",
     "pytest-asyncio==0.23.6",
@@ -18,10 +19,15 @@ dependencies = [
     "slowapi==0.1.9",
     "aiosqlite==0.21.0",
     "aioodbc==0.5.0",
+    "asgi_lifespan==2.1.0",
+    "requests==2.32.3",
+    "flake8==7.3.0",
+    "sentry-sdk==2.2.0",
+    "jsonschema==4.25.0",
 ]
 
 [tool.setuptools]
-packages = ["ai", "alembic", "api", "db", "schemas", "services", "tools"]
+packages = ["ai", "alembic", "api", "db", "schemas", "tools", "src"]
 
 [tool.flake8]
 max-line-length = 100

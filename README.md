@@ -10,7 +10,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
    pip install -e .
    ```
 
-   The requirements include `aioodbc` for async ODBC connections; `pyodbc` is no longer required.
+   The requirements include `aioodbc` for async ODBC connections and `requests` for standard HTTP calls; `pyodbc` is no longer required. The optional `sentry_sdk` package enables error tracking when `ERROR_TRACKING_DSN` is set.
 2. **Environment variables**
 
    The application requires the following variables:
@@ -23,11 +23,15 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     ```
    The `driver` name must match an ODBC driver installed on the host machine.
   - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
-    lookups in `tools.user_tools`. When omitted, stub responses are returned.
-  - `MCP_URL` – optional FastMCP server URL used by AI helper functions
-    (default `http://localhost:8080`).
-  - `MCP_STREAM_TIMEOUT` – timeout in seconds for streaming AI responses
-    (default `30`).
+    lookups in `tools.user_services`. When omitted, stub responses are returned.
+
+
+  - `ENABLE_RATE_LIMITING` – enable the SlowAPI limiter middleware.
+    Set to `false`, `0`, or `no` to disable it (default `true`).
+
+  - `ERROR_TRACKING_DSN` – optional DSN for Sentry or another error tracking
+    service. When set, the application initializes `sentry_sdk` on startup to
+    capture unhandled exceptions.
 
 
   They can be provided in the shell environment or in a `.env` file in the project root.
@@ -66,10 +70,21 @@ uvicorn main:app --reload
 
 ## Running tests
 
-Install the testing dependencies and run `pytest`:
+Install the dependencies from `requirements.txt` and the package itself before
+running the linters and tests. A helper script is provided to automate this
+setup:
 
 ```bash
-pip install -e .
+# install packages and verify required tools are available
+bash scripts/setup-tests.sh
+```
+
+The script installs everything with `pip install -r requirements.txt` and
+`pip install -e .`, then prints the versions of `flake8`, `pytest` and
+`httpx`. After running it (or manually installing the packages) execute:
+
+```bash
+flake8
 pytest
 ```
 
@@ -82,8 +97,11 @@ docker build -t helpdesk-agent .
 docker-compose up
 ```
 
+The MCP server will be available on `http://localhost:8008` when the
+containers are running.
+
 Compose reads variables from `.env`. Copy `.env.example` to `.env` and set
-values for required options such as `DB_CONN_STRING` and `OPENAI_API_KEY`.
+values for required options such as `DB_CONN_STRING`.
 Optional Graph credentials may also be provided in this file. Add any
 environment-specific Python overrides in a `config_env.py` file next to
 `config.py`.
@@ -135,6 +153,8 @@ SELECT t.Ticket_ID,
        t.Assigned_Email,
        t.Priority_ID,
        t.Assigned_Vendor_ID,
+       t.Closed_Date,
+       t.LastModified,
        v.Name AS Assigned_Vendor_Name,
        t.Resolution,
        p.Level AS Priority_Level
@@ -144,7 +164,7 @@ LEFT JOIN Assets a ON a.ID = t.Asset_ID
 LEFT JOIN Sites s ON s.ID = t.Site_ID
 LEFT JOIN Ticket_Categories c ON c.ID = t.Ticket_Category_ID
 LEFT JOIN Vendors v ON v.ID = t.Assigned_Vendor_ID
-LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
+LEFT JOIN Priority_Levels p ON p.ID = t.Priority_ID;
 ```
 
 
@@ -152,29 +172,126 @@ LEFT JOIN Priorities p ON p.ID = t.Priority_ID;
 
 - `GET /health` - health check returning database status, uptime, and version
 - `POST /ticket` - create a ticket
-- `GET /tickets` - list tickets. Supports dynamic query parameters to filter by
-  any column in `V_Ticket_Master_Expanded` and a `sort` parameter for ordering.
-- `GET /tickets/expanded` - list tickets with related labels. Accepts the same
-  filtering and sorting parameters as `/tickets`.
-- `GET /tickets/search?q=term` - search tickets by subject or body
+- `GET /tickets/expanded` - list tickets with related labels. Supports
+  dynamic query parameters to filter by any column in
+  `V_Ticket_Master_Expanded` and a `sort` parameter for ordering.
+- `GET /tickets/search` - search tickets by subject or body. Accepts the same
+  optional fields as `/tickets/expanded` plus `sort=oldest|newest` to control
+  ordering
+- `GET /tickets/smart_search` - perform a natural language search. Parameters:
+  `q` for the query, `limit` for number of results (default `10`), and
+  `include_closed` to search closed tickets. Returns structured results sorted
+  by relevance.
+- `GET /tickets/by_user` - list tickets where the user is the contact,
+  assigned technician or has posted a message. Provide an `identifier` and
+  optionally filter by `status` (open, closed or progress). Additional query
+  parameters are applied as column filters on `V_Ticket_Master_Expanded`.
+- Lookup endpoints (`/lookup/assets`, `/lookup/vendors`, `/lookup/sites`,
+  `/lookup/categories`, `/lookup/statuses`) now accept arbitrary `filters`
+  and a `sort` parameter to order by any column.
 - `PUT /ticket/{id}` - update an existing ticket
-- `DELETE /ticket/{id}` - remove a ticket
-- `POST /ai/suggest_response` - generate an AI ticket reply
-- `POST /ai/suggest_response/stream` - stream an AI reply as it is generated
 - Ticket body and resolution fields now accept large text values; the previous
   2000-character limit has been removed.
+
+#### Smart search vs. regular search
+
+Use `/tickets/search` for straightforward keyword queries or when you need to
+filter and sort by specific columns in `V_Ticket_Master_Expanded`. The
+`/tickets/smart_search` endpoint interprets natural language phrases (e.g.
+"unassigned high priority emails") and returns results ranked by relevance. It
+works best for quick human-friendly searches or when you don't know the exact
+keywords to use.
+
+Example:
+
+```bash
+curl "http://localhost:8000/tickets/smart_search?q=unassigned+critical&limit=5"
+```
+
+### Analytics Endpoints
+
+- `GET /analytics/late_tickets` - list tickets that are past their expected resolution date. Returns a JSON array of objects containing the ticket ID, assigned technician and number of days late.
+
+  Example:
+
+  ```bash
+  curl http://localhost:8000/analytics/late_tickets
+  ```
+
+  ```json
+  [
+    {
+      "ticket_id": 123,
+      "assigned_email": "tech@example.com",
+      "days_late": 5
+    }
+  ]
+  ```
+
+- `GET /analytics/staff_report` - return summary statistics for each technician showing the number of open and overdue tickets assigned to them.
+
+  Example:
+
+  ```bash
+  curl http://localhost:8000/analytics/staff_report
+  ```
+
+  ```json
+  [
+    {
+      "assigned_email": "tech@example.com",
+      "open": 7,
+      "late": 2
+    }
+  ]
+  ```
+
+
+- `GET /analytics/open_by_site` - count open tickets grouped by site.
+
+
+  Example:
+
+  ```bash
+
+  curl "http://localhost:8000/analytics/open_by_assigned_user?Assigned_Email=tech@example.com"
+
+  curl http://localhost:8000/analytics/open_by_site
+  ```
+
+  ```json
+  [
+    {
+      "site_id": 1,
+      "site_label": "Main",
+      "count": 3
+    }
+  ]
+  ```
+
+- `GET /analytics/open_by_assigned_user` - count open tickets grouped by assigned technician. Supports ticket filtering parameters.
+
+  Example:
+
+  ```bash
+  curl http://localhost:8000/analytics/open_by_assigned_user
+  ```
+
+  ```json
+  [
+    {
+      "assigned_email": "tech@example.com",
+      "assigned_name": "Tech",
+      "count": 2
+    }
+  ]
+
+  ```
 
 
 ## CLI
 
 `tools.cli` provides a small command-line interface to the API. Set `API_BASE_URL` to the server URL (default `http://localhost:8000`).
-
-Stream an AI-generated response:
-
-```bash
-echo '{"Ticket_ID":1,"Subject":"Subj","Ticket_Body":"Body","Ticket_Status_ID":1,"Ticket_Contact_Name":"Name","Ticket_Contact_Email":"a@example.com"}' | \
-python -m tools.cli stream-response
-```
 
 Create a ticket:
 
@@ -185,7 +302,7 @@ python -m tools.cli create-ticket
 
 ## MCP Streaming Interface
 
-Connect to the built-in FastMCP endpoint to exchange JSON-RPC messages.
+Connect to the built-in MCP endpoint to exchange JSON-RPC messages.
 
 
 1. **Open the stream** with `GET /mcp`. It returns Server-Sent Events. The first
@@ -220,6 +337,47 @@ The API listens on `http://localhost:8000`. The compose file reads environment
 values from `.env`. `DB_CONN_STRING` is set automatically to connect to the
 `postgres` container using the provided `POSTGRES_USER`, `POSTGRES_PASSWORD`, and
 `POSTGRES_DB` values.
+
+## Verifying Available Tools
+
+Run `verify_tools.py` after deploying to ensure the server exposes the expected
+set of tool endpoints. The `/tools` route now returns an object with a `tools`
+key containing the available tools. The verification script fetches this route
+and compares the returned names against a predefined mapping. It exits with a
+non-zero status when any tools are missing or unexpected. The default mapping
+checks for the ``g_ticket`` and ``l_tkts`` endpoints.
+
+```bash
+python verify_tools.py http://localhost:8000
+```
+
+Include this check in deployment pipelines to catch configuration issues early.
+
+### Tool Reference
+
+The MCP server exposes several JSON-RPC tools. `tickets_by_user` returns
+expanded ticket records for a user. It accepts an `identifier`, optional
+`status` and arbitrary `filters`.
+
+```bash
+curl "http://localhost:8000/tickets/by_user?identifier=user@example.com&status=open"
+```
+
+Tool endpoints validate request bodies against each tool's `inputSchema` using
+JSON Schema. Payloads missing required fields or with incorrect types return a
+`422 Unprocessable Entity` response.
+
+`tickets_by_timeframe` lists tickets filtered by status and age. Provide a
+number of `days` and optional `status` such as `open` or `closed`.
+
+```bash
+curl -X POST http://localhost:8000/tickets_by_timeframe \
+  -d '{"status": "open", "days": 7, "limit": 5}'
+```
+
+Request bodies are validated against each tool's `inputSchema` using the
+`jsonschema` library. Missing or incorrectly typed fields result in a `422`
+response.
 
 ## License
 

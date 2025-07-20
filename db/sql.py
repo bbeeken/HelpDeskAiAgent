@@ -18,6 +18,8 @@ SELECT t.Ticket_ID,
        t.Assigned_Email,
        t.Priority_ID,
        t.Assigned_Vendor_ID,
+       t.Closed_Date,
+       t.LastModified,
        v.Name AS Assigned_Vendor_Name,
        t.Resolution,
        p.Level AS Priority_Level
@@ -27,5 +29,5 @@ LEFT JOIN Assets a ON a.ID = t.Asset_ID
 LEFT JOIN Sites s ON s.ID = t.Site_ID
 LEFT JOIN Ticket_Categories c ON c.ID = t.Ticket_Category_ID
 LEFT JOIN Vendors v ON v.ID = t.Assigned_Vendor_ID
-LEFT JOIN Priorities p ON p.ID = t.Priority_ID
+LEFT JOIN Priority_Levels p ON p.ID = t.Priority_ID
 """

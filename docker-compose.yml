@@ -2,9 +2,17 @@ version: "3.8"
 
 services:
   helpdeskmcpserver:
-    image: bbeeken/helpdeskmcpcerver:latest
+
+    build: .
+
+    image: bbeeken/helpdeskmcpserver:latest
+
     env_file:
       - .env
+    environment:
+      ENABLE_RATE_LIMITING: ${ENABLE_RATE_LIMITING:-true}
+      ERROR_TRACKING_DSN: ${ERROR_TRACKING_DSN:-}
+    # Exposes the MCP server on port 8008
     ports:
       - "8008:8008"
     healthcheck:

@@ -1,14 +1,25 @@
-"""Utilities for listing ticket categories."""
+"""Deprecated - use :mod:`tools.reference_data` instead."""
 
+from __future__ import annotations
+
+import warnings
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-import logging
-
 from db.models import TicketCategory
+from typing import Any
 
-logger = logging.getLogger(__name__)
+from .reference_data import ReferenceDataManager
+
+_manager = ReferenceDataManager()
 
 
-async def list_categories(db: AsyncSession) -> list[TicketCategory]:
-    result = await db.execute(select(TicketCategory))
-    return list(result.scalars().all())
+async def list_categories(
+    db: AsyncSession,
+    filters: dict[str, Any] | None = None,
+    sort: list[str] | None = None,
+) -> list[TicketCategory]:
+    warnings.warn(
+        "list_categories is deprecated; use ReferenceDataManager.list_categories",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return await _manager.list_categories(db, filters=filters, sort=sort)

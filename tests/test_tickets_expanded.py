@@ -37,7 +37,7 @@ async def test_tickets_expanded_endpoint(client: AsyncClient):
         "Ticket_Contact_Email": "t@example.com",
     }
     created = await client.post("/ticket", json=payload)
-    assert created.status_code == 200
+    assert created.status_code == 201
     tid = created.json()["Ticket_ID"]
 
     resp = await client.get("/tickets/expanded")
@@ -46,20 +46,31 @@ async def test_tickets_expanded_endpoint(client: AsyncClient):
     assert data["total"] == 1
     item = data["items"][0]
     assert item["Ticket_ID"] == tid
-    assert "status_label" in item
-    assert "category_label" in item
+    assert "Ticket_Status_Label" in item
+    assert "Ticket_Category_Label" in item
     assert "Site_Label" in item
     assert "Site_ID" in item
+    assert "Closed_Date" in item
+    assert item["Closed_Date"] is None
+    assert "LastModified" in item
+    assert item["LastModified"] is None
 
 
 from schemas.ticket import TicketExpandedOut
 
 
 def test_ticket_expanded_schema():
-    data = {"Ticket_ID": 1, "Subject": "s", "Ticket_Status_Label": "Open", "Site_ID": 1}
+    data = {
+        "Ticket_ID": 1,
+        "Subject": "s",
+        "Ticket_Status_Label": "Open",
+        "Site_ID": 1,
+    }
     obj = TicketExpandedOut(**data)
     assert obj.Ticket_ID == 1
     assert obj.status_label == "Open"
+    assert obj.Closed_Date is None
+    assert obj.LastModified is None
 
 
 @pytest.mark.asyncio
@@ -83,7 +94,7 @@ async def test_ticket_filtering(client: AsyncClient):
         },
     )
 
-    resp = await client.get("/tickets", params={"Subject": "Foo"})
+    resp = await client.get("/tickets/expanded", params={"Subject": "Foo"})
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 1
@@ -129,3 +140,5 @@ def test_ticket_expanded_from_orm_blank_assigned_email():
     )
     obj = TicketExpandedOut.model_validate(ticket)
     assert obj.Assigned_Email is None
+    assert obj.Closed_Date is None
+    assert obj.LastModified is None

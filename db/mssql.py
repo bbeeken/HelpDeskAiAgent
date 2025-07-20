@@ -1,8 +1,16 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.pool import AsyncAdaptedQueuePool
 from config import DB_CONN_STRING
 import logging
 
-engine_args: dict[str, object] = {}
+
+engine_args: dict[str, object] = {
+    "pool_size": 10,
+    "max_overflow": 20,
+    "pool_pre_ping": True,
+    "pool_recycle": 3600,
+    "poolclass": AsyncAdaptedQueuePool,
+}
 
 if DB_CONN_STRING and DB_CONN_STRING.startswith("mssql"):
     if DB_CONN_STRING.startswith("mssql+pyodbc"):

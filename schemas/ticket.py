@@ -16,7 +16,7 @@ class TicketBase(BaseModel):
     Ticket_Category_ID: Optional[int] = None
     Assigned_Name: Optional[Annotated[str, Field(max_length=255)]] = None
     Assigned_Email: Optional[EmailStr] = None
-    Priority_ID: Optional[int] = None
+    Severity_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[Annotated[str, Field()]] = None
 
@@ -40,12 +40,28 @@ class TicketCreate(TicketBase):
     model_config = ConfigDict(
         str_max_length=None,
         json_schema_extra={
-            "example": {
-                "Subject": "Printer not working",
-                "Ticket_Body": "The office printer is jammed",
-                "Ticket_Contact_Name": "Jane Doe",
-                "Ticket_Contact_Email": "jane@example.com",
-            }
+            "examples": [
+                {
+                    "Subject": "Printer not working",
+                    "Ticket_Body": "The office printer is jammed and displays error code 34.",
+                    "Ticket_Contact_Name": "Jane Doe",
+                    "Ticket_Contact_Email": "jane@example.com",
+                    "Asset_ID": 5,
+                    "Site_ID": 2,
+                    "Ticket_Category_ID": 1,
+                },
+                {
+                    "Subject": "Website down",
+                    "Ticket_Body": "The main website returns a 500 Internal Server Error.",
+                    "Ticket_Contact_Name": "Alice Admin",
+                    "Ticket_Contact_Email": "alice@example.com",
+                    "Assigned_Name": "Bob Ops",
+                    "Assigned_Email": "bob.ops@example.com",
+                    "Ticket_Status_ID": 1,
+                    "Site_ID": 3,
+                    "Severity_ID": 3,
+                },
+            ]
         }
     )
 
@@ -67,7 +83,17 @@ class TicketUpdate(BaseModel):
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[str] = None
 
-    model_config = ConfigDict(extra="forbid", str_max_length=None)
+    model_config = ConfigDict(
+        extra="forbid",
+        str_max_length=None,
+        json_schema_extra={
+            "examples": [
+                {"Subject": "Updated"},
+                {"Assigned_Name": "Agent", "Ticket_Status_ID": 2},
+                {"Ticket_Status_ID": 3},
+            ]
+        },
+    )
 
 
 class TicketIn(BaseModel):
@@ -133,5 +159,7 @@ class TicketExpandedOut(TicketOut):
 
     Assigned_Vendor_Name: Optional[str] = None
     Priority_Level: Optional[str] = None
+    Closed_Date: Optional[datetime] = None
+    LastModified: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True, str_max_length=None)

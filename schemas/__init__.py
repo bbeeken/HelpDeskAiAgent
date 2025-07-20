@@ -5,7 +5,9 @@ from .ticket import (
     TicketOut,
     TicketExpandedOut,
 )
-from .search import TicketSearchOut
+from .search import TicketSearchOut, TicketSearchRequest
+from .search_params import TicketSearchParams
+from .filters import AdvancedFilters
 from .oncall import OnCallShiftOut
 from .paginated import PaginatedResponse
 from .basic import (
@@ -24,6 +26,9 @@ __all__ = [
     'TicketOut',
     'TicketExpandedOut',
     'TicketSearchOut',
+    'TicketSearchRequest',
+    'TicketSearchParams',
+    'AdvancedFilters',
     'OnCallShiftOut',
     'PaginatedResponse',
     'AssetOut',
@@ -42,6 +47,8 @@ from .analytics import (
     SiteOpenCount,
     UserOpenCount,
     WaitingOnUserCount,
+    TrendCount,
+    StaffTicketReport,
 )
 
 
