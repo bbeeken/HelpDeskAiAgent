@@ -20,7 +20,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.routes import get_db, register_routes
+from src.api.v1 import get_db, register_routes
 from config import ERROR_TRACKING_DSN
 from src.core.repositories.models import Base
 from src.infrastructure.database import engine

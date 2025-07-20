@@ -68,7 +68,7 @@ def test_create_ticket_db_failure(monkeypatch):
     def fail_create(db, obj):
         raise HTTPException(status_code=500, detail="fail")
 
-    monkeypatch.setattr("api.routes.create_ticket", fail_create)
+    monkeypatch.setattr("src.api.v1.tickets.create_ticket", fail_create)
     payload = {
         "Subject": "DB fail",
         "Ticket_Body": "body",
