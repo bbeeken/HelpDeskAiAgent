@@ -47,6 +47,7 @@ from schemas import (
     TicketUpdate,
     TicketExpandedOut,
     TicketSearchOut,
+    TicketSearchRequest,
 )
 from schemas.search_params import TicketSearchParams
 from schemas.basic import (
@@ -68,6 +69,19 @@ from schemas.analytics import (
 )
 from schemas.oncall import OnCallShiftOut
 from schemas.paginated import PaginatedResponse
+from schemas.agent_data import (
+    TicketFullContext,
+    SystemSnapshot,
+    UserCompleteProfile,
+    AdvancedQuery,
+    QueryResult,
+    OperationResult,
+    ValidationResult,
+)
+
+from tools.enhanced_context import EnhancedContextManager
+from tools.advanced_query import AdvancedQueryManager
+from tools.enhanced_operations import EnhancedOperationsManager
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +167,23 @@ async def search_tickets(
     return validated
 
 
+@ticket_router.post(
+    "/search",
+    response_model=List[TicketSearchOut],
+    operation_id="search_tickets_json",
+)
+async def search_tickets_json(
+    payload: TicketSearchRequest,
+    db: AsyncSession = Depends(get_db),
+) -> List[TicketSearchOut]:
+    return await search_tickets(
+        q=payload.q,
+        params=payload.params or TicketSearchParams(),
+        limit=payload.limit,
+        db=db,
+    )
+
+
 @ticket_router.get(
     "/{ticket_id}",
     response_model=TicketExpandedOut,
@@ -225,23 +256,22 @@ async def search_tickets_alias(
 
 
 @tickets_router.post(
-    "/search/json",
+
+    "/search",
     response_model=List[TicketSearchOut],
-    operation_id="search_tickets_json",
-    description="Search tickets with JSON 🔍",
-    tags=["tickets", "🔍"],
+    operation_id="search_tickets_alias_json",
 )
-async def search_tickets_json(
-    body: SearchBody,
+async def search_tickets_alias_json(
+    payload: TicketSearchRequest,
     db: AsyncSession = Depends(get_db),
 ) -> List[TicketSearchOut]:
-    results = await TicketManager().search_tickets(
-        db,
-        query=body.q,
-        limit=body.limit,
-        params=body.params,
+    return await search_tickets(
+        q=payload.q,
+        params=payload.params or TicketSearchParams(),
+        limit=payload.limit,
+        db=db,
     )
-    return [TicketSearchOut.model_validate(r) for r in results]
+
 
 
 @tickets_router.get(
@@ -600,6 +630,96 @@ async def ticket_trend_endpoint(
 # ─── On-Call Sub-Router ───────────────────────────────────────────────────────
 oncall_router = APIRouter(prefix="/oncall", tags=["oncall"])
 
+# ─── Agent Enhanced Router ─────────────────────────────────────────────────
+agent_router = APIRouter(prefix="/agent", tags=["agent-enhanced"])
+
+
+@agent_router.get(
+    "/ticket/{ticket_id}/full-context",
+    response_model=TicketFullContext,
+    tags=["agent-enhanced"],
+)
+async def get_ticket_full_context_endpoint(
+    ticket_id: int,
+    include_deep_history: bool = True,
+    db: AsyncSession = Depends(get_db),
+) -> TicketFullContext:
+    """🤖 Get comprehensive ticket context for agent analysis."""
+    context_manager = EnhancedContextManager(db)
+    return await context_manager.get_ticket_full_context(ticket_id, include_deep_history)
+
+
+@agent_router.get(
+    "/system/snapshot",
+    response_model=SystemSnapshot,
+    tags=["agent-enhanced"],
+)
+async def get_system_snapshot_endpoint(db: AsyncSession = Depends(get_db)) -> SystemSnapshot:
+    """🤖 Get complete system state snapshot for agent situational awareness."""
+    context_manager = EnhancedContextManager(db)
+    return await context_manager.get_system_snapshot()
+
+
+@agent_router.get(
+    "/user/{user_email}/complete-profile",
+    response_model=UserCompleteProfile,
+    tags=["agent-enhanced"],
+)
+async def get_user_complete_profile_endpoint(
+    user_email: str,
+    db: AsyncSession = Depends(get_db),
+) -> UserCompleteProfile:
+    """🤖 Get comprehensive user profile for agent analysis."""
+    context_manager = EnhancedContextManager(db)
+    return await context_manager.get_user_complete_profile(user_email)
+
+
+@agent_router.post(
+    "/tickets/query-advanced",
+    response_model=QueryResult,
+    tags=["agent-enhanced"],
+)
+async def query_tickets_advanced_endpoint(
+    query: AdvancedQuery,
+    db: AsyncSession = Depends(get_db),
+) -> QueryResult:
+    """🤖 Execute advanced ticket queries with rich results."""
+    query_manager = AdvancedQueryManager(db)
+    return await query_manager.query_tickets_advanced(query)
+
+
+@agent_router.post(
+    "/operation/validate",
+    response_model=ValidationResult,
+    tags=["agent-enhanced"],
+)
+async def validate_operation_endpoint(
+    operation_type: str,
+    target_id: int,
+    parameters: Dict[str, Any] = Body(...),
+    db: AsyncSession = Depends(get_db),
+) -> ValidationResult:
+    """🤖 Pre-validate operations before execution."""
+    ops_manager = EnhancedOperationsManager(db)
+    return await ops_manager.validate_operation_before_execution(operation_type, target_id, parameters)
+
+
+@agent_router.post(
+    "/ticket/{ticket_id}/execute-operation",
+    response_model=OperationResult,
+    tags=["agent-enhanced"],
+)
+async def execute_ticket_operation_endpoint(
+    ticket_id: int,
+    operation_type: str,
+    parameters: Dict[str, Any] = Body(...),
+    skip_validation: bool = False,
+    db: AsyncSession = Depends(get_db),
+) -> OperationResult:
+    """🤖 Execute ticket operations with rich result context."""
+    ops_manager = EnhancedOperationsManager(db)
+    return await ops_manager.execute_ticket_operation(operation_type, ticket_id, parameters, skip_validation)
+
 
 @oncall_router.get(
     "",
@@ -620,3 +740,4 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(lookup_router)
     app.include_router(analytics_router)
     app.include_router(oncall_router)
+    app.include_router(agent_router)

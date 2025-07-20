@@ -28,3 +28,28 @@ async def test_ticket_search_route_returns_results():
         assert resp.status_code == 200
         data = resp.json()
         assert any(item["Ticket_ID"] == tid for item in data)
+
+
+@pytest.mark.asyncio
+async def test_ticket_search_route_accepts_json():
+    async with SessionLocal() as db:
+        t = Ticket(
+            Subject="JsonQuery",
+            Ticket_Body="Testing json input",
+            Ticket_Contact_Name="Tester",
+            Ticket_Contact_Email="tester@example.com",
+            Created_Date=datetime.now(UTC),
+            Ticket_Status_ID=1,
+        )
+        await create_ticket(db, t)
+        tid = t.Ticket_ID
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.post(
+            "/ticket/search",
+            json={"q": "JsonQuery", "limit": 10},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert any(item["Ticket_ID"] == tid for item in data)
