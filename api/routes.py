@@ -428,11 +428,14 @@ lookup_router = APIRouter(prefix="/lookup", tags=["lookup"])
     operation_id="list_assets",
 )
 async def list_assets_endpoint(
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
     db: AsyncSession = Depends(get_db),
 ) -> List[AssetOut]:
-    assets = await list_assets(db, skip, limit)
+    filters = extract_filters(request)
+    sort = request.query_params.getlist("sort") or None
+    assets = await list_assets(db, skip, limit, filters=filters or None, sort=sort)
     return [AssetOut.model_validate(a) for a in assets]
 
 
@@ -454,11 +457,14 @@ async def get_asset_endpoint(asset_id: int, db: AsyncSession = Depends(get_db)) 
     operation_id="list_vendors",
 )
 async def list_vendors_endpoint(
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
     db: AsyncSession = Depends(get_db),
 ) -> List[VendorOut]:
-    vs = await list_vendors(db, skip, limit)
+    filters = extract_filters(request)
+    sort = request.query_params.getlist("sort") or None
+    vs = await list_vendors(db, skip, limit, filters=filters or None, sort=sort)
     return [VendorOut.model_validate(v) for v in vs]
 
 
@@ -480,11 +486,14 @@ async def get_vendor_endpoint(vendor_id: int, db: AsyncSession = Depends(get_db)
     operation_id="list_sites",
 )
 async def list_sites_endpoint(
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1),
     db: AsyncSession = Depends(get_db),
 ) -> List[SiteOut]:
-    ss = await list_sites(db, skip, limit)
+    filters = extract_filters(request)
+    sort = request.query_params.getlist("sort") or None
+    ss = await list_sites(db, skip, limit, filters=filters or None, sort=sort)
     return [SiteOut.model_validate(s) for s in ss]
 
 
@@ -505,8 +514,12 @@ async def get_site_endpoint(site_id: int, db: AsyncSession = Depends(get_db)) ->
     response_model=List[TicketCategoryOut],
     operation_id="list_categories",
 )
-async def list_categories_endpoint(db: AsyncSession = Depends(get_db)) -> List[TicketCategoryOut]:
-    cats = await list_categories(db)
+async def list_categories_endpoint(
+    request: Request, db: AsyncSession = Depends(get_db)
+) -> List[TicketCategoryOut]:
+    filters = extract_filters(request)
+    sort = request.query_params.getlist("sort") or None
+    cats = await list_categories(db, filters=filters or None, sort=sort)
     return [TicketCategoryOut.model_validate(c) for c in cats]
 
 
@@ -515,8 +528,12 @@ async def list_categories_endpoint(db: AsyncSession = Depends(get_db)) -> List[T
     response_model=List[TicketStatusOut],
     operation_id="list_statuses",
 )
-async def list_statuses_endpoint(db: AsyncSession = Depends(get_db)) -> List[TicketStatusOut]:
-    stats = await list_statuses(db)
+async def list_statuses_endpoint(
+    request: Request, db: AsyncSession = Depends(get_db)
+) -> List[TicketStatusOut]:
+    filters = extract_filters(request)
+    sort = request.query_params.getlist("sort") or None
+    stats = await list_statuses(db, filters=filters or None, sort=sort)
     return [TicketStatusOut.model_validate(s) for s in stats]
 
 

@@ -74,7 +74,16 @@ ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="l_assets",
         description="List assets",
-        inputSchema={"type": "object", "properties": {"skip": {"type": "integer"}, "limit": {"type": "integer"}}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": [],
+        },
         _implementation=_db_wrapper(asset_tools.list_assets),
     ),
     Tool(
@@ -86,7 +95,16 @@ ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="l_vends",
         description="List vendors",
-        inputSchema={"type": "object", "properties": {"skip": {"type": "integer"}, "limit": {"type": "integer"}}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": [],
+        },
         _implementation=_db_wrapper(vendor_tools.list_vendors),
     ),
     Tool(
@@ -98,19 +116,42 @@ ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="l_sites",
         description="List sites",
-        inputSchema={"type": "object", "properties": {"skip": {"type": "integer"}, "limit": {"type": "integer"}}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": [],
+        },
         _implementation=_db_wrapper(site_tools.list_sites),
     ),
     Tool(
         name="l_cats",
         description="List ticket categories",
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": [],
+        },
         _implementation=_db_wrapper(category_tools.list_categories),
     ),
     Tool(
         name="l_status",
         description="List ticket statuses",
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": [],
+        },
         _implementation=_db_wrapper(status_tools.list_statuses),
     ),
     Tool(
@@ -127,6 +168,8 @@ ENHANCED_TOOLS: List[Tool] = [
             "properties": {
                 "skip": {"type": "integer"},
                 "limit": {"type": "integer"},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
             },
             "required": [],
         },
@@ -135,7 +178,15 @@ ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="s_tkts",
         description="Search tickets",
-        inputSchema={"type": "object", "properties": {"query": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["query"]},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "limit": {"type": "integer"},
+                "params": {"type": "object"},
+            },
+            "required": ["query"],
+        },
         _implementation=_db_wrapper(ticket_tools.search_tickets_expanded),
     ),
     Tool(
@@ -280,6 +331,8 @@ ENHANCED_TOOLS: List[Tool] = [
             "type": "object",
             "properties": {
                 "sla_days": {"type": "integer"},
+                "filters": {"type": "object"},
+                "status_id": {"oneOf": [{"type": "integer"}, {"type": "array", "items": {"type": "integer"}}]},
             },
             "required": [],
         },
@@ -300,7 +353,16 @@ ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="oc_sched",
         description="List on-call schedule",
-        inputSchema={"type": "object", "properties": {"skip": {"type": "integer"}, "limit": {"type": "integer"}}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": [],
+        },
         _implementation=_db_wrapper(oncall_tools.list_oncall_schedule),
     ),
     Tool(
