@@ -34,8 +34,7 @@ import uuid
 import asyncio
 from typing import List, Dict, Any
 
-# Configure root logger so messages are output when running with uvicorn
-logging.basicConfig(level=logging.INFO)
+# Configure logger for this module
 logger = logging.getLogger(__name__)
 
 # Correlation ID context variable for log records
