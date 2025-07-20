@@ -2,6 +2,8 @@ import os
 
 # Ensure Pydantic forward references work under Python 3.12
 os.environ.setdefault("PYDANTIC_DISABLE_STD_TYPES_SHIM", "1")
+# Indicate that tests are running so caching can be disabled
+os.environ.setdefault("APP_ENV", "test")
 
 import typing
 import inspect

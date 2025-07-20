@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime, timedelta, timezone, date as date_cls
 from typing import Any, Dict, List, Optional
+import os
 import time
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,6 +56,9 @@ class TrendAnalysis:
 _analytics_cache: dict[str, tuple[float, Any]] = {}
 _cache_ttl = 300  # 5 minutes
 
+# Disable caching when running tests to avoid stale data issues
+_cache_enabled = os.getenv("APP_ENV") != "test"
+
 
 async def tickets_by_status(
     db: AsyncSession,
@@ -62,7 +66,7 @@ async def tickets_by_status(
     """Return counts of tickets grouped by status with caching."""
     cache_key = "tickets_by_status"
 
-    if cache_key in _analytics_cache:
+    if _cache_enabled and cache_key in _analytics_cache:
         cached_time, result = _analytics_cache[cache_key]
         if time.time() - cached_time < _cache_ttl:
             return OperationResult(success=True, data=result)
@@ -88,7 +92,8 @@ async def tickets_by_status(
             for row in result.all()
         ]
 
-        _analytics_cache[cache_key] = (time.time(), status_counts)
+        if _cache_enabled:
+            _analytics_cache[cache_key] = (time.time(), status_counts)
         return OperationResult(success=True, data=status_counts)
     except Exception as e:
         logger.exception("Failed to get tickets by status")
