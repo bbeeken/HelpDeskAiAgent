@@ -3,7 +3,7 @@ from datetime import datetime, UTC
 
 from src.infrastructure.database import SessionLocal
 from src.core.repositories.models import Ticket
-from src.core.services.ticket_management import TicketManager, TicketTools
+from src.core.services.ticket_management import TicketManager
 from src.shared.schemas.filters import AdvancedFilters
 
 
@@ -62,4 +62,3 @@ async def test_multi_value_and_bool_filter():
         res = await TicketManager().list_tickets(db, filters=filters)
         ids = {t.Ticket_ID for t in res}
         assert ids == {t1.Ticket_ID}
-
