@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from datetime import datetime, UTC
 from typing import Any, Dict, List
+from collections import OrderedDict
 
 import sentry_sdk
 from fastapi import Depends, FastAPI, Request
@@ -44,7 +45,31 @@ _correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="-")
 START_TIME = datetime.now(UTC)
 
 # Cache for JSON schema validators keyed by serialized schema
-_validator_cache: Dict[str, Draft7Validator] = {}
+
+class LRUValidatorCache:
+    """Simple LRU cache for JSON schema validators."""
+
+    def __init__(self, maxsize: int = 50) -> None:
+        self.maxsize = maxsize
+        self._data: "OrderedDict[str, Draft7Validator]" = OrderedDict()
+
+    def get(self, key: str) -> Draft7Validator | None:
+        validator = self._data.get(key)
+        if validator is not None:
+            # Move to end to mark as recently used
+            self._data.move_to_end(key)
+        return validator
+
+    def set(self, key: str, validator: Draft7Validator) -> None:
+        if key in self._data:
+            self._data.move_to_end(key)
+        self._data[key] = validator
+        if len(self._data) > self.maxsize:
+            # Remove least recently used entry
+            self._data.popitem(last=False)
+
+
+_validator_cache = LRUValidatorCache(maxsize=50)
 
 # Disable caching during tests to avoid interference
 _validator_cache_enabled = os.getenv("APP_ENV") != "test"
@@ -269,8 +294,10 @@ def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
         validator = _validator_cache.get(key)
     if validator is None:
         validator = Draft7Validator(schema)
+
         if _validator_cache_enabled:
             _validator_cache[key] = validator
+
 
     async def endpoint(request: Request):
         try:
