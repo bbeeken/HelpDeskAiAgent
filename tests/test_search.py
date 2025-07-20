@@ -1,6 +1,6 @@
 import os
-import asyncio
 import pytest
+import pytest_asyncio
 from src.core.repositories.models import Base, Ticket
 from src.infrastructure.database import engine, SessionLocal
 from datetime import datetime, UTC
@@ -19,7 +19,10 @@ async def _setup_models():
         await conn.exec_driver_sql("DROP VIEW IF EXISTS V_Ticket_Master_Expanded")
         await conn.exec_driver_sql(CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL)
 
-asyncio.get_event_loop().run_until_complete(_setup_models())
+
+@pytest_asyncio.fixture(scope="module", autouse=True)
+async def setup_models():
+    await _setup_models()
 
 
 @pytest.mark.asyncio
