@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import uuid
+import json
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from datetime import datetime, UTC
@@ -42,6 +43,9 @@ _correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="-")
 
 # Record startup time to report uptime
 START_TIME = datetime.now(UTC)
+
+# Cache for JSON schema validators keyed by serialized schema
+_validator_cache: Dict[str, Draft7Validator] = {}
 
 
 class CorrelationIdFilter(logging.Filter):
@@ -113,11 +117,17 @@ if os.getenv("ENABLE_RATE_LIMITING", "true").lower() not in {"0", "false", "no"}
 @app.middleware("http")
 async def add_correlation_id(request: Request, call_next):
     """Add correlation ID to each request for tracing."""
-    correlation_id = request.headers.get("X-Request-ID", uuid.uuid4().hex)
+    correlation_id = (
+        request.headers.get("X-Request-ID")
+        or request.headers.get("X-Correlation-ID")
+        or uuid.uuid4().hex
+    )
+    request.state.correlation_id = correlation_id
     token = _correlation_id_var.set(correlation_id)
     try:
         response = await call_next(request)
         response.headers["X-Request-ID"] = correlation_id
+        response.headers["X-Correlation-ID"] = correlation_id
         return response
     finally:
         _correlation_id_var.reset(token)
@@ -248,7 +258,11 @@ async def handle_unexpected(request: Request, exc: Exception):
 # MCP Tools Integration
 def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
     """Build a FastAPI endpoint from an MCP tool."""
-    validator = Draft7Validator(schema)
+    key = json.dumps(schema, sort_keys=True)
+    validator = _validator_cache.get(key)
+    if validator is None:
+        validator = Draft7Validator(schema)
+        _validator_cache[key] = validator
 
     async def endpoint(request: Request):
         try:

@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 from src.shared.schemas.search_params import TicketSearchParams
 from src.shared.schemas.filters import AdvancedFilters, apply_advanced_filters
 from pydantic import BaseModel
-from sqlalchemy import select, or_, and_, func
+from sqlalchemy import select, or_, and_, func, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.shared.exceptions import DatabaseError
@@ -150,37 +150,41 @@ class TicketManager:
     ) -> List[dict[str, Any]]:
         like = f"%{query}%"
         stmt = select(VTicketMasterExpanded).filter(
-            VTicketMasterExpanded.Subject.ilike(like)
-            | VTicketMasterExpanded.Ticket_Body.ilike(like)
+            and_(
+                or_(
+                    VTicketMasterExpanded.Subject.ilike(like),
+                    VTicketMasterExpanded.Ticket_Body.ilike(like),
+                ),
+                func.length(VTicketMasterExpanded.Ticket_Body) <= 2000,
+            )
         )
         filters = params.model_dump(exclude_none=True) if params else {}
         sort_value = filters.pop("sort", None)
         for key, value in filters.items():
             if hasattr(VTicketMasterExpanded, key):
                 col = getattr(VTicketMasterExpanded, key)
-                stmt = stmt.filter(
-                    col.ilike(f"%{value}%") if isinstance(value, str) else col == value
-                )  # noqa: E501
+                if isinstance(value, str):
+                    stmt = stmt.filter(
+                        col.ilike(text(":value")).params(value=f"%{value}%")
+                    )
+                else:
+                    stmt = stmt.filter(col == value)
         if sort_value == "oldest":
             stmt = stmt.order_by(VTicketMasterExpanded.Created_Date.asc())
         else:
             stmt = stmt.order_by(VTicketMasterExpanded.Created_Date.desc())
         stmt = stmt.limit(limit)
         result = await db.execute(stmt)
-        summaries: list[dict[str, Any]] = []
-        for row in result.scalars().all():
-            body = row.Ticket_Body or ""
-            if len(body) > 2000:
-                continue
-            summaries.append(
-                {
-                    "Ticket_ID": row.Ticket_ID,
-                    "Subject": row.Subject,
-                    "body_preview": body[:200],
-                    "status_label": row.Ticket_Status_Label,
-                    "priority_level": row.Priority_Level,
-                }
-            )
+        summaries: list[dict[str, Any]] = [
+            {
+                "Ticket_ID": row.Ticket_ID,
+                "Subject": row.Subject,
+                "body_preview": (row.Ticket_Body or "")[:200],
+                "status_label": row.Ticket_Status_Label,
+                "priority_level": row.Priority_Level,
+            }
+            for row in result.scalars().all()
+        ]
         return summaries
 
     async def get_tickets_by_user(
