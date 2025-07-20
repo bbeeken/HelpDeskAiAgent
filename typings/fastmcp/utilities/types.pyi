@@ -1,2 +1,0 @@
-class TextContent:
-    text: str
