@@ -1,4 +1,9 @@
 import os
+
+os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
+
+import asyncio
+
 import pytest
 import pytest_asyncio
 from src.core.repositories.models import Base, Ticket
@@ -9,8 +14,6 @@ from src.shared.schemas.search_params import TicketSearchParams
 from src.core.repositories.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
 from httpx import AsyncClient, ASGITransport
 from main import app
-
-os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
 
 
 async def _setup_models():

@@ -1,5 +1,7 @@
-import pytest_asyncio
 import os
+os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
+
+import pytest_asyncio
 from datetime import datetime, timedelta, UTC
 
 import pytest
@@ -8,8 +10,6 @@ from main import app
 from src.core.repositories.models import Ticket, TicketStatus
 from src.infrastructure.database import SessionLocal
 from src.core.services.ticket_management import TicketManager
-
-os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
 
 
 async def fake_create(*args, **kwargs):
