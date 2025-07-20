@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import html
+import re
 from typing import Any, Sequence, Dict, List, Optional
 from dataclasses import dataclass
 from enum import Enum
@@ -141,11 +143,13 @@ class TicketManager:
         result = await db.execute(query)
         return result.scalars().all()
 
+
     def _escape_like_pattern(self, value: str) -> str:
         """Escape LIKE wildcard characters in a filter value."""
         return (
             value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         )
+
 
     async def search_tickets(
         self,
@@ -154,7 +158,10 @@ class TicketManager:
         limit: int = 10,
         params: TicketSearchParams | None = None,
     ) -> List[dict[str, Any]]:
-        like = f"%{query}%"
+        sanitized = self._sanitize_search_input(query)
+        if not sanitized:
+            return []
+        like = f"%{sanitized}%"
         stmt = select(VTicketMasterExpanded).filter(
             and_(
                 or_(
