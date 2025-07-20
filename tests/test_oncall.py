@@ -37,7 +37,9 @@ async def test_oncall_schedule_filters_and_sort():
     s2 = await _add_shift("y@example.com", now + timedelta(hours=3), now + timedelta(hours=4))
 
     async with SessionLocal() as db:
-        filtered = await UserManager().list_oncall_schedule(db, filters={"user_email": "y@example.com"})
+        filtered = await UserManager().list_oncall_schedule(
+            db, filters={"user_email": "y@example.com"}
+        )
         assert [s.user_email for s in filtered] == ["y@example.com"]
 
         ordered = await UserManager().list_oncall_schedule(db, sort=["-start_time"])

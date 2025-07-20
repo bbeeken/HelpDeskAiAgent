@@ -7,8 +7,8 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from datetime import datetime, UTC
 from typing import Any, Dict, List
+from collections import OrderedDict
 
-import jsonschema
 import sentry_sdk
 from fastapi import Depends, FastAPI, Request
 from fastapi.encoders import jsonable_encoder
@@ -45,7 +45,34 @@ _correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="-")
 START_TIME = datetime.now(UTC)
 
 # Cache for JSON schema validators keyed by serialized schema
-_validator_cache: Dict[str, Draft7Validator] = {}
+
+class LRUValidatorCache:
+    """Simple LRU cache for JSON schema validators."""
+
+    def __init__(self, maxsize: int = 50) -> None:
+        self.maxsize = maxsize
+        self._data: "OrderedDict[str, Draft7Validator]" = OrderedDict()
+
+    def get(self, key: str) -> Draft7Validator | None:
+        validator = self._data.get(key)
+        if validator is not None:
+            # Move to end to mark as recently used
+            self._data.move_to_end(key)
+        return validator
+
+    def set(self, key: str, validator: Draft7Validator) -> None:
+        if key in self._data:
+            self._data.move_to_end(key)
+        self._data[key] = validator
+        if len(self._data) > self.maxsize:
+            # Remove least recently used entry
+            self._data.popitem(last=False)
+
+
+_validator_cache = LRUValidatorCache(maxsize=50)
+
+# Disable caching during tests to avoid interference
+_validator_cache_enabled = os.getenv("APP_ENV") != "test"
 
 
 class CorrelationIdFilter(logging.Filter):
@@ -65,7 +92,7 @@ async def lifespan(app: FastAPI):
         format="%(asctime)s - %(levelname)s - %(correlation_id)s - %(name)s - %(message)s",
     )
     logging.getLogger().addFilter(CorrelationIdFilter())
-    
+
     # Initialize Sentry if configured
     if ERROR_TRACKING_DSN:
         sentry_sdk.init(dsn=ERROR_TRACKING_DSN)
@@ -73,11 +100,11 @@ async def lifespan(app: FastAPI):
 
     # Set up rate limiter
     app.state.limiter = limiter
-    
+
     # Record actual startup time
     global START_TIME
     START_TIME = datetime.now(UTC)
-    
+
     # Initialize database
     try:
         async with engine.begin() as conn:
@@ -93,7 +120,7 @@ async def lifespan(app: FastAPI):
     logger.info("MCP server initialized")
 
     yield
-    
+
     # Cleanup
     try:
         await engine.dispose()
@@ -169,9 +196,9 @@ def custom_openapi() -> Dict[str, Any]:
     """Return OpenAPI schema with array parameters expanded."""
     if app.openapi_schema:
         return app.openapi_schema
-        
+
     schema = get_openapi(title=app.title, version=APP_VERSION, routes=app.routes)
-    
+
     # Fix array parameter schemas
     for path_item in schema.get("paths", {}).values():
         for operation in path_item.values():
@@ -187,7 +214,7 @@ def custom_openapi() -> Dict[str, Any]:
                             "items": array_schema["items"],
                             "title": s.get("title", param["name"]),
                         }
-    
+
     app.openapi_schema = schema
     return schema
 
@@ -244,8 +271,11 @@ async def handle_database(request: Request, exc: DatabaseError):
 @app.exception_handler(Exception)
 async def handle_unexpected(request: Request, exc: Exception):
     """Convert unexpected errors to JSON with traceback logging."""
-    logger.exception("Unhandled exception during request to %s %s", 
-                    request.method, request.url.path)
+    logger.exception(
+        "Unhandled exception during request to %s %s",
+        request.method,
+        request.url.path,
+    )
     resp = ErrorResponse(
         error_code="UNEXPECTED_ERROR",
         message=str(exc) or "Internal server error",
@@ -259,41 +289,46 @@ async def handle_unexpected(request: Request, exc: Exception):
 def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
     """Build a FastAPI endpoint from an MCP tool."""
     key = json.dumps(schema, sort_keys=True)
-    validator = _validator_cache.get(key)
+    validator = None
+    if _validator_cache_enabled:
+        validator = _validator_cache.get(key)
     if validator is None:
         validator = Draft7Validator(schema)
-        _validator_cache[key] = validator
+
+        if _validator_cache_enabled:
+            _validator_cache[key] = validator
+
 
     async def endpoint(request: Request):
         try:
             data = await request.json()
         except Exception as e:
             return JSONResponse(
-                status_code=422, 
+                status_code=422,
                 content={"detail": f"Invalid JSON: {str(e)}"}
             )
-        
+
         # Validate allowed parameters
         allowed = set(schema.get("properties", {}).keys())
         extra = set(data) - allowed
         if extra:
             return JSONResponse(
-                status_code=422, 
+                status_code=422,
                 content={"detail": f"Unexpected parameters: {', '.join(extra)}"}
             )
-        
+
         # Validate schema
         try:
             validator.validate(data)
         except JsonSchemaError as exc:
             return JSONResponse(
-                status_code=422, 
+                status_code=422,
                 content={"detail": f"Schema validation error: {exc.message}"}
             )
 
         # Filter to only allowed parameters
         filtered = {k: data[k] for k in allowed if k in data}
-        
+
         try:
             return await tool._implementation(**filtered)
         except Exception as e:
@@ -313,7 +348,7 @@ logger.info("Enhanced MCP server active with %d tools", len(TOOLS))
 for tool in TOOLS:
     schema = tool.inputSchema if isinstance(tool.inputSchema, dict) else {}
     endpoint_func = build_mcp_endpoint(tool, schema)
-    
+
     app.post(
         f"/{tool.name}",
         operation_id=tool.name,

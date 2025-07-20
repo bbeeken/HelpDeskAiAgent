@@ -67,7 +67,9 @@ async def test_get_tickets_by_user_function():
         assert ids == {t1.Ticket_ID, t2.Ticket_ID, t3.Ticket_ID, t4.Ticket_ID}
         limited = await TicketManager().get_tickets_by_user(db, "user@example.com", skip=1, limit=1)
         assert len(limited) == 1
-        closed_only = await TicketManager().get_tickets_by_user(db, "user@example.com", status="closed")
+        closed_only = await TicketManager().get_tickets_by_user(
+            db, "user@example.com", status="closed"
+        )
         ids = {t.Ticket_ID for t in closed_only}
         assert ids == {t4.Ticket_ID}
 

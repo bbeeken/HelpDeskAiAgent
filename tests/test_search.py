@@ -56,3 +56,38 @@ async def test_search_endpoint_skips_invalid_ticket():
         resp = await ac.get("/tickets/search", params={"q": "Bad"})
         assert resp.status_code == 200
         assert resp.json() == []
+
+
+@pytest.mark.asyncio
+async def test_search_filters_escape_special_chars():
+    async with SessionLocal() as db:
+        t1 = Ticket(
+            Subject="100% guaranteed",
+            Ticket_Body="a",
+            Created_Date=datetime.now(UTC),
+        )
+        t2 = Ticket(
+            Subject="path\\to\\file",
+            Ticket_Body="b",
+            Created_Date=datetime.now(UTC),
+        )
+        t3 = Ticket(
+            Subject="under_score_test",
+            Ticket_Body="c",
+            Created_Date=datetime.now(UTC),
+        )
+        await TicketManager().create_ticket(db, t1)
+        await TicketManager().create_ticket(db, t2)
+        await TicketManager().create_ticket(db, t3)
+
+        params = TicketSearchParams(Subject="100% guaranteed")
+        res = await TicketManager().search_tickets(db, "", params=params)
+        assert any(r["Ticket_ID"] == t1.Ticket_ID for r in res)
+
+        params = TicketSearchParams(Subject="path\\to\\file")
+        res = await TicketManager().search_tickets(db, "", params=params)
+        assert any(r["Ticket_ID"] == t2.Ticket_ID for r in res)
+
+        params = TicketSearchParams(Subject="under_score_test")
+        res = await TicketManager().search_tickets(db, "", params=params)
+        assert any(r["Ticket_ID"] == t3.Ticket_ID for r in res)
