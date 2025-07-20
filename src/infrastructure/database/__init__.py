@@ -6,11 +6,11 @@ from config import DB_CONN_STRING
 
 def get_engine_args(conn_string: str) -> dict[str, Any]:
     base_args = {
-        "pool_size": 10,
-        "max_overflow": 20,
         "pool_pre_ping": True,
         "pool_recycle": 3600,
     }
+    if not conn_string.startswith("sqlite"):
+        base_args.update({"pool_size": 10, "max_overflow": 20})
 
     if conn_string.startswith("mssql"):
         if conn_string.startswith("mssql+pyodbc"):

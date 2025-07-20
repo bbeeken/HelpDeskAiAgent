@@ -5,6 +5,9 @@ import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+from mcp.server import Server
+from .mcp_server import Tool
+
 
 @dataclass
 class DatabaseConfig:
@@ -128,3 +131,306 @@ def set_config(config: MCPServerConfig) -> None:
     global _config
     config.validate()
     _config = config
+
+
+# ---------------------------------------------------------------------------
+# MCP server tool configuration
+# ---------------------------------------------------------------------------
+
+from datetime import datetime
+from typing import Any, Dict as _Dict
+import json
+from mcp import types
+
+from src.infrastructure import database as db
+from src.core.services.ticket_management import TicketManager
+from src.core.services.reference_data import ReferenceDataManager
+from src.core.services.analytics_reporting import (
+    open_tickets_by_site,
+    open_tickets_by_user,
+    tickets_by_status,
+    ticket_trend,
+    tickets_waiting_on_user,
+    sla_breaches,
+    get_staff_ticket_report,
+)
+from src.core.services.enhanced_context import EnhancedContextManager
+
+
+async def _g_ticket(ticket_id: int) -> _Dict[str, Any] | None:
+    async with db.SessionLocal() as db:
+        ticket = await TicketManager().get_ticket(db, ticket_id)
+        return {"ticket_id": ticket.Ticket_ID} if ticket else None
+
+
+async def _l_tkts(limit: int = 10) -> list[_Dict[str, Any]]:
+    async with db.SessionLocal() as db:
+        tickets = await TicketManager().list_tickets(db, limit=limit)
+        return [{"ticket_id": t.Ticket_ID} for t in tickets]
+
+
+async def _tickets_by_user(
+    identifier: str,
+    skip: int = 0,
+    limit: int = 100,
+    status: str | None = None,
+    filters: _Dict[str, Any] | None = None,
+) -> list[Any]:
+    async with db.SessionLocal() as db:
+        return await TicketManager().get_tickets_by_user(
+            db,
+            identifier,
+            skip=skip,
+            limit=limit,
+            status=status,
+            filters=filters,
+        )
+
+
+async def _open_by_site() -> list[Any]:
+    async with db.SessionLocal() as db:
+        return await open_tickets_by_site(db)
+
+
+async def _open_by_assigned_user(filters: _Dict[str, Any] | None = None) -> list[Any]:
+    async with db.SessionLocal() as db:
+        return await open_tickets_by_user(db, filters)
+
+
+async def _tickets_status() -> list[Any]:
+    async with db.SessionLocal() as db:
+        result = await tickets_by_status(db)
+        return result.data if getattr(result, "success", True) else []
+
+
+async def _ticket_trend(days: int = 7) -> list[Any]:
+    async with db.SessionLocal() as db:
+        return await ticket_trend(db, days)
+
+
+async def _waiting_on_user() -> list[Any]:
+    async with db.SessionLocal() as db:
+        return await tickets_waiting_on_user(db)
+
+
+async def _sla_breaches(days: int = 2) -> int:
+    async with db.SessionLocal() as db:
+        return await sla_breaches(db, sla_days=days)
+
+
+async def _staff_report(
+    assigned_email: str,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> Any:
+    async with db.SessionLocal() as db:
+        return await get_staff_ticket_report(
+            db,
+            assigned_email,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+
+async def _tickets_by_timeframe(
+    status: str | None = None,
+    days: int = 7,
+    limit: int = 10,
+) -> list[Any]:
+    async with db.SessionLocal() as db:
+        return await TicketManager().get_tickets_by_timeframe(
+            db,
+            status=status,
+            days=days,
+            limit=limit,
+        )
+
+
+async def _search_tickets(query: str, limit: int = 10) -> list[Any]:
+    async with db.SessionLocal() as db:
+        return await TicketManager().search_tickets(db, query, limit=limit)
+
+
+async def _list_sites(limit: int = 10) -> list[Any]:
+    async with db.SessionLocal() as db:
+        return await ReferenceDataManager().list_sites(db, limit=limit)
+
+
+async def _list_assets(limit: int = 10) -> list[Any]:
+    async with db.SessionLocal() as db:
+        return await ReferenceDataManager().list_assets(db, limit=limit)
+
+
+async def _list_vendors(limit: int = 10) -> list[Any]:
+    async with db.SessionLocal() as db:
+        return await ReferenceDataManager().list_vendors(db, limit=limit)
+
+
+async def _list_categories() -> list[Any]:
+    async with db.SessionLocal() as db:
+        return await ReferenceDataManager().list_categories(db)
+
+
+async def _ticket_full_context(ticket_id: int) -> Any:
+    async with db.SessionLocal() as db:
+        mgr = EnhancedContextManager(db)
+        return await mgr.get_ticket_full_context(ticket_id)
+
+
+async def _system_snapshot() -> Any:
+    async with db.SessionLocal() as db:
+        mgr = EnhancedContextManager(db)
+        return await mgr.get_system_snapshot()
+
+
+ENHANCED_TOOLS: List[Tool] = [
+    Tool(
+        name="g_ticket",
+        description="Get a ticket by ID",
+        inputSchema={
+            "type": "object",
+            "properties": {"ticket_id": {"type": "integer"}},
+            "required": ["ticket_id"],
+        },
+        _implementation=_g_ticket,
+    ),
+    Tool(
+        name="l_tkts",
+        description="List recent tickets",
+        inputSchema={
+            "type": "object",
+            "properties": {"limit": {"type": "integer"}},
+        },
+        _implementation=_l_tkts,
+    ),
+    Tool(
+        name="tickets_by_user",
+        description="List tickets for a user",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "identifier": {"type": "string"},
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+                "status": {"type": "string"},
+                "filters": {"type": "object"},
+            },
+            "required": ["identifier"],
+        },
+        _implementation=_tickets_by_user,
+    ),
+    Tool(
+        name="by_user",
+        description="Alias of tickets_by_user",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "identifier": {"type": "string"},
+                "skip": {"type": "integer"},
+                "limit": {"type": "integer"},
+                "status": {"type": "string"},
+                "filters": {"type": "object"},
+            },
+            "required": ["identifier"],
+        },
+        _implementation=_tickets_by_user,
+    ),
+    Tool("open_by_site", "Open tickets by site", {}, _open_by_site),
+    Tool(
+        "open_by_assigned_user",
+        "Open tickets by technician",
+        {"type": "object", "properties": {"filters": {"type": "object"}}},
+        _open_by_assigned_user,
+    ),
+    Tool("tickets_by_status", "Ticket counts by status", {}, _tickets_status),
+    Tool(
+        "ticket_trend",
+        "Ticket trend information",
+        {"type": "object", "properties": {"days": {"type": "integer"}}},
+        _ticket_trend,
+    ),
+    Tool("waiting_on_user", "Tickets waiting on user", {}, _waiting_on_user),
+    Tool(
+        "sla_breaches",
+        "Count of SLA breaches",
+        {"type": "object", "properties": {"days": {"type": "integer"}}},
+        _sla_breaches,
+    ),
+    Tool(
+        "staff_report",
+        "Technician ticket report",
+        {
+            "type": "object",
+            "properties": {
+                "assigned_email": {"type": "string"},
+                "start_date": {"type": "string", "format": "date-time"},
+                "end_date": {"type": "string", "format": "date-time"},
+            },
+            "required": ["assigned_email"],
+        },
+        _staff_report,
+    ),
+    Tool(
+        "tickets_by_timeframe",
+        "Tickets by status and age",
+        {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string"},
+                "days": {"type": "integer"},
+                "limit": {"type": "integer"},
+            },
+        },
+        _tickets_by_timeframe,
+    ),
+    Tool(
+        "search_tickets",
+        "Search tickets",
+        {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "limit": {"type": "integer"},
+            },
+            "required": ["query"],
+        },
+        _search_tickets,
+    ),
+    Tool("list_sites", "List sites", {"type": "object", "properties": {"limit": {"type": "integer"}}}, _list_sites),
+    Tool("list_assets", "List assets", {"type": "object", "properties": {"limit": {"type": "integer"}}}, _list_assets),
+    Tool("list_vendors", "List vendors", {"type": "object", "properties": {"limit": {"type": "integer"}}}, _list_vendors),
+    Tool("list_categories", "List categories", {}, _list_categories),
+    Tool("get_ticket_full_context", "Full context for a ticket", {"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]}, _ticket_full_context),
+    Tool("get_system_snapshot", "System snapshot", {}, _system_snapshot),
+]
+
+
+def create_server() -> Server:
+    """Instantiate a Server and register tools."""
+
+    server = Server("helpdesk-ai-agent")
+
+    @server.list_tools()
+    async def _list_tools() -> List[dict[str, Any]]:
+        return [
+            {
+                "name": t.name,
+                "description": t.description,
+                "inputSchema": t.inputSchema,
+            }
+            for t in ENHANCED_TOOLS
+        ]
+
+    @server.call_tool()
+    async def _call_tool(name: str, arguments: dict | None) -> list:
+        tool = next((t for t in ENHANCED_TOOLS if t.name == name), None)
+        if not tool:
+            raise ValueError(f"Unknown tool: {name}")
+        args = arguments or {}
+        result = await tool._implementation(**args)
+        return [types.TextContent(type="text", text=json.dumps(result, default=str))]
+
+    return server
+
+
+__all__ = ["MCPServerConfig", "get_config", "set_config", "ENHANCED_TOOLS", "create_server"]
