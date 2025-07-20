@@ -1,431 +1,130 @@
-from __future__ import annotations
+"""
+Configuration management for the MCP server.
+"""
+import os
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 
 
-from typing import Any, Awaitable, Callable, Dict, Iterable, List
-
-import json
-import anyio
-import logging
-from mcp.server.stdio import stdio_server
-
-from mcp.server import Server
-from mcp import types
-
-from src.infrastructure.database import SessionLocal
-from .mcp_server import Tool
-from src.shared.exceptions import ValidationError, DatabaseError
-
-logger = logging.getLogger(__name__)
-
-# Business logic modules
-from src.core.services.ticket_management import TicketManager, TicketTools
-from src.core.services.reference_data import ReferenceDataManager
-from src.core.services.user_services import UserManager
-from src.core.services.analytics_reporting import (
-    tickets_by_status,
-    open_tickets_by_site,
-    open_tickets_by_user,
-    get_staff_ticket_report,
-    sla_breaches,
-    ticket_trend,
-    tickets_waiting_on_user,
-)
+@dataclass
+class DatabaseConfig:
+    """Database configuration settings."""
+    max_retries: int = 3
+    retry_base_delay: float = 0.1
+    retry_backoff_factor: int = 2
+    session_timeout: int = 300  # seconds
+    pool_size: int = 10
+    max_overflow: int = 20
+    pool_pre_ping: bool = True
 
 
-async def _with_session(func: Callable[..., Awaitable[Any]], **kwargs: Any) -> Any:
-    async with SessionLocal() as db:
-        return await func(db, **kwargs)
+@dataclass
+class ServerConfig:
+    """Main server configuration."""
+    name: str = "helpdesk-ai-agent"
+    version: str = "1.0.0"
+    default_limit: int = 10
+    max_limit: int = 1000
+    enable_metrics: bool = True
+    enable_health_check: bool = True
 
 
-def _db_wrapper(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
-    async def wrapper(**kwargs: Any) -> Any:
-        return await _with_session(func, **kwargs)
-
-    return wrapper
-
-
-def _safe_tool_wrapper(func: Callable[..., Awaitable[Any]]):
-    async def wrapper(**kwargs: Any):
-        try:
-            return await _with_session(func, **kwargs)
-        except ValidationError as e:
-            return {"error": "validation_error", "details": str(e)}
-        except DatabaseError as e:
-            return {"error": "database_error", "details": str(e)}
-        except Exception:
-            logger.exception("Tool execution failed: %s", func.__name__)
-            return {"error": "internal_error", "details": "Tool execution failed"}
-
-    return wrapper
+@dataclass
+class LoggingConfig:
+    """Logging configuration."""
+    level: str = "INFO"
+    format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    file_path: Optional[str] = None
+    max_file_size: int = 10 * 1024 * 1024  # 10MB
+    backup_count: int = 5
 
 
-async def _search_tickets_smart(
-    db: Any,
-    query: str,
-    limit: int = 10,
-    include_closed: bool = False,
-    filters: Dict[str, Any] | None = None,
-) -> Dict[str, Any]:
-    """Helper to call :meth:`TicketTools.search_tickets_smart`."""
-    tools = TicketTools(db)
-    return await tools.search_tickets_smart(
-        query=query,
-        filters=filters,
-        limit=limit,
-        include_closed=include_closed,
-    )
+@dataclass
+class SecurityConfig:
+    """Security and validation configuration."""
+    enable_rate_limiting: bool = True
+    max_requests_per_minute: int = 100
+    max_requests_per_hour: int = 1000
+    require_authentication: bool = False
+    allowed_origins: List[str] = field(default_factory=list)
 
 
-async def _open_tickets_by_user_tool(db: Any, **kwargs: Any) -> Any:
-    """Pass kwargs as filters to open_tickets_by_user."""
-    filters = kwargs or None
-    return await open_tickets_by_user(db, filters=filters)
+@dataclass
+class MCPServerConfig:
+    """Complete MCP server configuration."""
+    database: DatabaseConfig = field(default_factory=DatabaseConfig)
+    server: ServerConfig = field(default_factory=ServerConfig)
+    logging: LoggingConfig = field(default_factory=LoggingConfig)
+    security: SecurityConfig = field(default_factory=SecurityConfig)
+    
+    @classmethod
+    def from_env(cls) -> 'MCPServerConfig':
+        """Create configuration from environment variables."""
+        config = cls()
+        
+        # Database settings
+        config.database.max_retries = int(os.getenv('DB_MAX_RETRIES', config.database.max_retries))
+        config.database.retry_base_delay = float(os.getenv('DB_RETRY_DELAY', config.database.retry_base_delay))
+        config.database.session_timeout = int(os.getenv('DB_SESSION_TIMEOUT', config.database.session_timeout))
+        config.database.pool_size = int(os.getenv('DB_POOL_SIZE', config.database.pool_size))
+        
+        # Server settings
+        config.server.name = os.getenv('SERVER_NAME', config.server.name)
+        config.server.default_limit = int(os.getenv('DEFAULT_LIMIT', config.server.default_limit))
+        config.server.max_limit = int(os.getenv('MAX_LIMIT', config.server.max_limit))
+        config.server.enable_metrics = os.getenv('ENABLE_METRICS', 'true').lower() == 'true'
+        
+        # Logging settings
+        config.logging.level = os.getenv('LOG_LEVEL', config.logging.level)
+        config.logging.file_path = os.getenv('LOG_FILE_PATH')
+        
+        # Security settings
+        config.security.enable_rate_limiting = os.getenv('ENABLE_RATE_LIMITING', 'true').lower() == 'true'
+        config.security.max_requests_per_minute = int(os.getenv('MAX_REQUESTS_PER_MINUTE', config.security.max_requests_per_minute))
+        config.security.require_authentication = os.getenv('REQUIRE_AUTH', 'false').lower() == 'true'
+        
+        allowed_origins = os.getenv('ALLOWED_ORIGINS', '')
+        if allowed_origins:
+            config.security.allowed_origins = [origin.strip() for origin in allowed_origins.split(',')]
+        
+        return config
+    
+    def validate(self) -> None:
+        """Validate configuration settings."""
+        if self.server.max_limit <= 0:
+            raise ValueError("max_limit must be positive")
+        
+        if self.server.default_limit <= 0:
+            raise ValueError("default_limit must be positive")
+        
+        if self.server.default_limit > self.server.max_limit:
+            raise ValueError("default_limit cannot exceed max_limit")
+        
+        if self.database.max_retries <= 0:
+            raise ValueError("max_retries must be positive")
+        
+        if self.database.retry_base_delay <= 0:
+            raise ValueError("retry_base_delay must be positive")
+        
+        if self.logging.level not in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
+            raise ValueError(f"Invalid log level: {self.logging.level}")
 
 
-ENHANCED_TOOLS: List[Tool] = [
-    Tool(
-        name="g_asset",
-        description="Retrieve an asset by ID",
-        inputSchema={"type": "object", "properties": {"asset_id": {"type": "integer"}}, "required": ["asset_id"]},
-        _implementation=_safe_tool_wrapper(lambda db, asset_id: ReferenceDataManager().get_asset(db, asset_id)),
-    ),
-    Tool(
-        name="l_assets",
-        description="List assets",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "skip": {"type": "integer"},
-                "limit": {"type": "integer"},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "required": [],
-        },
-        _implementation=_safe_tool_wrapper(lambda db, **kwargs: ReferenceDataManager().list_assets(db, **kwargs)),
-    ),
-    Tool(
-        name="g_vendor",
-        description="Retrieve a vendor by ID",
-        inputSchema={"type": "object", "properties": {"vendor_id": {"type": "integer"}}, "required": ["vendor_id"]},
-        _implementation=_safe_tool_wrapper(lambda db, vendor_id: ReferenceDataManager().get_vendor(db, vendor_id)),
-    ),
-    Tool(
-        name="l_vends",
-        description="List vendors",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "skip": {"type": "integer"},
-                "limit": {"type": "integer"},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "required": [],
-        },
-        _implementation=_safe_tool_wrapper(lambda db, **kwargs: ReferenceDataManager().list_vendors(db, **kwargs)),
-    ),
-    Tool(
-        name="g_site",
-        description="Retrieve a site by ID",
-        inputSchema={"type": "object", "properties": {"site_id": {"type": "integer"}}, "required": ["site_id"]},
-        _implementation=_safe_tool_wrapper(lambda db, site_id: ReferenceDataManager().get_site(db, site_id)),
-    ),
-    Tool(
-        name="l_sites",
-        description="List sites",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "skip": {"type": "integer"},
-                "limit": {"type": "integer"},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "required": [],
-        },
-        _implementation=_safe_tool_wrapper(lambda db, **kwargs: ReferenceDataManager().list_sites(db, **kwargs)),
-    ),
-    Tool(
-        name="l_cats",
-        description="List ticket categories",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "required": [],
-        },
-        _implementation=_safe_tool_wrapper(lambda db, **kwargs: ReferenceDataManager().list_categories(db, **kwargs)),
-    ),
-    Tool(
-        name="l_status",
-        description="List ticket statuses",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "required": [],
-        },
-        _implementation=_safe_tool_wrapper(lambda db, **kwargs: ReferenceDataManager().list_statuses(db, **kwargs)),
-    ),
-    Tool(
-        name="g_ticket",
-        description="Get expanded ticket by ID",
-        inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
-        _implementation=_safe_tool_wrapper(lambda db, ticket_id: TicketManager().get_ticket(db, ticket_id)),
-    ),
-    Tool(
-        name="l_tkts",
-        description="List expanded tickets",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "skip": {"type": "integer"},
-                "limit": {"type": "integer"},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "required": [],
-        },
-        _implementation=_safe_tool_wrapper(lambda db, **kwargs: TicketManager().list_tickets(db, **kwargs)),
-    ),
-    Tool(
-        name="s_tkts",
-        description="Search tickets",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "query": {"type": "string"},
-                "limit": {"type": "integer"},
-                "params": {"type": "object"},
-            },
-            "required": ["query"],
-        },
-        _implementation=_safe_tool_wrapper(lambda db, query, limit=10, params=None: TicketManager().search_tickets(db, query, limit=limit, params=params)),
-    ),
-    Tool(
-        name="s_tk_sm",
-        description="Search tickets using natural language",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "query": {"type": "string"},
-                "limit": {"type": "integer"},
-                "include_closed": {"type": "boolean"},
-                "filters": {"type": "object"},
-            },
-            "required": ["query"],
-        },
-        _implementation=_safe_tool_wrapper(_search_tickets_smart),
-    ),
-    Tool(
-        name="c_ticket",
-        description="Create a ticket",
-        inputSchema={"type": "object", "properties": {"ticket_obj": {"type": "object"}}, "required": ["ticket_obj"]},
-        _implementation=_safe_tool_wrapper(lambda db, ticket_obj: TicketManager().create_ticket(db, ticket_obj)),
-    ),
-    Tool(
-        name="u_ticket",
-        description="Update a ticket",
-        inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}, "updates": {"type": "object"}}, "required": ["ticket_id", "updates"]},
-        _implementation=_safe_tool_wrapper(lambda db, ticket_id, updates: TicketManager().update_ticket(db, ticket_id, updates)),
-    ),
-    Tool(
-        name="d_ticket",
-        description="Delete a ticket",
-        inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
-        _implementation=_safe_tool_wrapper(lambda db, ticket_id: TicketManager().delete_ticket(db, ticket_id)),
-    ),
-    Tool(
-        name="g_tmsg",
-        description="List messages for a ticket",
-        inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
-        _implementation=_safe_tool_wrapper(lambda db, ticket_id: TicketManager().get_messages(db, ticket_id)),
-    ),
-    Tool(
-        name="p_tmsg",
-        description="Post a new ticket message",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "ticket_id": {"type": "integer"},
-                "message": {"type": "string"},
-                "sender_code": {"type": "string"},
-                "sender_name": {"type": "string"},
-            },
-            "required": ["ticket_id", "message", "sender_code", "sender_name"],
-        },
-        _implementation=_safe_tool_wrapper(lambda db, ticket_id, message, sender_code, sender_name: TicketManager().post_message(db, ticket_id, message, sender_code)),
-    ),
-    Tool(
-        name="t_attach",
-        description="Get attachments for a ticket",
-        inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
-        _implementation=_safe_tool_wrapper(lambda db, ticket_id: TicketManager().get_attachments(db, ticket_id)),
-    ),
-    Tool(
-        name="t_status",
-        description="Count tickets by status",
-        inputSchema={"type": "object", "properties": {}, "required": []},
-        _implementation=_safe_tool_wrapper(tickets_by_status),
-    ),
-    Tool(
-        name="op_site",
-        description="Open ticket counts by site",
-        inputSchema={"type": "object", "properties": {}, "required": []},
-        _implementation=_safe_tool_wrapper(open_tickets_by_site),
-    ),
-    Tool(
-        name="op_user",
-        description="Open ticket counts by user",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "Assigned_Email": {"type": "string"},
-                "Assigned_Name": {"type": "string"},
-            },
-            "required": [],
-        },
-        _implementation=_safe_tool_wrapper(_open_tickets_by_user_tool),
-    ),
-    Tool(
-        name="by_user",
-        description="List tickets related to a user",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "identifier": {"type": "string"},
-                "skip": {"type": "integer"},
-                "limit": {"type": "integer"},
-                "status": {"type": "string"},
-                "filters": {"type": "object"},
-            },
-            "required": ["identifier"],
-        },
-        _implementation=_safe_tool_wrapper(lambda db, identifier, **kwargs: TicketManager().get_tickets_by_user(db, identifier, **kwargs)),
-    ),
-    Tool(
-        name="tickets_by_timeframe",
-        description="List tickets by timeframe and status",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "status": {"type": "string"},
-                "days": {"type": "integer"},
-                "limit": {"type": "integer"},
-            },
-            "required": [],
-        },
-        _implementation=_safe_tool_wrapper(lambda db, **kwargs: TicketManager().get_tickets_by_timeframe(db, **kwargs)),
-    ),
-    Tool(
-        name="staff_rp",
-        description="Summary counts of tickets for a technician",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "email": {"type": "string"},
-                "start_date": {"type": "string", "format": "date-time"},
-                "end_date": {"type": "string", "format": "date-time"},
-            },
-            "required": ["email"],
-        },
-        _implementation=_safe_tool_wrapper(get_staff_ticket_report),
-    ),
-    Tool(
-        name="wait_usr",
-        description="Tickets waiting on user",
-        inputSchema={"type": "object", "properties": {}, "required": []},
-        _implementation=_safe_tool_wrapper(tickets_waiting_on_user),
-    ),
-    Tool(
-        name="sla_brch",
-        description="Count SLA breaches",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "sla_days": {"type": "integer"},
-                "filters": {"type": "object"},
-                "status_id": {"oneOf": [{"type": "integer"}, {"type": "array", "items": {"type": "integer"}}]},
-            },
-            "required": [],
-        },
-        _implementation=_safe_tool_wrapper(sla_breaches),
-    ),
-    Tool(
-        name="t_trend",
-        description="Ticket trend",
-        inputSchema={"type": "object", "properties": {"days": {"type": "integer"}}, "required": []},
-        _implementation=_safe_tool_wrapper(ticket_trend),
-    ),
-    Tool(
-        name="oc_now",
-        description="Get current on-call shift",
-        inputSchema={"type": "object", "properties": {}, "required": []},
-        _implementation=_safe_tool_wrapper(lambda db: UserManager().get_current_oncall(db)),
-    ),
-    Tool(
-        name="oc_sched",
-        description="List on-call schedule",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "skip": {"type": "integer"},
-                "limit": {"type": "integer"},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "required": [],
-        },
-        _implementation=_safe_tool_wrapper(lambda db, **kwargs: UserManager().list_oncall_schedule(db, **kwargs)),
-    ),
-    Tool(
-        name="user_eml",
-        description="Look up user information by email",
-        inputSchema={"type": "object", "properties": {"email": {"type": "string"}}, "required": ["email"]},
-        _implementation=lambda email: UserManager().get_user_by_email(email),
-    ),
-]
-# Keep track of how many tools are defined for easier maintenance.
-TOOL_COUNT: int = len(ENHANCED_TOOLS)
+# Global configuration instance
+_config: Optional[MCPServerConfig] = None
 
 
-def create_server() -> Server:
-    server = Server("helpdesk-ai-agent")
-
-    @server.list_tools()
-    async def _list_tools() -> list[types.Tool]:
-        return [
-            types.Tool(name=t.name, description=t.description, inputSchema=t.inputSchema)
-            for t in ENHANCED_TOOLS
-
-        ]
-
-    @server.call_tool()
-    async def _call_tool(name: str, arguments: Dict[str, Any]) -> Iterable[types.Content]:
-
-        for tool in ENHANCED_TOOLS:
-            if tool.name == name:
-                result = await tool._implementation(**arguments)
-                text = json.dumps(result)
-                return [types.TextContent(type="text", text=text)]
-        raise ValueError(f"Unknown tool: {name}")
-
-    server._tools = ENHANCED_TOOLS
-    return server
+def get_config() -> MCPServerConfig:
+    """Get the global configuration instance."""
+    global _config
+    if _config is None:
+        _config = MCPServerConfig.from_env()
+        _config.validate()
+    return _config
 
 
-def run_server() -> None:
-    """Run the MCP server using stdio transport."""
-
-    async def _main() -> None:
-        server = create_server()
-        async with stdio_server() as (read, write):
-            await server.run(read, write)
-
-    anyio.run(_main)
-
+def set_config(config: MCPServerConfig) -> None:
+    """Set the global configuration instance."""
+    global _config
+    config.validate()
+    _config = config
