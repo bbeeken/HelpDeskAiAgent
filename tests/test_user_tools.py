@@ -88,21 +88,13 @@ async def test_user_tools_graph_calls(monkeypatch):
             )
 
     FakeAsyncClient = DummyClient
-
     monkeypatch.setattr(us.httpx, "AsyncClient", FakeAsyncClient)
-
-
-
     token = await um._get_token()
-
     assert token == "tok"
-
     user = await um.get_user_by_email("u@e.com")
     assert user == {"email": "u@e.com", "displayName": "U", "id": "2"}
-
     users = await um.get_users_in_group()
     assert users == [{"email": "a@b.com", "displayName": "A", "id": "1"}]
-
     assert await um.resolve_display_name("u@e.com") == "U"
 
     # direct call to graph_get with token

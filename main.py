@@ -8,7 +8,6 @@ from contextvars import ContextVar
 from datetime import datetime, UTC
 from typing import Any, Dict, List
 
-import jsonschema
 import sentry_sdk
 from fastapi import Depends, FastAPI, Request
 from fastapi.encoders import jsonable_encoder
@@ -68,7 +67,7 @@ async def lifespan(app: FastAPI):
         format="%(asctime)s - %(levelname)s - %(correlation_id)s - %(name)s - %(message)s",
     )
     logging.getLogger().addFilter(CorrelationIdFilter())
-    
+
     # Initialize Sentry if configured
     if ERROR_TRACKING_DSN:
         sentry_sdk.init(dsn=ERROR_TRACKING_DSN)
@@ -76,11 +75,11 @@ async def lifespan(app: FastAPI):
 
     # Set up rate limiter
     app.state.limiter = limiter
-    
+
     # Record actual startup time
     global START_TIME
     START_TIME = datetime.now(UTC)
-    
+
     # Initialize database
     try:
         async with engine.begin() as conn:
@@ -96,7 +95,7 @@ async def lifespan(app: FastAPI):
     logger.info("MCP server initialized")
 
     yield
-    
+
     # Cleanup
     try:
         await engine.dispose()
@@ -172,9 +171,9 @@ def custom_openapi() -> Dict[str, Any]:
     """Return OpenAPI schema with array parameters expanded."""
     if app.openapi_schema:
         return app.openapi_schema
-        
+
     schema = get_openapi(title=app.title, version=APP_VERSION, routes=app.routes)
-    
+
     # Fix array parameter schemas
     for path_item in schema.get("paths", {}).values():
         for operation in path_item.values():
@@ -190,7 +189,7 @@ def custom_openapi() -> Dict[str, Any]:
                             "items": array_schema["items"],
                             "title": s.get("title", param["name"]),
                         }
-    
+
     app.openapi_schema = schema
     return schema
 
@@ -247,8 +246,11 @@ async def handle_database(request: Request, exc: DatabaseError):
 @app.exception_handler(Exception)
 async def handle_unexpected(request: Request, exc: Exception):
     """Convert unexpected errors to JSON with traceback logging."""
-    logger.exception("Unhandled exception during request to %s %s", 
-                    request.method, request.url.path)
+    logger.exception(
+        "Unhandled exception during request to %s %s",
+        request.method,
+        request.url.path,
+    )
     resp = ErrorResponse(
         error_code="UNEXPECTED_ERROR",
         message=str(exc) or "Internal server error",
@@ -275,31 +277,31 @@ def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
             data = await request.json()
         except Exception as e:
             return JSONResponse(
-                status_code=422, 
+                status_code=422,
                 content={"detail": f"Invalid JSON: {str(e)}"}
             )
-        
+
         # Validate allowed parameters
         allowed = set(schema.get("properties", {}).keys())
         extra = set(data) - allowed
         if extra:
             return JSONResponse(
-                status_code=422, 
+                status_code=422,
                 content={"detail": f"Unexpected parameters: {', '.join(extra)}"}
             )
-        
+
         # Validate schema
         try:
             validator.validate(data)
         except JsonSchemaError as exc:
             return JSONResponse(
-                status_code=422, 
+                status_code=422,
                 content={"detail": f"Schema validation error: {exc.message}"}
             )
 
         # Filter to only allowed parameters
         filtered = {k: data[k] for k in allowed if k in data}
-        
+
         try:
             return await tool._implementation(**filtered)
         except Exception as e:
@@ -319,7 +321,7 @@ logger.info("Enhanced MCP server active with %d tools", len(TOOLS))
 for tool in TOOLS:
     schema = tool.inputSchema if isinstance(tool.inputSchema, dict) else {}
     endpoint_func = build_mcp_endpoint(tool, schema)
-    
+
     app.post(
         f"/{tool.name}",
         operation_id=tool.name,
