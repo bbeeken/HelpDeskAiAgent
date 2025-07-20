@@ -1,9 +1,18 @@
-"""
-Configuration management for the MCP server.
-"""
+"""Configuration management for the MCP server and stub MCP server helpers."""
+
+from __future__ import annotations
+
+import json
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
+
+import anyio
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+from mcp import types
+
+from .mcp_server import Tool
 
 from mcp.server import Server
 from .mcp_server import Tool
@@ -158,14 +167,14 @@ from src.core.services.enhanced_context import EnhancedContextManager
 
 
 async def _g_ticket(ticket_id: int) -> _Dict[str, Any] | None:
-    async with db.SessionLocal() as db:
-        ticket = await TicketManager().get_ticket(db, ticket_id)
+    async with db.SessionLocal() as db_session:
+        ticket = await TicketManager().get_ticket(db_session, ticket_id)
         return {"ticket_id": ticket.Ticket_ID} if ticket else None
 
 
 async def _l_tkts(limit: int = 10) -> list[_Dict[str, Any]]:
-    async with db.SessionLocal() as db:
-        tickets = await TicketManager().list_tickets(db, limit=limit)
+    async with db.SessionLocal() as db_session:
+        tickets = await TicketManager().list_tickets(db_session, limit=limit)
         return [{"ticket_id": t.Ticket_ID} for t in tickets]
 
 
@@ -176,9 +185,9 @@ async def _tickets_by_user(
     status: str | None = None,
     filters: _Dict[str, Any] | None = None,
 ) -> list[Any]:
-    async with db.SessionLocal() as db:
+    async with db.SessionLocal() as db_session:
         return await TicketManager().get_tickets_by_user(
-            db,
+            db_session,
             identifier,
             skip=skip,
             limit=limit,
@@ -188,34 +197,34 @@ async def _tickets_by_user(
 
 
 async def _open_by_site() -> list[Any]:
-    async with db.SessionLocal() as db:
-        return await open_tickets_by_site(db)
+    async with db.SessionLocal() as db_session:
+        return await open_tickets_by_site(db_session)
 
 
 async def _open_by_assigned_user(filters: _Dict[str, Any] | None = None) -> list[Any]:
-    async with db.SessionLocal() as db:
-        return await open_tickets_by_user(db, filters)
+    async with db.SessionLocal() as db_session:
+        return await open_tickets_by_user(db_session, filters)
 
 
 async def _tickets_status() -> list[Any]:
-    async with db.SessionLocal() as db:
-        result = await tickets_by_status(db)
+    async with db.SessionLocal() as db_session:
+        result = await tickets_by_status(db_session)
         return result.data if getattr(result, "success", True) else []
 
 
 async def _ticket_trend(days: int = 7) -> list[Any]:
-    async with db.SessionLocal() as db:
-        return await ticket_trend(db, days)
+    async with db.SessionLocal() as db_session:
+        return await ticket_trend(db_session, days)
 
 
 async def _waiting_on_user() -> list[Any]:
-    async with db.SessionLocal() as db:
-        return await tickets_waiting_on_user(db)
+    async with db.SessionLocal() as db_session:
+        return await tickets_waiting_on_user(db_session)
 
 
 async def _sla_breaches(days: int = 2) -> int:
-    async with db.SessionLocal() as db:
-        return await sla_breaches(db, sla_days=days)
+    async with db.SessionLocal() as db_session:
+        return await sla_breaches(db_session, sla_days=days)
 
 
 async def _staff_report(
@@ -223,9 +232,9 @@ async def _staff_report(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
 ) -> Any:
-    async with db.SessionLocal() as db:
+    async with db.SessionLocal() as db_session:
         return await get_staff_ticket_report(
-            db,
+            db_session,
             assigned_email,
             start_date=start_date,
             end_date=end_date,
@@ -237,9 +246,9 @@ async def _tickets_by_timeframe(
     days: int = 7,
     limit: int = 10,
 ) -> list[Any]:
-    async with db.SessionLocal() as db:
+    async with db.SessionLocal() as db_session:
         return await TicketManager().get_tickets_by_timeframe(
-            db,
+            db_session,
             status=status,
             days=days,
             limit=limit,
@@ -247,39 +256,39 @@ async def _tickets_by_timeframe(
 
 
 async def _search_tickets(query: str, limit: int = 10) -> list[Any]:
-    async with db.SessionLocal() as db:
-        return await TicketManager().search_tickets(db, query, limit=limit)
+    async with db.SessionLocal() as db_session:
+        return await TicketManager().search_tickets(db_session, query, limit=limit)
 
 
 async def _list_sites(limit: int = 10) -> list[Any]:
-    async with db.SessionLocal() as db:
-        return await ReferenceDataManager().list_sites(db, limit=limit)
+    async with db.SessionLocal() as db_session:
+        return await ReferenceDataManager().list_sites(db_session, limit=limit)
 
 
 async def _list_assets(limit: int = 10) -> list[Any]:
-    async with db.SessionLocal() as db:
-        return await ReferenceDataManager().list_assets(db, limit=limit)
+    async with db.SessionLocal() as db_session:
+        return await ReferenceDataManager().list_assets(db_session, limit=limit)
 
 
 async def _list_vendors(limit: int = 10) -> list[Any]:
-    async with db.SessionLocal() as db:
-        return await ReferenceDataManager().list_vendors(db, limit=limit)
+    async with db.SessionLocal() as db_session:
+        return await ReferenceDataManager().list_vendors(db_session, limit=limit)
 
 
 async def _list_categories() -> list[Any]:
-    async with db.SessionLocal() as db:
-        return await ReferenceDataManager().list_categories(db)
+    async with db.SessionLocal() as db_session:
+        return await ReferenceDataManager().list_categories(db_session)
 
 
 async def _ticket_full_context(ticket_id: int) -> Any:
-    async with db.SessionLocal() as db:
-        mgr = EnhancedContextManager(db)
+    async with db.SessionLocal() as db_session:
+        mgr = EnhancedContextManager(db_session)
         return await mgr.get_ticket_full_context(ticket_id)
 
 
 async def _system_snapshot() -> Any:
-    async with db.SessionLocal() as db:
-        mgr = EnhancedContextManager(db)
+    async with db.SessionLocal() as db_session:
+        mgr = EnhancedContextManager(db_session)
         return await mgr.get_system_snapshot()
 
 
@@ -411,13 +420,13 @@ def create_server() -> Server:
     server = Server("helpdesk-ai-agent")
 
     @server.list_tools()
-    async def _list_tools() -> List[dict[str, Any]]:
+    async def _list_tools() -> List[types.Tool]:
         return [
-            {
-                "name": t.name,
-                "description": t.description,
-                "inputSchema": t.inputSchema,
-            }
+            types.Tool(
+                name=t.name,
+                description=t.description,
+                inputSchema=t.inputSchema,
+            )
             for t in ENHANCED_TOOLS
         ]
 
@@ -433,4 +442,14 @@ def create_server() -> Server:
     return server
 
 
-__all__ = ["MCPServerConfig", "get_config", "set_config", "ENHANCED_TOOLS", "create_server"]
+def run_server() -> None:
+    """Run the MCP server with stdio transport."""
+    async def _main() -> None:
+        server = create_server()
+        async with stdio_server() as (read, write):
+            await server.run(read, write)
+
+    anyio.run(_main)
+
+
+__all__ = ["MCPServerConfig", "get_config", "set_config", "ENHANCED_TOOLS", "create_server", "run_server"]
