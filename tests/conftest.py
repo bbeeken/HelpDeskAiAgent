@@ -1,3 +1,7 @@
+import os
+
+os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
+
 from asgi_lifespan import LifespanManager
 from main import app
 import asyncio
@@ -9,16 +13,17 @@ from src.core.repositories.models import Base
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 import src.infrastructure.database as mssql
+
 import os
 import src.core.services.analytics_reporting as analytics_reporting
+
 
 # Pydantic 1.x fails on Python 3.12 unless this shim is disabled
 os.environ.setdefault("PYDANTIC_DISABLE_STD_TYPES_SHIM", "1")
 
-os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
-
 
 # Use a StaticPool so the in-memory DB is shared across threads
+
 mssql.engine = create_async_engine(
     os.environ["DB_CONN_STRING"],
     connect_args={"check_same_thread": False},
@@ -38,6 +43,7 @@ async def _init_models():
         await conn.run_sync(Base.metadata.create_all)
 
 asyncio.get_event_loop().run_until_complete(_init_models())
+
 
 
 @pytest_asyncio.fixture(autouse=True)
