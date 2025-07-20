@@ -24,7 +24,9 @@ def get_engine_args(conn_string: str) -> dict[str, Any]:
 
     if conn_string.startswith("mssql"):
         if conn_string.startswith("mssql+pyodbc"):
-            raise RuntimeError("Use async driver 'mssql+aioodbc'")
+            # ``create_async_engine`` does not work with synchronous drivers.
+            # Raise a ``ValueError`` so configuration issues surface early.
+            raise ValueError("Use async driver 'mssql+aioodbc'")
         base_args.update({"poolclass": AsyncAdaptedQueuePool, "fast_executemany": True})
 
     return base_args
