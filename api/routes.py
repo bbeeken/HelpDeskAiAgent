@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request, Body
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,6 +37,7 @@ from tools.analysis_tools import (
     ticket_trend,
 )
 from tools.oncall_tools import get_current_oncall
+from tools import TicketManager
 
 # Schemas
 # Ticket schemas
@@ -46,6 +47,7 @@ from schemas import (
     TicketUpdate,
     TicketExpandedOut,
     TicketSearchOut,
+    TicketSearchRequest,
 )
 from schemas.search_params import TicketSearchParams
 from schemas.basic import (
@@ -67,6 +69,19 @@ from schemas.analytics import (
 )
 from schemas.oncall import OnCallShiftOut
 from schemas.paginated import PaginatedResponse
+from schemas.agent_data import (
+    TicketFullContext,
+    SystemSnapshot,
+    UserCompleteProfile,
+    AdvancedQuery,
+    QueryResult,
+    OperationResult,
+    ValidationResult,
+)
+
+from tools.enhanced_context import EnhancedContextManager
+from tools.advanced_query import AdvancedQueryManager
+from tools.enhanced_operations import EnhancedOperationsManager
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +137,14 @@ class MessageIn(BaseModel):
     sender_name: str = Field(..., example="John Doe")
 
 
+class SearchBody(BaseModel):
+    """Request body for JSON ticket search."""
+
+    q: str = Field(..., min_length=1)
+    limit: int = Field(10, ge=1, le=100)
+    params: TicketSearchParams = Field(default_factory=TicketSearchParams)
+
+
 @ticket_router.get(
     "/search",
     response_model=List[TicketSearchOut],
@@ -142,6 +165,23 @@ async def search_tickets(
         except ValidationError as exc:
             logger.error("Invalid search result %s: %s", r.get("Ticket_ID", "?"), exc)
     return validated
+
+
+@ticket_router.post(
+    "/search",
+    response_model=List[TicketSearchOut],
+    operation_id="search_tickets_json",
+)
+async def search_tickets_json(
+    payload: TicketSearchRequest,
+    db: AsyncSession = Depends(get_db),
+) -> List[TicketSearchOut]:
+    return await search_tickets(
+        q=payload.q,
+        params=payload.params or TicketSearchParams(),
+        limit=payload.limit,
+        db=db,
+    )
 
 
 @ticket_router.get(
@@ -215,6 +255,25 @@ async def search_tickets_alias(
     return await search_tickets(q=q, params=params, limit=limit, db=db)
 
 
+@tickets_router.post(
+
+    "/search",
+    response_model=List[TicketSearchOut],
+    operation_id="search_tickets_alias_json",
+)
+async def search_tickets_alias_json(
+    payload: TicketSearchRequest,
+    db: AsyncSession = Depends(get_db),
+) -> List[TicketSearchOut]:
+    return await search_tickets(
+        q=payload.q,
+        params=payload.params or TicketSearchParams(),
+        limit=payload.limit,
+        db=db,
+    )
+
+
+
 @tickets_router.get(
     "/by_user",
     response_model=PaginatedResponse[TicketExpandedOut],
@@ -273,6 +332,28 @@ async def create_ticket_endpoint(
     return TicketOut.model_validate(result.data)
 
 
+@ticket_router.post(
+    "/json",
+    response_model=TicketExpandedOut,
+    status_code=201,
+    operation_id="create_ticket_json",
+    description="Create a ticket from JSON 📨",
+    tags=["tickets", "📝"],
+)
+async def create_ticket_json(
+    payload: TicketCreate = Body(...),
+    db: AsyncSession = Depends(get_db),
+) -> TicketExpandedOut:
+    data = payload.model_dump()
+    data["Created_Date"] = datetime.now(timezone.utc)
+    result = await TicketManager().create_ticket(db, data)
+    if not result.success:
+        logger.error("Ticket creation failed: %s", result.error)
+        raise HTTPException(status_code=500, detail=result.error or "ticket create failed")
+    ticket = await TicketManager().get_ticket(db, result.data.Ticket_ID)
+    return TicketExpandedOut.model_validate(ticket)
+
+
 @ticket_router.put(
     "/{ticket_id}",
     response_model=TicketOut,
@@ -288,6 +369,26 @@ async def update_ticket_endpoint(
         logger.warning("Ticket %s not found or no changes applied", ticket_id)
         raise HTTPException(status_code=404, detail="Ticket not found or no changes")
     return TicketOut.model_validate(updated)
+
+
+@ticket_router.put(
+    "/json/{ticket_id}",
+    response_model=TicketExpandedOut,
+    operation_id="update_ticket_json",
+    description="Update a ticket with JSON ✏️",
+    tags=["tickets", "📝"],
+)
+async def update_ticket_json(
+    ticket_id: int,
+    updates: TicketUpdate = Body(...),
+    db: AsyncSession = Depends(get_db),
+) -> TicketExpandedOut:
+    updated = await TicketManager().update_ticket(db, ticket_id, updates)
+    if not updated:
+        logger.warning("Ticket %s not found or no changes applied", ticket_id)
+        raise HTTPException(status_code=404, detail="Ticket not found or no changes")
+    ticket = await TicketManager().get_ticket(db, ticket_id)
+    return TicketExpandedOut.model_validate(ticket)
 
 
 @ticket_router.get(
@@ -529,6 +630,96 @@ async def ticket_trend_endpoint(
 # ─── On-Call Sub-Router ───────────────────────────────────────────────────────
 oncall_router = APIRouter(prefix="/oncall", tags=["oncall"])
 
+# ─── Agent Enhanced Router ─────────────────────────────────────────────────
+agent_router = APIRouter(prefix="/agent", tags=["agent-enhanced"])
+
+
+@agent_router.get(
+    "/ticket/{ticket_id}/full-context",
+    response_model=TicketFullContext,
+    tags=["agent-enhanced"],
+)
+async def get_ticket_full_context_endpoint(
+    ticket_id: int,
+    include_deep_history: bool = True,
+    db: AsyncSession = Depends(get_db),
+) -> TicketFullContext:
+    """🤖 Get comprehensive ticket context for agent analysis."""
+    context_manager = EnhancedContextManager(db)
+    return await context_manager.get_ticket_full_context(ticket_id, include_deep_history)
+
+
+@agent_router.get(
+    "/system/snapshot",
+    response_model=SystemSnapshot,
+    tags=["agent-enhanced"],
+)
+async def get_system_snapshot_endpoint(db: AsyncSession = Depends(get_db)) -> SystemSnapshot:
+    """🤖 Get complete system state snapshot for agent situational awareness."""
+    context_manager = EnhancedContextManager(db)
+    return await context_manager.get_system_snapshot()
+
+
+@agent_router.get(
+    "/user/{user_email}/complete-profile",
+    response_model=UserCompleteProfile,
+    tags=["agent-enhanced"],
+)
+async def get_user_complete_profile_endpoint(
+    user_email: str,
+    db: AsyncSession = Depends(get_db),
+) -> UserCompleteProfile:
+    """🤖 Get comprehensive user profile for agent analysis."""
+    context_manager = EnhancedContextManager(db)
+    return await context_manager.get_user_complete_profile(user_email)
+
+
+@agent_router.post(
+    "/tickets/query-advanced",
+    response_model=QueryResult,
+    tags=["agent-enhanced"],
+)
+async def query_tickets_advanced_endpoint(
+    query: AdvancedQuery,
+    db: AsyncSession = Depends(get_db),
+) -> QueryResult:
+    """🤖 Execute advanced ticket queries with rich results."""
+    query_manager = AdvancedQueryManager(db)
+    return await query_manager.query_tickets_advanced(query)
+
+
+@agent_router.post(
+    "/operation/validate",
+    response_model=ValidationResult,
+    tags=["agent-enhanced"],
+)
+async def validate_operation_endpoint(
+    operation_type: str,
+    target_id: int,
+    parameters: Dict[str, Any] = Body(...),
+    db: AsyncSession = Depends(get_db),
+) -> ValidationResult:
+    """🤖 Pre-validate operations before execution."""
+    ops_manager = EnhancedOperationsManager(db)
+    return await ops_manager.validate_operation_before_execution(operation_type, target_id, parameters)
+
+
+@agent_router.post(
+    "/ticket/{ticket_id}/execute-operation",
+    response_model=OperationResult,
+    tags=["agent-enhanced"],
+)
+async def execute_ticket_operation_endpoint(
+    ticket_id: int,
+    operation_type: str,
+    parameters: Dict[str, Any] = Body(...),
+    skip_validation: bool = False,
+    db: AsyncSession = Depends(get_db),
+) -> OperationResult:
+    """🤖 Execute ticket operations with rich result context."""
+    ops_manager = EnhancedOperationsManager(db)
+    return await ops_manager.execute_ticket_operation(operation_type, ticket_id, parameters, skip_validation)
+
 
 @oncall_router.get(
     "",
@@ -549,3 +740,4 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(lookup_router)
     app.include_router(analytics_router)
     app.include_router(oncall_router)
+    app.include_router(agent_router)
