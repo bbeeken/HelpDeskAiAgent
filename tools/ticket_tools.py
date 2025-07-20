@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import Ticket, VTicketMasterExpanded
+from schemas.search_params import TicketSearchParams
 
 from .ticket_management import TicketManager, TicketTools
 
@@ -49,6 +50,8 @@ async def search_tickets_expanded(
         DeprecationWarning,
         stacklevel=2,
     )
+    if params is not None and not isinstance(params, TicketSearchParams):
+        params = TicketSearchParams(**params)
     return await _manager.search_tickets(db, query=query, limit=limit, params=params)
 
 
@@ -91,6 +94,18 @@ async def tickets_by_timeframe(
     return await _manager.get_tickets_by_timeframe(db, status=status, days=days, limit=limit)
 
 
+<<<<<<< HEAD
+async def create_ticket(db: AsyncSession, ticket_obj: Ticket) -> Ticket:
+    db.add(ticket_obj)
+    try:
+        await db.commit()
+        await db.refresh(ticket_obj)
+    except SQLAlchemyError as e:
+        await db.rollback()
+        logger.exception("Failed to create ticket")
+        raise HTTPException(status_code=500, detail=f"Failed to create ticket: {e}")
+    return ticket_obj
+=======
 async def create_ticket(db: AsyncSession, ticket_obj: Ticket | Dict[str, Any]) -> Any:
     warnings.warn(
         "create_ticket is deprecated; use TicketManager.create_ticket",
@@ -98,6 +113,7 @@ async def create_ticket(db: AsyncSession, ticket_obj: Ticket | Dict[str, Any]) -
         stacklevel=2,
     )
     return await _manager.create_ticket(db, ticket_obj)
+>>>>>>> b9d2f38ffe46e291efa5e27a7e999a1e8eda59fe
 
 
 async def update_ticket(db: AsyncSession, ticket_id: int, updates: BaseModel | Dict[str, Any]) -> Ticket | None:

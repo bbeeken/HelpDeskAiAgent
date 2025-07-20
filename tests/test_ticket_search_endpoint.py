@@ -5,7 +5,7 @@ from datetime import datetime, UTC
 from main import app
 from db.mssql import SessionLocal
 from db.models import Ticket
-from tools.ticket_tools import create_ticket
+from tools.ticket_management import TicketManager
 
 
 @pytest.mark.asyncio
@@ -19,7 +19,7 @@ async def test_ticket_search_route_returns_results():
             Created_Date=datetime.now(UTC),
             Ticket_Status_ID=1,
         )
-        await create_ticket(db, t)
+        await TicketManager().create_ticket(db, t)
         tid = t.Ticket_ID
 
     transport = ASGITransport(app=app)
@@ -41,7 +41,7 @@ async def test_ticket_search_route_accepts_json():
             Created_Date=datetime.now(UTC),
             Ticket_Status_ID=1,
         )
-        await create_ticket(db, t)
+        await TicketManager().create_ticket(db, t)
         tid = t.Ticket_ID
 
     transport = ASGITransport(app=app)

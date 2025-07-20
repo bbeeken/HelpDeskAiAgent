@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, UTC
 from main import app
 from db.models import OnCallShift
 from db.mssql import SessionLocal
-from tools.oncall_tools import list_oncall_schedule
+from tools.user_services import UserManager
 
 
 async def _add_shift(email: str, start: datetime, end: datetime) -> OnCallShift:
@@ -24,10 +24,24 @@ async def test_list_oncall_schedule():
     await _add_shift("b@example.com", now + timedelta(hours=1), now + timedelta(hours=2))
 
     async with SessionLocal() as db:
-        schedule = await list_oncall_schedule(db)
+        schedule = await UserManager().list_oncall_schedule(db)
         emails = [s.user_email for s in schedule]
 
     assert emails == ["a@example.com", "b@example.com"]
+
+
+@pytest.mark.asyncio
+async def test_oncall_schedule_filters_and_sort():
+    now = datetime.now(UTC)
+    s1 = await _add_shift("x@example.com", now + timedelta(hours=1), now + timedelta(hours=2))
+    s2 = await _add_shift("y@example.com", now + timedelta(hours=3), now + timedelta(hours=4))
+
+    async with SessionLocal() as db:
+        filtered = await UserManager().list_oncall_schedule(db, filters={"user_email": "y@example.com"})
+        assert [s.user_email for s in filtered] == ["y@example.com"]
+
+        ordered = await UserManager().list_oncall_schedule(db, sort=["-start_time"])
+        assert [s.id for s in ordered][:2] == [s2.id, s1.id]
 
 
 @pytest.mark.asyncio

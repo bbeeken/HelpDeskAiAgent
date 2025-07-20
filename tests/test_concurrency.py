@@ -1,7 +1,7 @@
 from datetime import datetime, UTC
 from db.models import Ticket
 from db.mssql import SessionLocal
-from tools.ticket_tools import create_ticket
+from tools.ticket_management import TicketManager
 import asyncio
 import httpx
 from httpx import ASGITransport
@@ -18,7 +18,7 @@ async def _add_sample_ticket():
             Created_Date=datetime.now(UTC),
             Ticket_Status_ID=1,
         )
-        await create_ticket(session, t)
+        await TicketManager().create_ticket(session, t)
 
 
 async def _search_worker():

@@ -34,8 +34,7 @@ import uuid
 import asyncio
 from typing import List, Dict, Any
 
-# Configure root logger so messages are output when running with uvicorn
-logging.basicConfig(level=logging.INFO)
+# Configure logger for this module
 logger = logging.getLogger(__name__)
 
 # Correlation ID context variable for log records
@@ -66,6 +65,8 @@ async def lifespan(app: FastAPI):
         logger.info("Sentry error tracking enabled")
 
     app.state.limiter = limiter
+    app.state.mcp = FastApiMCP(app)
+    app.state.mcp.mount()
 
     global START_TIME
     START_TIME = datetime.now(UTC)
@@ -74,6 +75,7 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
 
     yield
+    await engine.dispose()
 
 app = FastAPI(title="Truck Stop MCP Helpdesk API", lifespan=lifespan)
 app.add_exception_handler(
@@ -106,6 +108,7 @@ def custom_openapi() -> Dict[str, Any]:
     return schema
 
 app.openapi = custom_openapi
+
 
 # --- Dynamically expose MCP tools as HTTP endpoints ---
 server = create_enhanced_server()
@@ -164,6 +167,7 @@ async def list_tools() -> Dict[str, List[Dict[str, Any]]]:
 
 app.state.mcp = FastApiMCP(app)
 app.state.mcp.mount()
+
 
 
 @app.middleware("http")
