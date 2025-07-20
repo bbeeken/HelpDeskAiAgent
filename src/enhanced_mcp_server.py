@@ -5,6 +5,9 @@ from typing import Any, Awaitable, Callable, Dict, Iterable, List
 
 import json
 import anyio
+import asyncio
+from sqlalchemy.exc import SQLAlchemyError
+from src.shared.exceptions import DatabaseError
 from mcp.server.stdio import stdio_server
 
 from mcp.server import Server
@@ -29,8 +32,24 @@ from src.core.services.analytics_reporting import (
 
 
 async def _with_session(func: Callable[..., Awaitable[Any]], **kwargs: Any) -> Any:
-    async with SessionLocal() as db:
-        return await func(db, **kwargs)
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            async with SessionLocal() as db:
+                result = await func(db, **kwargs)
+                await db.commit()
+                return result
+        except SQLAlchemyError as e:
+            await db.rollback()
+            if attempt == max_retries - 1:
+                raise DatabaseError(
+                    f"Database operation failed after {max_retries} attempts",
+                    details=str(e),
+                )
+            await asyncio.sleep(0.1 * (2 ** attempt))
+        except Exception:
+            await db.rollback()
+            raise
 
 
 def _db_wrapper(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
