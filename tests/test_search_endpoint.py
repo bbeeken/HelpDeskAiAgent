@@ -4,9 +4,9 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 
 from main import app
-from db.mssql import SessionLocal
-from db.models import Ticket
-from tools.ticket_management import TicketManager
+from src.infrastructure.database import SessionLocal
+from src.core.repositories.models import Ticket
+from src.core.services.ticket_management import TicketManager
 
 
 @pytest.mark.asyncio

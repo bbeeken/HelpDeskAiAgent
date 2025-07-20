@@ -12,7 +12,7 @@ def reload_module(monkeypatch, **env):
         else:
             monkeypatch.setenv(key, value)
     import config
-    import tools.user_services as us
+    import src.core.services.user_services as us
     importlib.reload(config)
     return importlib.reload(us)
 

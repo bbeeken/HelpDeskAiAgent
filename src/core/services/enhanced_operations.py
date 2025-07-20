@@ -7,8 +7,8 @@ from typing import Dict, Any, Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
-from schemas.agent_data import OperationResult, ValidationResult
-from schemas.ticket import TicketUpdate
+from src.shared.schemas.agent_data import OperationResult, ValidationResult
+from src.shared.schemas.ticket import TicketUpdate
 from .ticket_management import TicketManager
 from .enhanced_context import EnhancedContextManager
 

@@ -41,3 +41,4 @@ def test_verify_tools_missing():
     data = {"tools": [{"name": "g_ticket"}]}
     with fake_server(data) as url:
         assert not verify_tools.verify(url)
+

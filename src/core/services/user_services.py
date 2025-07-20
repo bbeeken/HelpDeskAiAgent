@@ -11,7 +11,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import OnCallShift
+from src.core.repositories.models import OnCallShift
 
 logger = logging.getLogger(__name__)
 

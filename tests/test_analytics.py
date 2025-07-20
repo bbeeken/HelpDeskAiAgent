@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, UTC
 import pytest
 from httpx import AsyncClient, ASGITransport
 from main import app
-from db.models import Ticket, TicketStatus
-from db.mssql import SessionLocal
-from tools.ticket_management import TicketManager
+from src.core.repositories.models import Ticket, TicketStatus
+from src.infrastructure.database import SessionLocal
+from src.core.services.ticket_management import TicketManager
 
 os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
 

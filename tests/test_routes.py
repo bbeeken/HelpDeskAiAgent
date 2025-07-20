@@ -1,8 +1,8 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
 from main import app
-from db.models import Asset, Vendor, Site, TicketAttachment
-from db.mssql import SessionLocal
+from src.core.repositories.models import Asset, Vendor, Site, TicketAttachment
+from src.infrastructure.database import SessionLocal
 from datetime import datetime, UTC
 
 

@@ -1,7 +1,7 @@
 from datetime import datetime, UTC
-from db.models import Ticket
-from db.mssql import SessionLocal
-from tools.ticket_management import TicketManager
+from src.core.repositories.models import Ticket
+from src.infrastructure.database import SessionLocal
+from src.core.services.ticket_management import TicketManager
 import asyncio
 import httpx
 from httpx import ASGITransport

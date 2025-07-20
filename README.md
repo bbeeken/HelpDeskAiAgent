@@ -23,7 +23,7 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
     ```
    The `driver` name must match an ODBC driver installed on the host machine.
   - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
-    lookups in `tools.user_services`. When omitted, stub responses are returned.
+    lookups in `src.core.services.user_services`. When omitted, stub responses are returned.
 
 
   - `ENABLE_RATE_LIMITING` – enable the SlowAPI limiter middleware.
@@ -131,7 +131,7 @@ related labels such as status, asset, site, and vendor. Endpoints like
 fully populated ticket record.
 
 Create the view with SQL similar to the following (the full statement is also
-available in `db/sql.py` as `CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL`):
+available in `src.core.repositories.sql.py` as `CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL`):
 
 
 ```sql
@@ -292,13 +292,13 @@ curl "http://localhost:8000/tickets/smart_search?q=unassigned+critical&limit=5"
 
 ## CLI
 
-`tools.cli` provides a small command-line interface to the API. Set `API_BASE_URL` to the server URL (default `http://localhost:8000`).
+`src.core.services.cli` provides a small command-line interface to the API. Set `API_BASE_URL` to the server URL (default `http://localhost:8000`).
 
 Create a ticket:
 
 ```bash
 echo '{"Subject":"Subj","Ticket_Body":"Body","Ticket_Contact_Name":"Name","Ticket_Contact_Email":"a@example.com"}' | \
-python -m tools.cli create-ticket
+python -m src.core.services.cli create-ticket
 ```
 
 ## MCP Streaming Interface

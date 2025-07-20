@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from schemas.ticket import TicketCreate
+from src.shared.schemas.ticket import TicketCreate
 
 
 def test_invalid_email():

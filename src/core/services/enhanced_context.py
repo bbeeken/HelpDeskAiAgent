@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import (
+from src.core.repositories.models import (
     Ticket,
     VTicketMasterExpanded,
     TicketMessage,
@@ -18,7 +18,7 @@ from db.models import (
     TicketStatus,
     Priority,
 )
-from schemas.agent_data import (
+from src.shared.schemas.agent_data import (
     TicketFullContext, SystemSnapshot, UserCompleteProfile
 )
 from .user_services import UserManager

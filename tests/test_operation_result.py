@@ -1,11 +1,11 @@
 import pytest
 from datetime import datetime, UTC
 
-from db.mssql import SessionLocal
-from db.models import Ticket
-from tools.ticket_management import TicketManager
-from tools.analytics_reporting import tickets_by_status
-from tools.operation_result import OperationResult
+from src.infrastructure.database import SessionLocal
+from src.core.repositories.models import Ticket
+from src.core.services.ticket_management import TicketManager
+from src.core.services.analytics_reporting import tickets_by_status
+from src.core.services.operation_result import OperationResult
 
 
 @pytest.mark.asyncio

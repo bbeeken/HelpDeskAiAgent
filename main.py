@@ -22,9 +22,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1 import get_db, register_routes
 from config import ERROR_TRACKING_DSN
-from db.models import Base
-from db.mssql import engine
-from errors import DatabaseError, ErrorResponse, NotFoundError, ValidationError
+from src.core.repositories.models import Base
+from src.infrastructure.database import engine
+from src.shared.exceptions import DatabaseError, ErrorResponse, NotFoundError, ValidationError
 from limiter import limiter
 from src.mcp_server import Tool, create_enhanced_server
 from src.tool_list import TOOLS

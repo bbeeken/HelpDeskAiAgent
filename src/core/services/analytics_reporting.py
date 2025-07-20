@@ -10,8 +10,8 @@ import time
 from sqlalchemy.ext.asyncio import AsyncSession
 from .system_utilities import OperationResult
 from sqlalchemy import func, select, or_
-from db.models import Ticket, TicketStatus, Site
-from schemas.analytics import (
+from src.core.repositories.models import Ticket, TicketStatus, Site
+from src.shared.schemas.analytics import (
     StatusCount,
     SiteOpenCount,
     UserOpenCount,

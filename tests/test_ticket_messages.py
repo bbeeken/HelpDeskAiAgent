@@ -1,9 +1,9 @@
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
-from tools.ticket_management import TicketManager
-from db.mssql import SessionLocal
-from errors import DatabaseError
+from src.core.services.ticket_management import TicketManager
+from src.infrastructure.database import SessionLocal
+from src.shared.exceptions import DatabaseError
 
 
 @pytest.mark.asyncio

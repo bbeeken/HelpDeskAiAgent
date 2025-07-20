@@ -3,9 +3,9 @@ from httpx import AsyncClient, ASGITransport
 from datetime import datetime, timedelta, UTC
 
 from main import app
-from db.models import OnCallShift
-from db.mssql import SessionLocal
-from tools.user_services import UserManager
+from src.core.repositories.models import OnCallShift
+from src.infrastructure.database import SessionLocal
+from src.core.services.user_services import UserManager
 
 
 async def _add_shift(email: str, start: datetime, end: datetime) -> OnCallShift:

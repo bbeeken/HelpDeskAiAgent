@@ -10,14 +10,14 @@ from mcp.server.stdio import stdio_server
 from mcp.server import Server
 from mcp import types
 
-from db.mssql import SessionLocal
+from src.infrastructure.database import SessionLocal
 from .mcp_server import Tool
 
 # Business logic modules
-from tools.ticket_management import TicketManager, TicketTools
-from tools.reference_data import ReferenceDataManager
-from tools.user_services import UserManager
-from tools.analytics_reporting import (
+from src.core.services.ticket_management import TicketManager, TicketTools
+from src.core.services.reference_data import ReferenceDataManager
+from src.core.services.user_services import UserManager
+from src.core.services.analytics_reporting import (
     tickets_by_status,
     open_tickets_by_site,
     open_tickets_by_user,

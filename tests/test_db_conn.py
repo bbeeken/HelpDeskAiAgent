@@ -1,7 +1,7 @@
 import importlib
 import pytest
 
-import db.mssql as mssql
+import src.infrastructure.database as mssql
 
 
 def test_pyodbc_conn_string_not_allowed(monkeypatch):

@@ -8,7 +8,7 @@ from typing import Any, Sequence, Type, List
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import Asset, Site, Vendor, TicketCategory, TicketStatus
+from src.core.repositories.models import Asset, Site, Vendor, TicketCategory, TicketStatus
 
 logger = logging.getLogger(__name__)
 
