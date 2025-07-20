@@ -35,6 +35,13 @@ class EnhancedContextManager:
         self.user_manager = UserManager()
         self.analytics = AnalyticsManager(db)
 
+    @staticmethod
+    def _ensure_aware(dt: Optional[datetime]) -> Optional[datetime]:
+        """Return a timezone-aware datetime in UTC."""
+        if dt is not None and dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
+
     async def get_ticket_full_context(
         self,
         ticket_id: int,
@@ -281,7 +288,7 @@ class EnhancedContextManager:
     async def _generate_ticket_metadata(self, ticket) -> Dict[str, Any]:
         """Generate useful metadata about the ticket."""
         now = datetime.now(timezone.utc)
-        created = ticket.Created_Date
+        created = self._ensure_aware(ticket.Created_Date)
 
         if created:
             age_total = now - created
@@ -309,7 +316,9 @@ class EnhancedContextManager:
     def _calculate_resolution_time(self, ticket) -> Optional[float]:
         """Calculate resolution time in hours."""
         if ticket.Closed_Date and ticket.Created_Date:
-            delta = ticket.Closed_Date - ticket.Created_Date
+            closed = self._ensure_aware(ticket.Closed_Date)
+            created = self._ensure_aware(ticket.Created_Date)
+            delta = closed - created
             return delta.total_seconds() / 3600
         return None
 
@@ -573,7 +582,10 @@ class EnhancedContextManager:
                 "priority": t.Priority_Level,
                 "created_date": t.Created_Date,
                 "age_hours": (
-                    (datetime.now(timezone.utc) - t.Created_Date).total_seconds()
+                    (
+                        datetime.now(timezone.utc)
+                        - self._ensure_aware(t.Created_Date)
+                    ).total_seconds()
                     / 3600
                     if t.Created_Date
                     else 0
@@ -614,7 +626,10 @@ class EnhancedContextManager:
                 "assigned_to": t.Assigned_Name,
                 "created_date": t.Created_Date,
                 "days_overdue": (
-                    (datetime.now(timezone.utc) - t.Created_Date).days
+                    (
+                        datetime.now(timezone.utc)
+                        - self._ensure_aware(t.Created_Date)
+                    ).days
                     if t.Created_Date
                     else 0
                 ),
@@ -737,8 +752,11 @@ class EnhancedContextManager:
             avg_resolution_hours = 0.0
             if rows:
                 total_seconds = sum(
-                    (closed - created).total_seconds() 
-                    for created, closed in rows 
+                    (
+                        self._ensure_aware(closed)
+                        - self._ensure_aware(created)
+                    ).total_seconds()
+                    for created, closed in rows
                     if created and closed
                 )
                 avg_resolution_hours = total_seconds / len(rows) / 3600
