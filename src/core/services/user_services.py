@@ -44,9 +44,15 @@ class UserManager:
             try:
                 resp = await client.post(url, data=data, timeout=10)
                 resp.raise_for_status()
-            except httpx.HTTPError as exc:
-                logger.exception("Error fetching Graph token: %s", exc)
-                return ""
+            except httpx.TimeoutException as exc:
+                logger.exception("Timeout fetching Graph token: %s", exc)
+                raise
+            except httpx.HTTPStatusError as exc:
+                logger.exception("Bad status fetching Graph token: %s", exc)
+                raise
+            except httpx.RequestError as exc:
+                logger.exception("Request error fetching Graph token: %s", exc)
+                raise
             return resp.json().get("access_token", "")
 
     async def _graph_get(self, endpoint: str, token: str) -> dict:
@@ -56,18 +62,30 @@ class UserManager:
         url = f"https://graph.microsoft.com/v1.0/{endpoint}"
         async with httpx.AsyncClient() as client:
             try:
-                resp = await client.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=10)
+                resp = await client.get(
+                    url, headers={"Authorization": f"Bearer {token}"}, timeout=10
+                )
                 resp.raise_for_status()
-            except httpx.HTTPError as exc:
-                logger.exception("Error calling Graph endpoint %s: %s", endpoint, exc)
-                return {}
+            except httpx.TimeoutException as exc:
+                logger.exception("Timeout calling Graph endpoint %s: %s", endpoint, exc)
+                raise
+            except httpx.HTTPStatusError as exc:
+                logger.exception("Bad status from Graph endpoint %s: %s", endpoint, exc)
+                raise
+            except httpx.RequestError as exc:
+                logger.exception("Request error calling Graph endpoint %s: %s", endpoint, exc)
+                raise
             return resp.json()
 
     async def get_user_by_email(self, email: str) -> Dict[str, str | None]:
-        token = await self._get_token()
-        if not token:
+        try:
+            token = await self._get_token()
+            if not token:
+                return {"email": email, "displayName": None, "id": None}
+            data = await self._graph_get(f"users/{email}", token)
+        except httpx.HTTPError:
+            logger.exception("Failed to get user by email %s", email)
             return {"email": email, "displayName": None, "id": None}
-        data = await self._graph_get(f"users/{email}", token)
         return {
             "email": data.get("mail"),
             "displayName": data.get("displayName"),
@@ -75,10 +93,14 @@ class UserManager:
         }
 
     async def get_users_in_group(self) -> List[Dict[str, str | None]]:
-        token = await self._get_token()
-        if not token:
+        try:
+            token = await self._get_token()
+            if not token:
+                return []
+            data = await self._graph_get(f"groups/{GROUP_ID}/members", token)
+        except httpx.HTTPError:
+            logger.exception("Failed to get users in group")
             return []
-        data = await self._graph_get(f"groups/{GROUP_ID}/members", token)
         return [
             {"email": u.get("mail"), "displayName": u.get("displayName"), "id": u.get("id")}
             for u in data.get("value", [])

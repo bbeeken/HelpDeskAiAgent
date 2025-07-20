@@ -138,8 +138,16 @@ async def test_user_tools_http_error(monkeypatch):
 
     monkeypatch.setattr(us.httpx, "AsyncClient", DummyClient)
 
-    token = await um._get_token()
-    assert token == ""
+    with pytest.raises(httpx.HTTPError):
+        await um._get_token()
 
-    data = await um._graph_get("users/x", "tok")
-    assert data == {}
+    with pytest.raises(httpx.HTTPError):
+        await um._graph_get("users/x", "tok")
+
+    # high-level helpers should handle errors and return fallback values
+    assert await um.get_user_by_email("x") == {
+        "email": "x",
+        "displayName": None,
+        "id": None,
+    }
+    assert await um.get_users_in_group() == []
