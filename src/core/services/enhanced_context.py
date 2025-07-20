@@ -35,6 +35,44 @@ class EnhancedContextManager:
         self.user_manager = UserManager()
         self.analytics = AnalyticsManager(db)
 
+    @staticmethod
+    def _ensure_timezone_aware(dt: Optional[datetime]) -> Optional[datetime]:
+        """Ensure datetime is timezone-aware, assuming UTC if naive."""
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
+
+    @staticmethod
+    def _safe_datetime_diff_hours(end_dt: Optional[datetime], start_dt: Optional[datetime]) -> Optional[float]:
+        """Safely calculate hours between two datetimes, handling timezone issues."""
+        if end_dt is None or start_dt is None:
+            return None
+
+        try:
+            end_aware = EnhancedContextManager._ensure_timezone_aware(end_dt)
+            start_aware = EnhancedContextManager._ensure_timezone_aware(start_dt)
+
+            if end_aware and start_aware:
+                delta = end_aware - start_aware
+                return delta.total_seconds() / 3600
+        except Exception as e:  # pragma: no cover - defensive
+            logger.warning(f"Failed to calculate datetime difference: {e}")
+            return None
+
+        return None
+
+    @staticmethod
+    def _safe_datetime_diff_minutes(end_dt: Optional[datetime], start_dt: Optional[datetime]) -> float:
+        """Safely calculate minutes between datetimes, returning 0 on error."""
+        hours = EnhancedContextManager._safe_datetime_diff_hours(end_dt, start_dt)
+        return (hours * 60) if hours is not None else 0.0
+
+    def _get_current_utc(self) -> datetime:
+        """Get current UTC datetime - centralized for consistency."""
+        return datetime.now(timezone.utc)
+
     async def get_ticket_full_context(
         self,
         ticket_id: int,
@@ -279,39 +317,55 @@ class EnhancedContextManager:
         ]
 
     async def _generate_ticket_metadata(self, ticket) -> Dict[str, Any]:
-        """Generate useful metadata about the ticket."""
-        now = datetime.now(timezone.utc)
-        created = ticket.Created_Date
+        """Generate useful metadata about the ticket with safe timezone handling."""
+        now = self._get_current_utc()
+        created = self._ensure_timezone_aware(ticket.Created_Date)
+        last_modified = self._ensure_timezone_aware(ticket.LastModified)
+        closed_date = self._ensure_timezone_aware(ticket.Closed_Date)
 
+        age_minutes = self._safe_datetime_diff_minutes(now, created)
+        age_hours = age_minutes / 60 if age_minutes > 0 else 0.0
+        age_days = age_hours / 24 if age_hours > 0 else 0.0
+
+        business_hours_age = 0.0
         if created:
-            age_total = now - created
-            age_minutes = age_total.total_seconds() / 60
+            try:
+                business_hours_age = self._calculate_business_hours_age(created, now)
+            except Exception as e:  # pragma: no cover - defensive
+                logger.warning(f"Failed to calculate business hours age: {e}")
+                business_hours_age = 0.0
 
-            # Calculate business hours age (rough estimate)
-            business_hours_age = self._calculate_business_hours_age(created, now)
-        else:
-            age_minutes = 0
-            business_hours_age = 0
+        resolution_hours = None
+        if closed_date and created:
+            resolution_hours = self._safe_datetime_diff_hours(closed_date, created)
+
+        sla_threshold_hours = 24
+        is_overdue = age_hours > sla_threshold_hours and not closed_date
 
         return {
-            "created_timestamp": created,
-            "last_modified": ticket.LastModified,
-            "age_minutes": age_minutes,
-            "age_hours": age_minutes / 60,
-            "age_days": age_minutes / (60 * 24),
-            "business_hours_age_hours": business_hours_age,
-            "is_overdue": age_minutes > (24 * 60),  # Simple 24-hour SLA
+            "created_timestamp": created.isoformat() if created else None,
+            "last_modified": last_modified.isoformat() if last_modified else None,
+            "closed_timestamp": closed_date.isoformat() if closed_date else None,
+            "age_minutes": round(age_minutes, 2),
+            "age_hours": round(age_hours, 2),
+            "age_days": round(age_days, 2),
+            "business_hours_age_hours": round(business_hours_age, 2),
+            "resolution_hours": round(resolution_hours, 2) if resolution_hours else None,
+            "is_overdue": is_overdue,
+            "is_closed": closed_date is not None,
+            "sla_threshold_hours": sla_threshold_hours,
             "priority_text": self._priority_id_to_text(ticket.Priority_ID),
-            "complexity_estimate": self._estimate_ticket_complexity(ticket)
+            "complexity_estimate": self._estimate_ticket_complexity(ticket),
+            "metadata_generated_at": now.isoformat(),
         }
 
     # Additional helper methods...
     def _calculate_resolution_time(self, ticket) -> Optional[float]:
-        """Calculate resolution time in hours."""
-        if ticket.Closed_Date and ticket.Created_Date:
-            delta = ticket.Closed_Date - ticket.Created_Date
-            return delta.total_seconds() / 3600
-        return None
+        """Calculate resolution time in hours with safe timezone handling."""
+        if not hasattr(ticket, 'Closed_Date') or not hasattr(ticket, 'Created_Date'):
+            return None
+
+        return self._safe_datetime_diff_hours(ticket.Closed_Date, ticket.Created_Date)
 
     def _determine_relationship_type(self, base_ticket, related_ticket) -> str:
         """Determine how tickets are related."""
@@ -324,11 +378,25 @@ class EnhancedContextManager:
         return "unknown"
 
     def _calculate_business_hours_age(self, start: datetime, end: datetime) -> float:
-        """Rough calculation of business hours between two dates."""
-        # Simplified: assume 8-hour business days, M-F
-        total_hours = (end - start).total_seconds() / 3600
-        # Rough approximation: 40 business hours per week
-        return total_hours * (40 / 168)  # 168 hours in a week
+        """Calculate business hours between two dates with timezone safety."""
+        try:
+            start_aware = self._ensure_timezone_aware(start)
+            end_aware = self._ensure_timezone_aware(end)
+
+            if not start_aware or not end_aware:
+                return 0.0
+
+            total_hours = (end_aware - start_aware).total_seconds() / 3600
+
+            if total_hours <= 0:
+                return 0.0
+
+            business_ratio = 40 / 168
+            return total_hours * business_ratio
+
+        except Exception as e:  # pragma: no cover - defensive
+            logger.warning(f"Error calculating business hours between {start} and {end}: {e}")
+            return 0.0
 
     def _priority_id_to_text(self, priority_id: Optional[int]) -> str:
         """Convert priority ID to text."""
@@ -692,9 +760,8 @@ class EnhancedContextManager:
     # ------------------------------------------------------------------
     # User profile helpers - robust implementations with error handling
     async def _calculate_user_ticket_statistics(self, user_email: str) -> Dict[str, Any]:
-        """Calculate ticket statistics for a user with error handling."""
+        """Calculate ticket statistics for a user with safe datetime handling."""
         try:
-            # Total tickets
             total_result = await self.db.execute(
                 select(func.count(VTicketMasterExpanded.Ticket_ID)).filter(
                     VTicketMasterExpanded.Ticket_Contact_Email == user_email
@@ -702,7 +769,6 @@ class EnhancedContextManager:
             )
             total_tickets = total_result.scalar() or 0
 
-            # Open tickets
             open_result = await self.db.execute(
                 select(func.count(VTicketMasterExpanded.Ticket_ID))
                 .join(
@@ -722,7 +788,6 @@ class EnhancedContextManager:
             )
             open_tickets = open_result.scalar() or 0
 
-            # Calculate average resolution time for closed tickets
             resolution_result = await self.db.execute(
                 select(VTicketMasterExpanded.Created_Date, VTicketMasterExpanded.Closed_Date)
                 .filter(
@@ -733,15 +798,20 @@ class EnhancedContextManager:
                 )
             )
             rows = resolution_result.all()
-            
+
             avg_resolution_hours = 0.0
             if rows:
-                total_seconds = sum(
-                    (closed - created).total_seconds() 
-                    for created, closed in rows 
-                    if created and closed
-                )
-                avg_resolution_hours = total_seconds / len(rows) / 3600
+                total_resolution_hours = 0.0
+                valid_resolutions = 0
+
+                for created, closed in rows:
+                    resolution_hours = self._safe_datetime_diff_hours(closed, created)
+                    if resolution_hours is not None and resolution_hours > 0:
+                        total_resolution_hours += resolution_hours
+                        valid_resolutions += 1
+
+                if valid_resolutions > 0:
+                    avg_resolution_hours = total_resolution_hours / valid_resolutions
 
             return {
                 "total_tickets": total_tickets,
@@ -749,16 +819,24 @@ class EnhancedContextManager:
                 "closed_tickets": total_tickets - open_tickets,
                 "avg_resolution_hours": round(avg_resolution_hours, 2),
                 "ticket_frequency": "high" if total_tickets > 20 else "normal",
+                "calculation_timestamp": self._get_current_utc().isoformat(),
             }
+
         except Exception as e:
             logger.error(f"Error calculating user ticket statistics for {user_email}: {e}")
-            return {
-                "total_tickets": 0,
-                "open_tickets": 0,
-                "closed_tickets": 0,
-                "avg_resolution_hours": 0.0,
-                "ticket_frequency": "normal",
-            }
+            return self._get_default_user_stats()
+
+    def _get_default_user_stats(self) -> Dict[str, Any]:
+        """Return safe default statistics when calculation fails."""
+        return {
+            "total_tickets": 0,
+            "open_tickets": 0,
+            "closed_tickets": 0,
+            "avg_resolution_hours": 0.0,
+            "ticket_frequency": "unknown",
+            "error": True,
+            "calculation_timestamp": self._get_current_utc().isoformat(),
+        }
 
     async def _analyze_user_communication_patterns(self, user_email: str) -> Dict[str, Any]:
         """Analyze user's communication patterns with error handling."""

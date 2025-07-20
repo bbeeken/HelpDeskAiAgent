@@ -23,12 +23,29 @@ class Settings(BaseSettings):
     ENABLE_RATE_LIMITING: bool = True
     API_BASE_URL: str = "http://localhost:8000"
 
+    DEFAULT_TIMEZONE: str = "UTC"
+    ASSUME_NAIVE_AS_UTC: bool = True
+
     @field_validator("DB_CONN_STRING")
     @classmethod
     def check_async_driver(cls, value: str | None) -> str | None:
         if value and value.startswith("mssql+pyodbc"):
             raise ValueError("Synchronous driver 'mssql+pyodbc' is not supported")
         return value
+
+    @field_validator("DEFAULT_TIMEZONE")
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        """Validate timezone string."""
+        try:
+            from zoneinfo import ZoneInfo
+            ZoneInfo(v)
+            return v
+        except Exception:
+            if v not in ["UTC", "GMT"]:
+                logger.warning(f"Timezone {v} may not be valid, using UTC")
+                return "UTC"
+            return v
 
     class Config:
         case_sensitive = False
@@ -57,6 +74,8 @@ GRAPH_CLIENT_SECRET = settings.GRAPH_CLIENT_SECRET
 GRAPH_TENANT_ID = settings.GRAPH_TENANT_ID
 ENABLE_RATE_LIMITING = settings.ENABLE_RATE_LIMITING
 API_BASE_URL = settings.API_BASE_URL
+DEFAULT_TIMEZONE = settings.DEFAULT_TIMEZONE
+ASSUME_NAIVE_AS_UTC = settings.ASSUME_NAIVE_AS_UTC
 
 __all__ = [
     "Settings",
@@ -68,4 +87,6 @@ __all__ = [
     "GRAPH_TENANT_ID",
     "ENABLE_RATE_LIMITING",
     "API_BASE_URL",
+    "DEFAULT_TIMEZONE",
+    "ASSUME_NAIVE_AS_UTC",
 ]
