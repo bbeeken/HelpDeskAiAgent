@@ -46,6 +46,7 @@ from schemas import (
     TicketUpdate,
     TicketExpandedOut,
     TicketSearchOut,
+    TicketSearchRequest,
 )
 from schemas.search_params import TicketSearchParams
 from schemas.basic import (
@@ -157,6 +158,23 @@ async def search_tickets(
     return validated
 
 
+@ticket_router.post(
+    "/search",
+    response_model=List[TicketSearchOut],
+    operation_id="search_tickets_json",
+)
+async def search_tickets_json(
+    payload: TicketSearchRequest,
+    db: AsyncSession = Depends(get_db),
+) -> List[TicketSearchOut]:
+    return await search_tickets(
+        q=payload.q,
+        params=payload.params or TicketSearchParams(),
+        limit=payload.limit,
+        db=db,
+    )
+
+
 @ticket_router.get(
     "/{ticket_id}",
     response_model=TicketExpandedOut,
@@ -226,6 +244,23 @@ async def search_tickets_alias(
     db: AsyncSession = Depends(get_db),
 ) -> List[TicketSearchOut]:
     return await search_tickets(q=q, params=params, limit=limit, db=db)
+
+
+@tickets_router.post(
+    "/search",
+    response_model=List[TicketSearchOut],
+    operation_id="search_tickets_alias_json",
+)
+async def search_tickets_alias_json(
+    payload: TicketSearchRequest,
+    db: AsyncSession = Depends(get_db),
+) -> List[TicketSearchOut]:
+    return await search_tickets(
+        q=payload.q,
+        params=payload.params or TicketSearchParams(),
+        limit=payload.limit,
+        db=db,
+    )
 
 
 @tickets_router.get(
