@@ -8,8 +8,15 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import (
-    Ticket, VTicketMasterExpanded, TicketMessage, TicketAttachment,
-    Asset, Site, TicketCategory, TicketStatus  # Add TicketStatus here
+    Ticket,
+    VTicketMasterExpanded,
+    TicketMessage,
+    TicketAttachment,
+    Asset,
+    Site,
+    TicketCategory,
+    TicketStatus,
+    Priority,
 )
 from schemas.agent_data import (
     TicketFullContext, SystemSnapshot, UserCompleteProfile
@@ -202,7 +209,9 @@ class EnhancedContextManager:
             for att in attachments
         ]
 
-    async def _get_user_ticket_history(self, user_email: str, limit: int = 50) -> List[Dict[str, Any]]:
+    async def _get_user_ticket_history(
+        self, user_email: str, limit: int = 50
+    ) -> List[Dict[str, Any]]:
         """Get user's ticket history."""
         result = await self.db.execute(
             select(VTicketMasterExpanded)
@@ -231,7 +240,9 @@ class EnhancedContextManager:
 
         # Same user
         if ticket.Ticket_Contact_Email:
-            conditions.append(VTicketMasterExpanded.Ticket_Contact_Email == ticket.Ticket_Contact_Email)
+            conditions.append(
+                VTicketMasterExpanded.Ticket_Contact_Email == ticket.Ticket_Contact_Email
+            )
 
         # Same asset
         if ticket.Asset_ID:
@@ -344,12 +355,14 @@ class EnhancedContextManager:
         if not asset:
             return {}
 
+        # Get ticket count for this asset
         result = await self.db.execute(
             select(func.count(VTicketMasterExpanded.Ticket_ID))
             .filter(VTicketMasterExpanded.Asset_ID == asset_id)
         )
         ticket_count = result.scalar() or 0
 
+        # Get recent tickets for this asset
         recent_result = await self.db.execute(
             select(VTicketMasterExpanded)
             .filter(VTicketMasterExpanded.Asset_ID == asset_id)
@@ -384,12 +397,14 @@ class EnhancedContextManager:
         if not site:
             return {}
 
+        # Get total tickets for this site
         result = await self.db.execute(
             select(func.count(VTicketMasterExpanded.Ticket_ID))
             .filter(VTicketMasterExpanded.Site_ID == site_id)
         )
         total_tickets = result.scalar() or 0
 
+        # Get open tickets for this site
         open_result = await self.db.execute(
             select(func.count(VTicketMasterExpanded.Ticket_ID))
             .join(
@@ -634,11 +649,13 @@ class EnhancedContextManager:
         """Calculate overall system health metrics."""
         last_24h = datetime.now(timezone.utc) - timedelta(hours=24)
 
+        # Get recent ticket count
         recent_result = await self.db.execute(
             select(func.count(Ticket.Ticket_ID)).filter(Ticket.Created_Date >= last_24h)
         )
         recent_count = recent_result.scalar() or 0
 
+        # Get open ticket count
         open_result = await self.db.execute(
             select(func.count(VTicketMasterExpanded.Ticket_ID))
             .join(
@@ -655,6 +672,7 @@ class EnhancedContextManager:
         )
         open_count = open_result.scalar() or 0
 
+        # Calculate health score
         health_score = max(0, 100 - (recent_count * 2) - (open_count * 1))
 
         return {
@@ -672,155 +690,220 @@ class EnhancedContextManager:
         }
 
     # ------------------------------------------------------------------
-    # User profile helpers
+    # User profile helpers - robust implementations with error handling
     async def _calculate_user_ticket_statistics(self, user_email: str) -> Dict[str, Any]:
-        """Calculate ticket statistics for a user."""
-        total_result = await self.db.execute(
-            select(func.count(VTicketMasterExpanded.Ticket_ID)).filter(
-                VTicketMasterExpanded.Ticket_Contact_Email == user_email
-            )
-        )
-        total_tickets = total_result.scalar() or 0
-
-        open_result = await self.db.execute(
-            select(func.count(VTicketMasterExpanded.Ticket_ID))
-            .join(
-                TicketStatus,
-                VTicketMasterExpanded.Ticket_Status_ID == TicketStatus.ID,
-                isouter=True,
-            )
-            .filter(
-                and_(
-                    VTicketMasterExpanded.Ticket_Contact_Email == user_email,
-                    or_(
-                        TicketStatus.Label.ilike("%open%"),
-                        TicketStatus.Label.ilike("%progress%"),
-                    ),
+        """Calculate ticket statistics for a user with error handling."""
+        try:
+            # Total tickets
+            total_result = await self.db.execute(
+                select(func.count(VTicketMasterExpanded.Ticket_ID)).filter(
+                    VTicketMasterExpanded.Ticket_Contact_Email == user_email
                 )
             )
-        )
-        open_tickets = open_result.scalar() or 0
+            total_tickets = total_result.scalar() or 0
 
-        return {
-            "total_tickets": total_tickets,
-            "open_tickets": open_tickets,
-            "closed_tickets": total_tickets - open_tickets,
-            "ticket_frequency": "high" if total_tickets > 20 else "normal",
-        }
+            # Open tickets
+            open_result = await self.db.execute(
+                select(func.count(VTicketMasterExpanded.Ticket_ID))
+                .join(
+                    TicketStatus,
+                    VTicketMasterExpanded.Ticket_Status_ID == TicketStatus.ID,
+                    isouter=True,
+                )
+                .filter(
+                    and_(
+                        VTicketMasterExpanded.Ticket_Contact_Email == user_email,
+                        or_(
+                            TicketStatus.Label.ilike("%open%"),
+                            TicketStatus.Label.ilike("%progress%"),
+                        ),
+                    )
+                )
+            )
+            open_tickets = open_result.scalar() or 0
+
+            # Calculate average resolution time for closed tickets
+            resolution_result = await self.db.execute(
+                select(VTicketMasterExpanded.Created_Date, VTicketMasterExpanded.Closed_Date)
+                .filter(
+                    and_(
+                        VTicketMasterExpanded.Ticket_Contact_Email == user_email,
+                        VTicketMasterExpanded.Closed_Date.is_not(None),
+                    )
+                )
+            )
+            rows = resolution_result.all()
+            
+            avg_resolution_hours = 0.0
+            if rows:
+                total_seconds = sum(
+                    (closed - created).total_seconds() 
+                    for created, closed in rows 
+                    if created and closed
+                )
+                avg_resolution_hours = total_seconds / len(rows) / 3600
+
+            return {
+                "total_tickets": total_tickets,
+                "open_tickets": open_tickets,
+                "closed_tickets": total_tickets - open_tickets,
+                "avg_resolution_hours": round(avg_resolution_hours, 2),
+                "ticket_frequency": "high" if total_tickets > 20 else "normal",
+            }
+        except Exception as e:
+            logger.error(f"Error calculating user ticket statistics for {user_email}: {e}")
+            return {
+                "total_tickets": 0,
+                "open_tickets": 0,
+                "closed_tickets": 0,
+                "avg_resolution_hours": 0.0,
+                "ticket_frequency": "normal",
+            }
 
     async def _analyze_user_communication_patterns(self, user_email: str) -> Dict[str, Any]:
-        """Analyze user's communication patterns."""
-        result = await self.db.execute(
-            select(TicketMessage)
-            .filter(TicketMessage.SenderUserCode == user_email)
-            .order_by(TicketMessage.DateTimeStamp.desc())
-            .limit(50)
-        )
-        messages = result.scalars().all()
+        """Analyze user's communication patterns with error handling."""
+        try:
+            result = await self.db.execute(
+                select(TicketMessage)
+                .filter(TicketMessage.SenderUserCode == user_email)
+                .order_by(TicketMessage.DateTimeStamp.desc())
+                .limit(50)
+            )
+            messages = result.scalars().all()
 
-        if not messages:
-            return {"message_count": 0, "avg_response_time": None}
+            if not messages:
+                return {
+                    "message_count": 0,
+                    "avg_message_length": 0.0,
+                    "communication_style": "minimal",
+                    "last_message_date": None,
+                }
 
-        message_lengths = [len(msg.Message or "") for msg in messages]
-        avg_length = sum(message_lengths) / len(message_lengths) if message_lengths else 0
+            message_lengths = [len(msg.Message or "") for msg in messages]
+            avg_length = sum(message_lengths) / len(message_lengths) if message_lengths else 0
 
-        return {
-            "message_count": len(messages),
-            "avg_message_length": avg_length,
-            "communication_style": "detailed" if avg_length > 200 else "concise",
-            "last_message_date": messages[0].DateTimeStamp if messages else None,
-        }
+            return {
+                "message_count": len(messages),
+                "avg_message_length": round(avg_length, 1),
+                "communication_style": "detailed" if avg_length > 200 else "concise",
+                "last_message_date": messages[0].DateTimeStamp if messages else None,
+            }
+        except Exception as e:
+            logger.error(f"Error analyzing communication patterns for {user_email}: {e}")
+            return {
+                "message_count": 0,
+                "avg_message_length": 0.0,
+                "communication_style": "unknown",
+                "last_message_date": None,
+            }
 
     async def _get_user_technical_context(self, user_email: str) -> Dict[str, Any]:
-        """Get technical context for a user."""
-        result = await self.db.execute(
-            select(
-                VTicketMasterExpanded.Site_Label,
-                VTicketMasterExpanded.Asset_Label,
-                func.count(VTicketMasterExpanded.Ticket_ID),
+        """Get technical context for a user with error handling."""
+        try:
+            result = await self.db.execute(
+                select(
+                    VTicketMasterExpanded.Site_Label,
+                    VTicketMasterExpanded.Asset_Label,
+                    func.count(VTicketMasterExpanded.Ticket_ID),
+                )
+                .filter(VTicketMasterExpanded.Ticket_Contact_Email == user_email)
+                .group_by(
+                    VTicketMasterExpanded.Site_Label,
+                    VTicketMasterExpanded.Asset_Label,
+                )
+                .order_by(func.count(VTicketMasterExpanded.Ticket_ID).desc())
+                .limit(10)
             )
-            .filter(VTicketMasterExpanded.Ticket_Contact_Email == user_email)
-            .group_by(
-                VTicketMasterExpanded.Site_Label,
-                VTicketMasterExpanded.Asset_Label,
-            )
-            .order_by(func.count(VTicketMasterExpanded.Ticket_ID).desc())
-            .limit(10)
-        )
 
-        associations = result.all()
+            associations = result.all()
+            sites = list({row[0] for row in associations if row[0]})
+            assets = list({row[1] for row in associations if row[1]})
 
-        return {
-            "primary_sites": [row[0] for row in associations if row[0]],
-            "common_assets": [row[1] for row in associations if row[1]],
-            "technical_expertise": "high" if len(associations) > 5 else "normal",
-        }
+            return {
+                "primary_sites": sites,
+                "common_assets": assets,
+                "technical_expertise": "high" if len(associations) > 5 else "normal",
+            }
+        except Exception as e:
+            logger.error(f"Error getting technical context for {user_email}: {e}")
+            return {
+                "primary_sites": [],
+                "common_assets": [],
+                "technical_expertise": "normal",
+            }
 
     async def _get_user_current_tickets(self, user_email: str) -> List[Dict[str, Any]]:
-        """Get user's current open tickets."""
-        result = await self.db.execute(
-            select(VTicketMasterExpanded)
-            .join(
-                TicketStatus,
-                VTicketMasterExpanded.Ticket_Status_ID == TicketStatus.ID,
-                isouter=True,
-            )
-            .filter(
-                and_(
-                    VTicketMasterExpanded.Ticket_Contact_Email == user_email,
-                    or_(
-                        TicketStatus.Label.ilike("%open%"),
-                        TicketStatus.Label.ilike("%progress%"),
-                    ),
+        """Get user's current open tickets with error handling."""
+        try:
+            result = await self.db.execute(
+                select(VTicketMasterExpanded)
+                .join(
+                    TicketStatus,
+                    VTicketMasterExpanded.Ticket_Status_ID == TicketStatus.ID,
+                    isouter=True,
                 )
+                .filter(
+                    and_(
+                        VTicketMasterExpanded.Ticket_Contact_Email == user_email,
+                        or_(
+                            TicketStatus.Label.ilike("%open%"),
+                            TicketStatus.Label.ilike("%progress%"),
+                        ),
+                    )
+                )
+                .order_by(VTicketMasterExpanded.Created_Date.desc())
             )
-            .order_by(VTicketMasterExpanded.Created_Date.desc())
-        )
 
-        tickets = result.scalars().all()
-        return [
-            {
-                "ticket_id": t.Ticket_ID,
-                "subject": t.Subject,
-                "status": t.Ticket_Status_Label,
-                "priority": t.Priority_Level,
-                "assigned_to": t.Assigned_Name,
-                "created_date": t.Created_Date,
-            }
-            for t in tickets
-        ]
+            tickets = result.scalars().all()
+            return [
+                {
+                    "ticket_id": t.Ticket_ID,
+                    "subject": t.Subject,
+                    "status": t.Ticket_Status_Label,
+                    "priority": t.Priority_Level,
+                    "assigned_to": t.Assigned_Name,
+                    "created_date": t.Created_Date,
+                }
+                for t in tickets
+            ]
+        except Exception as e:
+            logger.error(f"Error getting current tickets for {user_email}: {e}")
+            return []
 
     async def _get_user_recent_resolved_tickets(self, user_email: str) -> List[Dict[str, Any]]:
-        """Get user's recently resolved tickets."""
-        result = await self.db.execute(
-            select(VTicketMasterExpanded)
-            .join(
-                TicketStatus,
-                VTicketMasterExpanded.Ticket_Status_ID == TicketStatus.ID,
-                isouter=True,
-            )
-            .filter(
-                and_(
-                    VTicketMasterExpanded.Ticket_Contact_Email == user_email,
-                    or_(
-                        TicketStatus.Label.ilike("%closed%"),
-                        TicketStatus.Label.ilike("%resolved%"),
-                    ),
+        """Get user's recently resolved tickets with error handling."""
+        try:
+            result = await self.db.execute(
+                select(VTicketMasterExpanded)
+                .join(
+                    TicketStatus,
+                    VTicketMasterExpanded.Ticket_Status_ID == TicketStatus.ID,
+                    isouter=True,
                 )
+                .filter(
+                    and_(
+                        VTicketMasterExpanded.Ticket_Contact_Email == user_email,
+                        or_(
+                            TicketStatus.Label.ilike("%closed%"),
+                            TicketStatus.Label.ilike("%resolved%"),
+                        ),
+                    )
+                )
+                .order_by(VTicketMasterExpanded.Closed_Date.desc())
+                .limit(10)
             )
-            .order_by(VTicketMasterExpanded.Created_Date.desc())
-            .limit(10)
-        )
 
-        tickets = result.scalars().all()
-        return [
-            {
-                "ticket_id": t.Ticket_ID,
-                "subject": t.Subject,
-                "resolution": t.Resolution,
-                "closed_date": t.Closed_Date,
-                "resolution_time_hours": self._calculate_resolution_time(t),
-            }
-            for t in tickets
-        ]
-
+            tickets = result.scalars().all()
+            return [
+                {
+                    "ticket_id": t.Ticket_ID,
+                    "subject": t.Subject,
+                    "resolution": getattr(t, 'Resolution', None),
+                    "closed_date": t.Closed_Date,
+                    "resolution_time_hours": self._calculate_resolution_time(t),
+                }
+                for t in tickets
+            ]
+        except Exception as e:
+            logger.error(f"Error getting recent resolved tickets for {user_email}: {e}")
+            return []
