@@ -2,10 +2,12 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import date
 
+
 class StatusCount(BaseModel):
     status_id: Optional[int]
     status_label: Optional[str]
     count: int
+
 
 class SiteOpenCount(BaseModel):
     site_id: Optional[int]

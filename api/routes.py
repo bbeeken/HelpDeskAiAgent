@@ -211,27 +211,8 @@ async def list_tickets(
 
     return PaginatedResponse(items=validated, total=total, skip=skip, limit=limit)
 
-<<<<<<< HEAD
-@ticket_router.get("/search", response_model=List[TicketSearchOut])
-async def search_tickets(
-    q: str = Query(..., min_length=1),
-    limit: int = Query(10, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
-) -> List[TicketSearchOut]:
-    logger.info("Searching tickets for '%s' (limit=%d)", q, limit)
-    results = await search_tickets_expanded(db, q, limit)
-    validated: List[TicketSearchOut] = []
-    for r in results:
-        try:
-            validated.append(TicketSearchOut.model_validate(r))
-        except ValidationError as exc:
-            logger.error("Invalid search result %s: %s", r.get("Ticket_ID", "?"), exc)
-    return validated
 
-@ticket_router.post("", response_model=TicketOut, status_code=201)
-=======
-
-@tickets_router.get(
+@ticket_router.get(
     "/expanded",
     response_model=PaginatedResponse[TicketExpandedOut],
     operation_id="list_expanded_tickets",
@@ -245,40 +226,7 @@ async def list_tickets_expanded_alias(
     return await list_tickets(request, skip, limit, db)
 
 
-@tickets_router.get(
-    "/search",
-    response_model=List[TicketSearchOut],
-    operation_id="search_tickets_alias",
-)
-async def search_tickets_alias(
-    q: str = Query(..., min_length=1),
-    params: TicketSearchParams = Depends(),
-    limit: int = Query(10, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
-) -> List[TicketSearchOut]:
-    return await search_tickets(q=q, params=params, limit=limit, db=db)
-
-
-@tickets_router.post(
-
-    "/search",
-    response_model=List[TicketSearchOut],
-    operation_id="search_tickets_alias_json",
-)
-async def search_tickets_alias_json(
-    payload: TicketSearchRequest,
-    db: AsyncSession = Depends(get_db),
-) -> List[TicketSearchOut]:
-    return await search_tickets(
-        q=payload.q,
-        params=payload.params or TicketSearchParams(),
-        limit=payload.limit,
-        db=db,
-    )
-
-
-
-@tickets_router.get(
+@ticket_router.get(
     "/by_user",
     response_model=PaginatedResponse[TicketExpandedOut],
     operation_id="tickets_by_user",
@@ -324,7 +272,6 @@ async def tickets_by_user_endpoint(
     status_code=201,
     operation_id="create_ticket",
 )
->>>>>>> b9d2f38ffe46e291efa5e27a7e999a1e8eda59fe
 async def create_ticket_endpoint(
     ticket: TicketCreate, db: AsyncSession = Depends(get_db)
 ) -> TicketOut:
@@ -649,9 +596,6 @@ async def ticket_trend_endpoint(
     return await ticket_trend(db, days)
 
 
-# ─── On-Call Sub-Router ───────────────────────────────────────────────────────
-oncall_router = APIRouter(prefix="/oncall", tags=["oncall"])
-
 # ─── Agent Enhanced Router ─────────────────────────────────────────────────
 agent_router = APIRouter(prefix="/agent", tags=["agent-enhanced"])
 
@@ -659,6 +603,7 @@ agent_router = APIRouter(prefix="/agent", tags=["agent-enhanced"])
 @agent_router.get(
     "/ticket/{ticket_id}/full-context",
     response_model=TicketFullContext,
+    operation_id="get_ticket_full_context",
     tags=["agent-enhanced"],
 )
 async def get_ticket_full_context_endpoint(
@@ -674,6 +619,7 @@ async def get_ticket_full_context_endpoint(
 @agent_router.get(
     "/system/snapshot",
     response_model=SystemSnapshot,
+    operation_id="get_system_snapshot",
     tags=["agent-enhanced"],
 )
 async def get_system_snapshot_endpoint(db: AsyncSession = Depends(get_db)) -> SystemSnapshot:
@@ -685,6 +631,7 @@ async def get_system_snapshot_endpoint(db: AsyncSession = Depends(get_db)) -> Sy
 @agent_router.get(
     "/user/{user_email}/complete-profile",
     response_model=UserCompleteProfile,
+    operation_id="get_user_complete_profile",
     tags=["agent-enhanced"],
 )
 async def get_user_complete_profile_endpoint(
@@ -699,6 +646,7 @@ async def get_user_complete_profile_endpoint(
 @agent_router.post(
     "/tickets/query-advanced",
     response_model=QueryResult,
+    operation_id="query_tickets_advanced",
     tags=["agent-enhanced"],
 )
 async def query_tickets_advanced_endpoint(
@@ -713,6 +661,7 @@ async def query_tickets_advanced_endpoint(
 @agent_router.post(
     "/operation/validate",
     response_model=ValidationResult,
+    operation_id="validate_operation",
     tags=["agent-enhanced"],
 )
 async def validate_operation_endpoint(
@@ -729,6 +678,7 @@ async def validate_operation_endpoint(
 @agent_router.post(
     "/ticket/{ticket_id}/execute-operation",
     response_model=OperationResult,
+    operation_id="execute_ticket_operation",
     tags=["agent-enhanced"],
 )
 async def execute_ticket_operation_endpoint(
@@ -741,6 +691,10 @@ async def execute_ticket_operation_endpoint(
     """🤖 Execute ticket operations with rich result context."""
     ops_manager = EnhancedOperationsManager(db)
     return await ops_manager.execute_ticket_operation(operation_type, ticket_id, parameters, skip_validation)
+
+
+# ─── On-Call Sub-Router ───────────────────────────────────────────────────────
+oncall_router = APIRouter(prefix="/oncall", tags=["oncall"])
 
 
 @oncall_router.get(

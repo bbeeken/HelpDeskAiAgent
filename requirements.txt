@@ -1,3 +1,4 @@
+
 # Web Framework & Server
 fastapi==0.110.0
 uvicorn==0.35.0
@@ -25,13 +26,16 @@ requests==2.32.3
 # Configuration & Environment
 python-dotenv==1.1.1
 
+
 # ASGI Utilities
 asgi_lifespan==2.1.0
+
 
 # Monitoring & Error Tracking
 sentry-sdk==2.2.0
 
 # Development & Testing
+
 pytest==8.4.1
 pytest-asyncio==0.23.6
 mypy==1.16.1
