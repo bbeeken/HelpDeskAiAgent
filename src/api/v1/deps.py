@@ -9,7 +9,19 @@ from src.infrastructure.database import SessionLocal
 logger = logging.getLogger(__name__)
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Yield a SQLAlchemy AsyncSession, ensuring proper cleanup."""
+    """Yield a SQLAlchemy AsyncSession without committing."""
+    async with SessionLocal() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+async def get_db_with_commit() -> AsyncGenerator[AsyncSession, None]:
+    """Yield a session that commits on success."""
     async with SessionLocal() as session:
         try:
             yield session

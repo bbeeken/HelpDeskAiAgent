@@ -23,7 +23,7 @@ from src.shared.schemas.basic import TicketMessageOut
 from src.shared.schemas.paginated import PaginatedResponse
 from src.core.services.ticket_management import TicketManager
 
-from .deps import get_db, extract_filters
+from .deps import get_db, get_db_with_commit, extract_filters
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +200,7 @@ async def tickets_by_user_endpoint(
     operation_id="create_ticket",
 )
 async def create_ticket_endpoint(
-    ticket: TicketCreate, db: AsyncSession = Depends(get_db)
+    ticket: TicketCreate, db: AsyncSession = Depends(get_db_with_commit)
 ) -> TicketOut:
     payload = ticket.model_dump()
     payload["Created_Date"] = datetime.now(timezone.utc)
@@ -221,7 +221,7 @@ async def create_ticket_endpoint(
 )
 async def create_ticket_json(
     payload: TicketCreate = Body(...),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_with_commit),
 ) -> TicketExpandedOut:
     data = payload.model_dump()
     data["Created_Date"] = datetime.now(timezone.utc)
@@ -241,7 +241,7 @@ async def create_ticket_json(
 async def update_ticket_endpoint(
     ticket_id: int,
     updates: TicketUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_with_commit),
 ) -> TicketOut:
     updated = await TicketManager().update_ticket(db, ticket_id, updates.model_dump(exclude_unset=True))
     if not updated:
@@ -260,7 +260,7 @@ async def update_ticket_endpoint(
 async def update_ticket_json(
     ticket_id: int,
     updates: TicketUpdate = Body(...),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_with_commit),
 ) -> TicketExpandedOut:
     updated = await TicketManager().update_ticket(db, ticket_id, updates)
     if not updated:
@@ -290,7 +290,7 @@ async def list_ticket_messages(
 async def add_ticket_message(
     ticket_id: int,
     msg: MessageIn,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_with_commit),
 ) -> TicketMessageOut:
     created = await TicketManager().post_message(
         db, ticket_id, msg.message, msg.sender_code, msg.sender_name

@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 
 from src.core.repositories.models import (
     Ticket,
@@ -640,12 +641,10 @@ class EnhancedContextManager:
                 "subject": t.Subject,
                 "priority": t.Priority_Level,
                 "created_date": t.Created_Date,
-                "age_hours": (
-                    (datetime.now(timezone.utc) - t.Created_Date).total_seconds()
-                    / 3600
-                    if t.Created_Date
-                    else 0
-                ),
+                "age_hours": self._safe_datetime_diff_hours(
+                    self._get_current_utc(),
+                    self._ensure_timezone_aware(t.Created_Date)
+                ) or 0,
             }
             for t in tickets
         ]
@@ -681,11 +680,12 @@ class EnhancedContextManager:
                 "subject": t.Subject,
                 "assigned_to": t.Assigned_Name,
                 "created_date": t.Created_Date,
-                "days_overdue": (
-                    (datetime.now(timezone.utc) - t.Created_Date).days
-                    if t.Created_Date
-                    else 0
-                ),
+                "days_overdue": max(0, (
+                    self._safe_datetime_diff_hours(
+                        self._get_current_utc(),
+                        self._ensure_timezone_aware(t.Created_Date)
+                    ) or 0
+                ) // 24),
             }
             for t in tickets
         ]
@@ -759,6 +759,19 @@ class EnhancedContextManager:
 
     # ------------------------------------------------------------------
     # User profile helpers - robust implementations with error handling
+
+    def _get_default_user_stats(self) -> Dict[str, Any]:
+        """Return safe default statistics when calculation fails."""
+        return {
+            "total_tickets": 0,
+            "open_tickets": 0,
+            "closed_tickets": 0,
+            "avg_resolution_hours": 0.0,
+            "ticket_frequency": "unknown",
+            "error": True,
+            "calculation_timestamp": self._get_current_utc().isoformat(),
+        }
+
     async def _calculate_user_ticket_statistics(self, user_email: str) -> Dict[str, Any]:
         """Calculate ticket statistics for a user with safe datetime handling."""
         try:
@@ -820,23 +833,15 @@ class EnhancedContextManager:
                 "avg_resolution_hours": round(avg_resolution_hours, 2),
                 "ticket_frequency": "high" if total_tickets > 20 else "normal",
                 "calculation_timestamp": self._get_current_utc().isoformat(),
+                "error": False,
             }
 
-        except Exception as e:
-            logger.error(f"Error calculating user ticket statistics for {user_email}: {e}")
+        except (OperationalError, IntegrityError, SQLAlchemyError) as e:
+            logger.error(f"Database error calculating stats for {user_email}: {e}")
             return self._get_default_user_stats()
-
-    def _get_default_user_stats(self) -> Dict[str, Any]:
-        """Return safe default statistics when calculation fails."""
-        return {
-            "total_tickets": 0,
-            "open_tickets": 0,
-            "closed_tickets": 0,
-            "avg_resolution_hours": 0.0,
-            "ticket_frequency": "unknown",
-            "error": True,
-            "calculation_timestamp": self._get_current_utc().isoformat(),
-        }
+        except Exception:
+            logger.exception(f"Unexpected error calculating user ticket statistics for {user_email}")
+            return self._get_default_user_stats()
 
     async def _analyze_user_communication_patterns(self, user_email: str) -> Dict[str, Any]:
         """Analyze user's communication patterns with error handling."""

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from .deps import get_db  # re-export for external use
+from .deps import get_db, get_db_with_commit  # re-export for external use
 from .tickets import ticket_router, tickets_router
 from .analytics import analytics_router
 from .auth import auth_router
@@ -14,6 +14,7 @@ def register_routes(app: FastAPI) -> None:
 
 __all__ = [
     "get_db",
+    "get_db_with_commit",
     "ticket_router",
     "tickets_router",
     "analytics_router",

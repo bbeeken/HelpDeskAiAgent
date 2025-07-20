@@ -1,6 +1,11 @@
 import os
+
+os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
+
 import asyncio
+
 import pytest
+import pytest_asyncio
 from src.core.repositories.models import Base, Ticket
 from src.infrastructure.database import engine, SessionLocal
 from datetime import datetime, UTC
@@ -10,8 +15,6 @@ from src.core.repositories.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
 from httpx import AsyncClient, ASGITransport
 from main import app
 
-os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
-
 
 async def _setup_models():
     async with engine.begin() as conn:
@@ -19,7 +22,10 @@ async def _setup_models():
         await conn.exec_driver_sql("DROP VIEW IF EXISTS V_Ticket_Master_Expanded")
         await conn.exec_driver_sql(CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL)
 
-asyncio.get_event_loop().run_until_complete(_setup_models())
+
+@pytest_asyncio.fixture(scope="module", autouse=True)
+async def setup_models():
+    await _setup_models()
 
 
 @pytest.mark.asyncio
@@ -56,3 +62,38 @@ async def test_search_endpoint_skips_invalid_ticket():
         resp = await ac.get("/tickets/search", params={"q": "Bad"})
         assert resp.status_code == 200
         assert resp.json() == []
+
+
+@pytest.mark.asyncio
+async def test_search_filters_escape_special_chars():
+    async with SessionLocal() as db:
+        t1 = Ticket(
+            Subject="100% guaranteed",
+            Ticket_Body="a",
+            Created_Date=datetime.now(UTC),
+        )
+        t2 = Ticket(
+            Subject="path\\to\\file",
+            Ticket_Body="b",
+            Created_Date=datetime.now(UTC),
+        )
+        t3 = Ticket(
+            Subject="under_score_test",
+            Ticket_Body="c",
+            Created_Date=datetime.now(UTC),
+        )
+        await TicketManager().create_ticket(db, t1)
+        await TicketManager().create_ticket(db, t2)
+        await TicketManager().create_ticket(db, t3)
+
+        params = TicketSearchParams(Subject="100% guaranteed")
+        res = await TicketManager().search_tickets(db, "", params=params)
+        assert any(r["Ticket_ID"] == t1.Ticket_ID for r in res)
+
+        params = TicketSearchParams(Subject="path\\to\\file")
+        res = await TicketManager().search_tickets(db, "", params=params)
+        assert any(r["Ticket_ID"] == t2.Ticket_ID for r in res)
+
+        params = TicketSearchParams(Subject="under_score_test")
+        res = await TicketManager().search_tickets(db, "", params=params)
+        assert any(r["Ticket_ID"] == t3.Ticket_ID for r in res)
