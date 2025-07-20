@@ -11,23 +11,11 @@ from db.mssql import SessionLocal
 from db.models import VTicketMasterExpanded
 
 
-# Tools
-from tools.ticket_tools import (
-    create_ticket,
-    update_ticket,
-    get_ticket_expanded,
-    list_tickets_expanded,
-    search_tickets_expanded,
-    get_tickets_by_user,
-)
-from tools.asset_tools import get_asset, list_assets
-from tools.vendor_tools import get_vendor, list_vendors
-from tools.site_tools import get_site, list_sites
-from tools.category_tools import list_categories
-from tools.status_tools import list_statuses
-from tools.attachment_tools import get_ticket_attachments
-from tools.message_tools import get_ticket_messages, post_ticket_message
-from tools.analysis_tools import (
+# Managers / Analytics
+from tools.ticket_management import TicketManager
+from tools.reference_data import ReferenceDataManager
+from tools.user_services import UserManager
+from tools.analytics_reporting import (
     tickets_by_status,
     open_tickets_by_site,
     open_tickets_by_user,
@@ -36,8 +24,6 @@ from tools.analysis_tools import (
     tickets_waiting_on_user,
     ticket_trend,
 )
-from tools.oncall_tools import get_current_oncall
-from tools import TicketManager
 
 # Schemas
 # Ticket schemas
@@ -157,7 +143,7 @@ async def search_tickets(
     db: AsyncSession = Depends(get_db),
 ) -> List[TicketSearchOut]:
     logger.info("Searching tickets for '%s' (limit=%d)", q, limit)
-    results = await search_tickets_expanded(db, q, limit, params)
+    results = await TicketManager().search_tickets(db, q, limit=limit, params=params)
     validated: List[TicketSearchOut] = []
     for r in results:
         try:
@@ -190,7 +176,7 @@ async def search_tickets_json(
     operation_id="get_ticket",
 )
 async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketExpandedOut:
-    ticket = await get_ticket_expanded(db, ticket_id)
+    ticket = await TicketManager().get_ticket(db, ticket_id)
     if not ticket:
         logger.warning("Ticket %s not found", ticket_id)
         raise HTTPException(status_code=404, detail="Ticket not found")
@@ -210,7 +196,7 @@ async def list_tickets(
 ) -> PaginatedResponse[TicketExpandedOut]:
     filters = extract_filters(request)
     sort = request.query_params.getlist("sort") or None
-    items = await list_tickets_expanded(db, skip, limit, filters=filters or None, sort=sort)
+    items = await TicketManager().list_tickets(db, filters=filters or None, skip=skip, limit=limit, sort=sort)
     count_q = select(func.count(VTicketMasterExpanded.Ticket_ID))
     for k, v in filters.items():
         if hasattr(VTicketMasterExpanded, k):
@@ -290,7 +276,7 @@ async def tickets_by_user_endpoint(
     filters = extract_filters(
         request, exclude=["identifier", "skip", "limit", "status"]
     )
-    items = await get_tickets_by_user(
+    items = await TicketManager().get_tickets_by_user(
         db,
         identifier,
         skip=skip,
@@ -299,7 +285,7 @@ async def tickets_by_user_endpoint(
         filters=filters or None,
     )
     total = len(
-        await get_tickets_by_user(
+        await TicketManager().get_tickets_by_user(
             db,
             identifier,
             skip=0,
@@ -325,7 +311,7 @@ async def create_ticket_endpoint(
 ) -> TicketOut:
     payload = ticket.model_dump()
     payload["Created_Date"] = datetime.now(timezone.utc)
-    result = await create_ticket(db, payload)
+    result = await TicketManager().create_ticket(db, payload)
     if not result.success:
         logger.error("Ticket creation failed: %s", result.error)
         raise HTTPException(status_code=500, detail=result.error or "ticket create failed")
@@ -364,7 +350,7 @@ async def update_ticket_endpoint(
     updates: TicketUpdate,
     db: AsyncSession = Depends(get_db),
 ) -> TicketOut:
-    updated = await update_ticket(db, ticket_id, updates.model_dump(exclude_unset=True))
+    updated = await TicketManager().update_ticket(db, ticket_id, updates.model_dump(exclude_unset=True))
     if not updated:
         logger.warning("Ticket %s not found or no changes applied", ticket_id)
         raise HTTPException(status_code=404, detail="Ticket not found or no changes")
@@ -399,7 +385,7 @@ async def update_ticket_json(
 async def list_ticket_messages(
     ticket_id: int, db: AsyncSession = Depends(get_db)
 ) -> List[TicketMessageOut]:
-    msgs = await get_ticket_messages(db, ticket_id)
+    msgs = await TicketManager().get_messages(db, ticket_id)
     return [TicketMessageOut.model_validate(m) for m in msgs]
 
 
@@ -413,8 +399,8 @@ async def add_ticket_message(
     msg: MessageIn,
     db: AsyncSession = Depends(get_db),
 ) -> TicketMessageOut:
-    created = await post_ticket_message(
-        db, ticket_id, msg.message, msg.sender_code, msg.sender_name
+    created = await TicketManager().post_message(
+        db, ticket_id, msg.message, msg.sender_code
     )
     return TicketMessageOut.model_validate(created)
 
@@ -435,7 +421,7 @@ async def list_assets_endpoint(
 ) -> List[AssetOut]:
     filters = extract_filters(request)
     sort = request.query_params.getlist("sort") or None
-    assets = await list_assets(db, skip, limit, filters=filters or None, sort=sort)
+    assets = await ReferenceDataManager().list_assets(db, skip=skip, limit=limit, filters=filters or None, sort=sort)
     return [AssetOut.model_validate(a) for a in assets]
 
 
@@ -445,7 +431,7 @@ async def list_assets_endpoint(
     operation_id="get_asset",
 )
 async def get_asset_endpoint(asset_id: int, db: AsyncSession = Depends(get_db)) -> AssetOut:
-    a = await get_asset(db, asset_id)
+    a = await ReferenceDataManager().get_asset(db, asset_id)
     if not a:
         raise HTTPException(status_code=404, detail="Asset not found")
     return AssetOut.model_validate(a)
@@ -464,7 +450,7 @@ async def list_vendors_endpoint(
 ) -> List[VendorOut]:
     filters = extract_filters(request)
     sort = request.query_params.getlist("sort") or None
-    vs = await list_vendors(db, skip, limit, filters=filters or None, sort=sort)
+    vs = await ReferenceDataManager().list_vendors(db, skip=skip, limit=limit, filters=filters or None, sort=sort)
     return [VendorOut.model_validate(v) for v in vs]
 
 
@@ -474,7 +460,7 @@ async def list_vendors_endpoint(
     operation_id="get_vendor",
 )
 async def get_vendor_endpoint(vendor_id: int, db: AsyncSession = Depends(get_db)) -> VendorOut:
-    v = await get_vendor(db, vendor_id)
+    v = await ReferenceDataManager().get_vendor(db, vendor_id)
     if not v:
         raise HTTPException(status_code=404, detail="Vendor not found")
     return VendorOut.model_validate(v)
@@ -493,7 +479,7 @@ async def list_sites_endpoint(
 ) -> List[SiteOut]:
     filters = extract_filters(request)
     sort = request.query_params.getlist("sort") or None
-    ss = await list_sites(db, skip, limit, filters=filters or None, sort=sort)
+    ss = await ReferenceDataManager().list_sites(db, skip=skip, limit=limit, filters=filters or None, sort=sort)
     return [SiteOut.model_validate(s) for s in ss]
 
 
@@ -503,7 +489,7 @@ async def list_sites_endpoint(
     operation_id="get_site",
 )
 async def get_site_endpoint(site_id: int, db: AsyncSession = Depends(get_db)) -> SiteOut:
-    s = await get_site(db, site_id)
+    s = await ReferenceDataManager().get_site(db, site_id)
     if not s:
         raise HTTPException(status_code=404, detail="Site not found")
     return SiteOut.model_validate(s)
@@ -519,7 +505,7 @@ async def list_categories_endpoint(
 ) -> List[TicketCategoryOut]:
     filters = extract_filters(request)
     sort = request.query_params.getlist("sort") or None
-    cats = await list_categories(db, filters=filters or None, sort=sort)
+    cats = await ReferenceDataManager().list_categories(db, filters=filters or None, sort=sort)
     return [TicketCategoryOut.model_validate(c) for c in cats]
 
 
@@ -533,7 +519,7 @@ async def list_statuses_endpoint(
 ) -> List[TicketStatusOut]:
     filters = extract_filters(request)
     sort = request.query_params.getlist("sort") or None
-    stats = await list_statuses(db, filters=filters or None, sort=sort)
+    stats = await ReferenceDataManager().list_statuses(db, filters=filters or None, sort=sort)
     return [TicketStatusOut.model_validate(s) for s in stats]
 
 
@@ -545,7 +531,7 @@ async def list_statuses_endpoint(
 async def get_ticket_attachments_endpoint(
     ticket_id: int, db: AsyncSession = Depends(get_db)
 ) -> List[TicketAttachmentOut]:
-    atts = await get_ticket_attachments(db, ticket_id)
+    atts = await TicketManager().get_attachments(db, ticket_id)
     return [TicketAttachmentOut.model_validate(a) for a in atts]
 
 # ─── Analytics Sub-Router ────────────────────────────────────────────────────
@@ -744,7 +730,7 @@ async def execute_ticket_operation_endpoint(
     operation_id="get_oncall_shift",
 )
 async def get_oncall_shift(db: AsyncSession = Depends(get_db)) -> Optional[OnCallShiftOut]:
-    shift = await get_current_oncall(db)
+    shift = await UserManager().get_current_oncall(db)
     return OnCallShiftOut.model_validate(shift) if shift else None
 
 

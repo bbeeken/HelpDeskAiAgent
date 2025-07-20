@@ -3,7 +3,8 @@ from datetime import datetime, UTC
 
 from db.mssql import SessionLocal
 from db.models import Asset, Vendor, Site, Ticket
-from tools import asset_tools, vendor_tools, site_tools, ticket_tools
+from tools.reference_data import ReferenceDataManager
+from tools.ticket_management import TicketManager
 
 
 @pytest.mark.asyncio
@@ -21,13 +22,13 @@ async def test_asset_vendor_site_filters_and_sort():
         await db.refresh(v1); await db.refresh(v2)
         await db.refresh(s1); await db.refresh(s2)
 
-        assets = await asset_tools.list_assets(db, filters={"Site_ID": 2})
+        assets = await ReferenceDataManager().list_assets(db, filters={"Site_ID": 2})
         assert [a.ID for a in assets] == [a2.ID]
 
-        vendors = await vendor_tools.list_vendors(db, sort=["-ID"])
+        vendors = await ReferenceDataManager().list_vendors(db, sort=["-ID"])
         assert [v.ID for v in vendors][:2] == [v2.ID, v1.ID]
 
-        sites = await site_tools.list_sites(db, filters={"ID": [s1.ID, s2.ID]}, sort=["-Label"])
+        sites = await ReferenceDataManager().list_sites(db, filters={"ID": [s1.ID, s2.ID]}, sort=["-Label"])
         assert [s.Label for s in sites] == sorted([s1.Label, s2.Label], reverse=True)
 
 
@@ -48,12 +49,12 @@ async def test_ticket_list_filters_and_sort():
             Ticket_Contact_Email="e",
             Created_Date=datetime(2023, 1, 2, tzinfo=UTC),
         )
-        await ticket_tools.create_ticket(db, t1)
-        await ticket_tools.create_ticket(db, t2)
+        await TicketManager().create_ticket(db, t1)
+        await TicketManager().create_ticket(db, t2)
 
-        res = await ticket_tools.list_tickets_expanded(db, filters={"Subject": "F2"})
+        res = await TicketManager().list_tickets(db, filters={"Subject": "F2"})
         assert len(res) == 1 and res[0].Subject == "F2"
 
-        ordered = await ticket_tools.list_tickets_expanded(db, sort=["-Created_Date"])
+        ordered = await TicketManager().list_tickets(db, sort=["-Created_Date"])
         ids = [t.Ticket_ID for t in ordered]
         assert ids == sorted(ids, reverse=True)

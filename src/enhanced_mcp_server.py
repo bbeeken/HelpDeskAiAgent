@@ -14,18 +14,17 @@ from db.mssql import SessionLocal
 from .mcp_server import Tool
 
 # Business logic modules
-from tools import (
-    analysis_tools,
-    asset_tools,
-    attachment_tools,
-    category_tools,
-    message_tools,
-    oncall_tools,
-    site_tools,
-    status_tools,
-    ticket_tools,
-    user_tools,
-    vendor_tools,
+from tools.ticket_management import TicketManager, TicketTools
+from tools.reference_data import ReferenceDataManager
+from tools.user_services import UserManager
+from tools.analytics_reporting import (
+    tickets_by_status,
+    open_tickets_by_site,
+    open_tickets_by_user,
+    get_staff_ticket_report,
+    sla_breaches,
+    ticket_trend,
+    tickets_waiting_on_user,
 )
 
 
@@ -49,7 +48,7 @@ async def _search_tickets_smart(
     filters: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """Helper to call :meth:`TicketTools.search_tickets_smart`."""
-    tools = ticket_tools.TicketTools(db)
+    tools = TicketTools(db)
     return await tools.search_tickets_smart(
         query=query,
         filters=filters,
@@ -61,7 +60,7 @@ async def _search_tickets_smart(
 async def _open_tickets_by_user_tool(db: Any, **kwargs: Any) -> Any:
     """Pass kwargs as filters to open_tickets_by_user."""
     filters = kwargs or None
-    return await analysis_tools.open_tickets_by_user(db, filters=filters)
+    return await open_tickets_by_user(db, filters=filters)
 
 
 ENHANCED_TOOLS: List[Tool] = [
@@ -69,7 +68,7 @@ ENHANCED_TOOLS: List[Tool] = [
         name="g_asset",
         description="Retrieve an asset by ID",
         inputSchema={"type": "object", "properties": {"asset_id": {"type": "integer"}}, "required": ["asset_id"]},
-        _implementation=_db_wrapper(asset_tools.get_asset),
+        _implementation=_db_wrapper(lambda db, asset_id: ReferenceDataManager().get_asset(db, asset_id)),
     ),
     Tool(
         name="l_assets",
@@ -84,13 +83,13 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": [],
         },
-        _implementation=_db_wrapper(asset_tools.list_assets),
+        _implementation=_db_wrapper(lambda db, **kwargs: ReferenceDataManager().list_assets(db, **kwargs)),
     ),
     Tool(
         name="g_vendor",
         description="Retrieve a vendor by ID",
         inputSchema={"type": "object", "properties": {"vendor_id": {"type": "integer"}}, "required": ["vendor_id"]},
-        _implementation=_db_wrapper(vendor_tools.get_vendor),
+        _implementation=_db_wrapper(lambda db, vendor_id: ReferenceDataManager().get_vendor(db, vendor_id)),
     ),
     Tool(
         name="l_vends",
@@ -105,13 +104,13 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": [],
         },
-        _implementation=_db_wrapper(vendor_tools.list_vendors),
+        _implementation=_db_wrapper(lambda db, **kwargs: ReferenceDataManager().list_vendors(db, **kwargs)),
     ),
     Tool(
         name="g_site",
         description="Retrieve a site by ID",
         inputSchema={"type": "object", "properties": {"site_id": {"type": "integer"}}, "required": ["site_id"]},
-        _implementation=_db_wrapper(site_tools.get_site),
+        _implementation=_db_wrapper(lambda db, site_id: ReferenceDataManager().get_site(db, site_id)),
     ),
     Tool(
         name="l_sites",
@@ -126,7 +125,7 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": [],
         },
-        _implementation=_db_wrapper(site_tools.list_sites),
+        _implementation=_db_wrapper(lambda db, **kwargs: ReferenceDataManager().list_sites(db, **kwargs)),
     ),
     Tool(
         name="l_cats",
@@ -139,7 +138,7 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": [],
         },
-        _implementation=_db_wrapper(category_tools.list_categories),
+        _implementation=_db_wrapper(lambda db, **kwargs: ReferenceDataManager().list_categories(db, **kwargs)),
     ),
     Tool(
         name="l_status",
@@ -152,13 +151,13 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": [],
         },
-        _implementation=_db_wrapper(status_tools.list_statuses),
+        _implementation=_db_wrapper(lambda db, **kwargs: ReferenceDataManager().list_statuses(db, **kwargs)),
     ),
     Tool(
         name="g_ticket",
         description="Get expanded ticket by ID",
         inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
-        _implementation=_db_wrapper(ticket_tools.get_ticket_expanded),
+        _implementation=_db_wrapper(lambda db, ticket_id: TicketManager().get_ticket(db, ticket_id)),
     ),
     Tool(
         name="l_tkts",
@@ -173,7 +172,7 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": [],
         },
-        _implementation=_db_wrapper(ticket_tools.list_tickets_expanded),
+        _implementation=_db_wrapper(lambda db, **kwargs: TicketManager().list_tickets(db, **kwargs)),
     ),
     Tool(
         name="s_tkts",
@@ -187,7 +186,7 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": ["query"],
         },
-        _implementation=_db_wrapper(ticket_tools.search_tickets_expanded),
+        _implementation=_db_wrapper(lambda db, query, limit=10, params=None: TicketManager().search_tickets(db, query, limit=limit, params=params)),
     ),
     Tool(
         name="s_tk_sm",
@@ -208,25 +207,25 @@ ENHANCED_TOOLS: List[Tool] = [
         name="c_ticket",
         description="Create a ticket",
         inputSchema={"type": "object", "properties": {"ticket_obj": {"type": "object"}}, "required": ["ticket_obj"]},
-        _implementation=_db_wrapper(ticket_tools.create_ticket),
+        _implementation=_db_wrapper(lambda db, ticket_obj: TicketManager().create_ticket(db, ticket_obj)),
     ),
     Tool(
         name="u_ticket",
         description="Update a ticket",
         inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}, "updates": {"type": "object"}}, "required": ["ticket_id", "updates"]},
-        _implementation=_db_wrapper(ticket_tools.update_ticket),
+        _implementation=_db_wrapper(lambda db, ticket_id, updates: TicketManager().update_ticket(db, ticket_id, updates)),
     ),
     Tool(
         name="d_ticket",
         description="Delete a ticket",
         inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
-        _implementation=_db_wrapper(ticket_tools.delete_ticket),
+        _implementation=_db_wrapper(lambda db, ticket_id: TicketManager().delete_ticket(db, ticket_id)),
     ),
     Tool(
         name="g_tmsg",
         description="List messages for a ticket",
         inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
-        _implementation=_db_wrapper(message_tools.get_ticket_messages),
+        _implementation=_db_wrapper(lambda db, ticket_id: TicketManager().get_messages(db, ticket_id)),
     ),
     Tool(
         name="p_tmsg",
@@ -241,25 +240,25 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": ["ticket_id", "message", "sender_code", "sender_name"],
         },
-        _implementation=_db_wrapper(message_tools.post_ticket_message),
+        _implementation=_db_wrapper(lambda db, ticket_id, message, sender_code, sender_name: TicketManager().post_message(db, ticket_id, message, sender_code)),
     ),
     Tool(
         name="t_attach",
         description="Get attachments for a ticket",
         inputSchema={"type": "object", "properties": {"ticket_id": {"type": "integer"}}, "required": ["ticket_id"]},
-        _implementation=_db_wrapper(attachment_tools.get_ticket_attachments),
+        _implementation=_db_wrapper(lambda db, ticket_id: TicketManager().get_attachments(db, ticket_id)),
     ),
     Tool(
         name="t_status",
         description="Count tickets by status",
         inputSchema={"type": "object", "properties": {}, "required": []},
-        _implementation=_db_wrapper(analysis_tools.tickets_by_status),
+        _implementation=_db_wrapper(tickets_by_status),
     ),
     Tool(
         name="op_site",
         description="Open ticket counts by site",
         inputSchema={"type": "object", "properties": {}, "required": []},
-        _implementation=_db_wrapper(analysis_tools.open_tickets_by_site),
+        _implementation=_db_wrapper(open_tickets_by_site),
     ),
     Tool(
         name="op_user",
@@ -288,7 +287,7 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": ["identifier"],
         },
-        _implementation=_db_wrapper(ticket_tools.get_tickets_by_user),
+        _implementation=_db_wrapper(lambda db, identifier, **kwargs: TicketManager().get_tickets_by_user(db, identifier, **kwargs)),
     ),
     Tool(
         name="tickets_by_timeframe",
@@ -302,7 +301,7 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": [],
         },
-        _implementation=_db_wrapper(ticket_tools.tickets_by_timeframe),
+        _implementation=_db_wrapper(lambda db, **kwargs: TicketManager().get_tickets_by_timeframe(db, **kwargs)),
     ),
     Tool(
         name="staff_rp",
@@ -316,13 +315,13 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": ["email"],
         },
-        _implementation=_db_wrapper(analysis_tools.get_staff_ticket_report),
+        _implementation=_db_wrapper(get_staff_ticket_report),
     ),
     Tool(
         name="wait_usr",
         description="Tickets waiting on user",
         inputSchema={"type": "object", "properties": {}, "required": []},
-        _implementation=_db_wrapper(analysis_tools.tickets_waiting_on_user),
+        _implementation=_db_wrapper(tickets_waiting_on_user),
     ),
     Tool(
         name="sla_brch",
@@ -336,19 +335,19 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": [],
         },
-        _implementation=_db_wrapper(analysis_tools.sla_breaches),
+        _implementation=_db_wrapper(sla_breaches),
     ),
     Tool(
         name="t_trend",
         description="Ticket trend",
         inputSchema={"type": "object", "properties": {"days": {"type": "integer"}}, "required": []},
-        _implementation=_db_wrapper(analysis_tools.ticket_trend),
+        _implementation=_db_wrapper(ticket_trend),
     ),
     Tool(
         name="oc_now",
         description="Get current on-call shift",
         inputSchema={"type": "object", "properties": {}, "required": []},
-        _implementation=_db_wrapper(oncall_tools.get_current_oncall),
+        _implementation=_db_wrapper(lambda db: UserManager().get_current_oncall(db)),
     ),
     Tool(
         name="oc_sched",
@@ -363,13 +362,13 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "required": [],
         },
-        _implementation=_db_wrapper(oncall_tools.list_oncall_schedule),
+        _implementation=_db_wrapper(lambda db, **kwargs: UserManager().list_oncall_schedule(db, **kwargs)),
     ),
     Tool(
         name="user_eml",
         description="Look up user information by email",
         inputSchema={"type": "object", "properties": {"email": {"type": "string"}}, "required": ["email"]},
-        _implementation=user_tools.get_user_by_email,
+        _implementation=lambda email: UserManager().get_user_by_email(email),
     ),
 ]
 # Keep track of how many tools are defined for easier maintenance.

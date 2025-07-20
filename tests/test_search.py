@@ -4,7 +4,7 @@ import pytest
 from db.models import Base, Ticket
 from db.mssql import engine, SessionLocal
 from datetime import datetime, UTC
-from tools.ticket_tools import create_ticket, search_tickets_expanded
+from tools.ticket_management import TicketManager
 from schemas.search_params import TicketSearchParams
 from db.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
 from httpx import AsyncClient, ASGITransport
@@ -31,9 +31,9 @@ async def test_search_tickets():
             Created_Date=datetime.now(UTC),
         )
 
-        await create_ticket(db, t)
+        await TicketManager().create_ticket(db, t)
         params = TicketSearchParams()
-        results = await search_tickets_expanded(db, "Network", params=params)
+        results = await TicketManager().search_tickets(db, "Network", params=params)
         assert results and results[0]["Subject"] == "Network issue"
         assert "body_preview" in results[0]
 
@@ -49,7 +49,7 @@ async def test_search_endpoint_skips_invalid_ticket():
             Created_Date=datetime.now(UTC),
             Ticket_Status_ID=1,
         )
-        await create_ticket(db, bad)
+        await TicketManager().create_ticket(db, bad)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

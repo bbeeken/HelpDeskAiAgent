@@ -12,41 +12,43 @@ def reload_module(monkeypatch, **env):
         else:
             monkeypatch.setenv(key, value)
     import config
-    import tools.user_tools as ut
+    import tools.user_services as us
     importlib.reload(config)
-    return importlib.reload(ut)
+    return importlib.reload(us)
 
 
 @pytest.mark.asyncio
 async def test_user_tools_stub(monkeypatch):
-    ut = reload_module(
+    us = reload_module(
         monkeypatch,
         GRAPH_CLIENT_ID=None,
         GRAPH_CLIENT_SECRET=None,
         GRAPH_TENANT_ID=None,
     )
+    um = us.UserManager()
 
-    assert await ut.get_user_by_email("x@example.com") == {
+    assert await um.get_user_by_email("x@example.com") == {
         "email": "x@example.com",
         "displayName": None,
         "id": None,
     }
-    assert await ut.get_all_users_in_group() == []
-    assert await ut.resolve_user_display_name("x@example.com") == "x@example.com"
+    assert await um.get_users_in_group() == []
+    assert await um.resolve_display_name("x@example.com") == "x@example.com"
 
     # internal helpers should short-circuit without HTTP requests
-    assert await ut._get_token() == ""
-    assert await ut._graph_get("users/x@example.com", "") == {}
+    assert await um._get_token() == ""
+    assert await um._graph_get("users/x@example.com", "") == {}
 
 
 @pytest.mark.asyncio
 async def test_user_tools_graph_calls(monkeypatch):
-    ut = reload_module(
+    us = reload_module(
         monkeypatch,
         GRAPH_CLIENT_ID="id",
         GRAPH_CLIENT_SECRET="secret",
         GRAPH_TENANT_ID="tenant",
     )
+    um = us.UserManager()
 
 
     class DummyResponse(SimpleNamespace):
@@ -89,23 +91,23 @@ async def test_user_tools_graph_calls(monkeypatch):
 
     FakeAsyncClient = DummyClient
 
-    monkeypatch.setattr(ut.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(us.httpx, "AsyncClient", FakeAsyncClient)
 
 
 
-    token = await ut._get_token()
+    token = await um._get_token()
     assert token == "tok"
 
-    user = await ut.get_user_by_email("u@e.com")
+    user = await um.get_user_by_email("u@e.com")
     assert user == {"email": "u@e.com", "displayName": "U", "id": "2"}
 
-    users = await ut.get_all_users_in_group()
+    users = await um.get_users_in_group()
     assert users == [{"email": "a@b.com", "displayName": "A", "id": "1"}]
 
-    assert await ut.resolve_user_display_name("u@e.com") == "U"
+    assert await um.resolve_display_name("u@e.com") == "U"
 
     # direct call to graph_get with token
-    assert await ut._graph_get("users/u@e.com", token) == {
+    assert await um._graph_get("users/u@e.com", token) == {
         "mail": "u@e.com",
         "displayName": "U",
         "id": "2",
@@ -114,12 +116,13 @@ async def test_user_tools_graph_calls(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_user_tools_http_error(monkeypatch):
-    ut = reload_module(
+    us = reload_module(
         monkeypatch,
         GRAPH_CLIENT_ID="id",
         GRAPH_CLIENT_SECRET="secret",
         GRAPH_TENANT_ID="tenant",
     )
+    um = us.UserManager()
 
     class DummyClient:
         async def __aenter__(self):
@@ -134,10 +137,10 @@ async def test_user_tools_http_error(monkeypatch):
         async def get(self, url, headers=None, timeout=None):
             raise httpx.HTTPError("fail")
 
-    monkeypatch.setattr(ut.httpx, "AsyncClient", DummyClient)
+    monkeypatch.setattr(us.httpx, "AsyncClient", DummyClient)
 
-    token = await ut._get_token()
+    token = await um._get_token()
     assert token == ""
 
-    data = await ut._graph_get("users/x", "tok")
+    data = await um._graph_get("users/x", "tok")
     assert data == {}
