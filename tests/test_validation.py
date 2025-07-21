@@ -13,6 +13,37 @@ def test_invalid_email():
         )
 
 
+def test_blank_email_invalid():
+    with pytest.raises(ValidationError):
+        TicketCreate(
+            Subject="Test",
+            Ticket_Body="Body",
+            Ticket_Contact_Name="Name",
+            Ticket_Contact_Email="",
+        )
+
+
+def test_null_string_email_invalid():
+    with pytest.raises(ValidationError):
+        TicketCreate(
+            Subject="Test",
+            Ticket_Body="Body",
+            Ticket_Contact_Name="Name",
+            Ticket_Contact_Email="null",
+        )
+
+
+def test_invalid_assigned_email():
+    with pytest.raises(ValidationError):
+        TicketCreate(
+            Subject="Test",
+            Ticket_Body="Body",
+            Ticket_Contact_Name="Name",
+            Ticket_Contact_Email="test@example.com",
+            Assigned_Email="invalid",
+        )
+
+
 def test_subject_too_long():
     with pytest.raises(ValidationError):
         TicketCreate(
