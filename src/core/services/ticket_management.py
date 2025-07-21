@@ -150,6 +150,13 @@ class TicketManager:
             value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         )
 
+    def _sanitize_search_input(self, query: str) -> str:
+        """Return a safe search string containing alphanumerics and spaces."""
+        if not query:
+            return ""
+        sanitized = re.sub(r"[^\w\s-]", "", query)
+        return sanitized.strip()
+
 
     async def search_tickets(
         self,
