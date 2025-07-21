@@ -341,9 +341,9 @@ class TicketManager:
         msg = TicketMessage(
             Ticket_ID=ticket_id,
             Message=message,
-            SenderUserCode=sender_code,
-            SenderUserName=sender_name,
-            DateTimeStamp=datetime.now(timezone.utc),
+            SenderUserCode='GilAI@heinzcorps.com',
+            SenderUserName='Gil AI',
+            DateTimeStamp=datetime.now(),
         )
         db.add(msg)
         try:

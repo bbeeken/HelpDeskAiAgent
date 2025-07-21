@@ -17,14 +17,13 @@ class Ticket(Base):
     Asset_ID = Column(Integer)
     Site_ID = Column(Integer)
     Ticket_Category_ID = Column(Integer)
-    Created_Date = Column(DateTime(timezone=True))
+    Created_Date = Column(DateTime(timezone=False))
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
-    Priority_ID = Column(Integer)
     Severity_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
-    Closed_Date = Column(DateTime(timezone=True))
-    LastModified = Column(DateTime(timezone=True))
+    Closed_Date = Column(DateTime(timezone=False))
+    LastModified = Column(DateTime(timezone=False))
     Resolution = Column(Text)
 
 
@@ -53,7 +52,7 @@ class TicketAttachment(Base):
     Ticket_ID = Column(Integer)
     Name = Column(String)
     WebURl = Column(String)
-    UploadDateTime = Column(DateTime(timezone=True))
+    UploadDateTime = Column(DateTime(timezone=False))
 
 
 class TicketMessage(Base):
@@ -63,7 +62,7 @@ class TicketMessage(Base):
     Message = Column(Text)
     SenderUserCode = Column(String)
     SenderUserName = Column(String)
-    DateTimeStamp = Column(DateTime(timezone=True))
+    DateTimeStamp = Column(DateTime(timezone=False))
 
 
 class Site(Base):
@@ -97,8 +96,8 @@ class OnCallShift(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_email = Column(String, nullable=False, index=True)
-    start_time = Column(DateTime(timezone=True), nullable=False)
-    end_time = Column(DateTime(timezone=True), nullable=False)
+    start_time = Column(DateTime(timezone=False), nullable=False)
+    end_time = Column(DateTime(timezone=False), nullable=False)
 
 
 class ViewBase(DeclarativeBase):
@@ -123,13 +122,13 @@ class VTicketMasterExpanded(ViewBase):
     Ticket_Category_ID = Column(Integer)
     Ticket_Category_Label = Column(String)
 
-    Created_Date = Column(DateTime(timezone=True))
+    Created_Date = Column(DateTime(timezone=False))
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
     Priority_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
-    Closed_Date = Column(DateTime(timezone=True))
-    LastModified = Column(DateTime(timezone=True))
+    Closed_Date = Column(DateTime(timezone=False))
+    LastModified = Column(DateTime(timezone=False))
 
     Assigned_Vendor_Name = Column(String)
     Resolution = Column(Text)
