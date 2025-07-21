@@ -1,6 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Annotated
-from email_validator import validate_email, EmailNotValidError
 from typing import Optional
 from datetime import datetime
 
@@ -21,17 +20,6 @@ class TicketBase(BaseModel):
     Resolution: Optional[Annotated[str, Field()]] = None
 
     model_config = ConfigDict(str_max_length=None)
-
-    @field_validator("Ticket_Contact_Email", "Assigned_Email", mode="before")
-    def validate_emails(cls, v):
-        if v is None:
-            return None
-        if isinstance(v, str) and (v == "" or v.lower() == "null"):
-            return None
-        try:
-            return validate_email(v, check_deliverability=False).normalized
-        except EmailNotValidError as e:
-            raise ValueError(str(e))
 
 
 class TicketCreate(TicketBase):
@@ -111,17 +99,6 @@ class TicketIn(BaseModel):
     Priority_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[Annotated[str, Field()]] = None
-
-    @field_validator("Ticket_Contact_Email", "Assigned_Email", mode="before")
-    def validate_emails(cls, v):
-        if v is None:
-            return None
-        if isinstance(v, str) and (v == "" or v.lower() == "null"):
-            return None
-        try:
-            return validate_email(v, check_deliverability=False).normalized
-        except EmailNotValidError as e:
-            raise ValueError(str(e))
 
     model_config = ConfigDict(extra="forbid", str_max_length=None)
 
