@@ -173,7 +173,11 @@ async def verify_mcp_initialized(request: Request, call_next):
     if request.url.path in MCP_ENDPOINTS and not getattr(app.state, "mcp_ready", False):
         logger.warning("MCP server not ready - rejecting request to %s", request.url.path)
         return JSONResponse(status_code=503, content={"detail": "MCP server unavailable"})
-    return await call_next(request)
+    try:
+        return await call_next(request)
+    except Exception as exc:  # pragma: no cover - safeguard
+        logger.exception("Unhandled exception in verify_mcp_initialized")
+        return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 
 # Custom OpenAPI schema
@@ -380,7 +384,7 @@ async def health(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
         health_status["status"] = "unhealthy"
         logger.error("Database health check failed: %s", e)
 
-    return health_status
+    return JSONResponse(content=health_status)
 
 
 @app.get("/health/mcp", tags=["system"])
