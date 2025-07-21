@@ -152,8 +152,10 @@ class TicketManager:
 
     def _sanitize_search_input(self, query: str) -> str:
 
+
         """Basic sanitization of search input."""
         return html.escape(query).strip()
+
 
 
 
