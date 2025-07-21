@@ -125,7 +125,7 @@ class VTicketMasterExpanded(ViewBase):
     Created_Date = Column(DateTime(timezone=False))
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
-    Priority_ID = Column(Integer)
+    Severity_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
     Closed_Date = Column(DateTime(timezone=False))
     LastModified = Column(DateTime(timezone=False))

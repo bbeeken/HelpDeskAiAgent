@@ -25,7 +25,7 @@ class TicketSearchParams(BaseModel):
     Created_Date: Optional[datetime] = None
     Assigned_Name: Optional[str] = None
     Assigned_Email: Optional[str] = None
-    Priority_ID: Optional[int] = None
+    Severity_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
     Assigned_Vendor_Name: Optional[str] = None
     Resolution: Optional[str] = None

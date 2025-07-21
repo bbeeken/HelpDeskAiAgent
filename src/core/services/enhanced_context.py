@@ -361,7 +361,7 @@ class EnhancedContextManager:
             "is_overdue": is_overdue,
             "is_closed": closed_date is not None,
             "sla_threshold_hours": sla_threshold_hours,
-            "priority_text": self._priority_id_to_text(ticket.Priority_ID),
+            "priority_text": self._severity_id_to_text(ticket.Severity_ID),
             "complexity_estimate": self._estimate_ticket_complexity(ticket),
             "metadata_generated_at": now.isoformat(),
         }
@@ -414,10 +414,10 @@ class EnhancedContextManager:
             )
             raise
 
-    def _priority_id_to_text(self, priority_id: Optional[int]) -> str:
-        """Convert priority ID to text."""
+    def _severity_id_to_text(self, severity_id: Optional[int]) -> str:
+        """Convert severity ID to text."""
         mapping = {1: "Critical", 2: "High", 3: "Medium", 4: "Low"}
-        return mapping.get(priority_id or 3, "Medium")
+        return mapping.get(severity_id or 3, "Medium")
 
     def _estimate_ticket_complexity(self, ticket) -> str:
         """Rough complexity estimate based on available data."""
