@@ -64,8 +64,8 @@ This document lists the available HTTP endpoints provided by the HelpDesk servic
 The following POST endpoints are generated from the MCP tools. Each expects a
 JSON body matching the tool's schema.
 
-- `POST /g_ticket` – Get a ticket by ID. Example: `{"ticket_id": 123}`
-- `POST /l_tkts` – List recent tickets. Example: `{"limit": 5}`
+- `POST /get_ticket` – Get a ticket by ID. Example: `{"ticket_id": 123}`
+- `POST /list_tickets` – List recent tickets. Example: `{"limit": 5}`
 - `POST /tickets_by_user` – List tickets for a user. Example: `{"identifier": "user@example.com"}`
 - `POST /by_user` – Alias of `tickets_by_user`.
 - `POST /open_by_site` – Open tickets by site. Example: `{}`
