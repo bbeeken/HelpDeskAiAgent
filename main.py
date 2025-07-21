@@ -312,7 +312,7 @@ for tool in TOOLS:
 
     app.post(
         f"/{tool.name}",
-        operation_id=tool.name,
+        operation_id=f"tool_{tool.name}",
         summary=tool.description,
         openapi_extra={
             "requestBody": {
