@@ -423,19 +423,32 @@ async def _get_analytics(type: str, params: _Dict[str, Any] | None = None) -> _D
         return {"status": "error", "error": str(e)}
 
 
-async def _list_reference_data(type: str, limit: int = 10) -> _Dict[str, Any]:
+async def _list_reference_data(
+    type: str,
+    limit: int = 10,
+    filters: _Dict[str, Any] | None = None,
+    sort: list[str] | None = None,
+) -> _Dict[str, Any]:
     """Return reference data such as sites or assets."""
     try:
         async with db.SessionLocal() as db_session:
             mgr = ReferenceDataManager()
             if type == "sites":
-                records = await mgr.list_sites(db_session, limit=limit)
+                records = await mgr.list_sites(
+                    db_session, limit=limit, filters=filters or None, sort=sort
+                )
             elif type == "assets":
-                records = await mgr.list_assets(db_session, limit=limit)
+                records = await mgr.list_assets(
+                    db_session, limit=limit, filters=filters or None, sort=sort
+                )
             elif type == "vendors":
-                records = await mgr.list_vendors(db_session, limit=limit)
+                records = await mgr.list_vendors(
+                    db_session, limit=limit, filters=filters or None, sort=sort
+                )
             elif type == "categories":
-                records = await mgr.list_categories(db_session)
+                records = await mgr.list_categories(
+                    db_session, filters=filters or None, sort=sort
+                )
             else:
                 raise ValueError("unknown reference data type")
             data = [r.__dict__ for r in records]
@@ -624,6 +637,8 @@ ENHANCED_TOOLS: List[Tool] = [
             "properties": {
                 "type": {"type": "string"},
                 "limit": {"type": "integer", "default": 10},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
             },
             "required": ["type"],
         },
