@@ -68,7 +68,7 @@ class AdvancedQueryManager:
             conditions.append(or_(*status_conditions))
 
         if query.priority_filter:
-            conditions.append(VTicketMasterExpanded.Priority_ID.in_(query.priority_filter))
+            conditions.append(VTicketMasterExpanded.Severity_ID.in_(query.priority_filter))
 
         # Assignment filters
         if query.assigned_to:
