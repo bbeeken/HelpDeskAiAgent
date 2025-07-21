@@ -17,7 +17,7 @@ async def test_operation_ids_length():
 async def test_tool_request_body_present():
     async with LifespanManager(app):
         schema = app.openapi()
-        g_ticket_post = schema["paths"]["/g_ticket"]["post"]
+        g_ticket_post = schema["paths"]["/get_ticket"]["post"]
         assert "requestBody" in g_ticket_post
         content = g_ticket_post["requestBody"]["content"]
         assert "application/json" in content

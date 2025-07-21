@@ -159,6 +159,7 @@ class TicketManager:
 
 
 
+
     async def search_tickets(
         self,
         db: AsyncSession,
