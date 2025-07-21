@@ -84,9 +84,15 @@ async def lifespan(app: FastAPI):
         raise
 
     # Initialize MCP after all setup is complete
-    app.state.mcp = FastApiMCP(app)
-    app.state.mcp.mount()
-    logger.info("MCP server initialized")
+    app.state.mcp_ready = False
+    try:
+        app.state.mcp = FastApiMCP(app)
+        app.state.mcp.mount()
+        app.state.mcp_ready = True
+        logger.info("MCP server initialized")
+    except Exception as e:
+        logger.error("Failed to initialize MCP server: %s", e)
+        app.state.mcp = None
 
     yield
 
@@ -104,6 +110,7 @@ app = FastAPI(
     version=APP_VERSION,
     lifespan=lifespan
 )
+app.state.mcp_ready = False
 
 # Add middleware (order matters!)
 if os.getenv("ENABLE_RATE_LIMITING", "true").lower() not in {"0", "false", "no"}:
@@ -158,6 +165,15 @@ async def timeout_middleware(request: Request, call_next):
                 "message": f"Request took longer than {REQUEST_TIMEOUT} seconds"
             },
         )
+
+
+@app.middleware("http")
+async def verify_mcp_initialized(request: Request, call_next):
+    """Ensure MCP server is ready before handling MCP requests."""
+    if request.url.path in MCP_ENDPOINTS and not getattr(app.state, "mcp_ready", False):
+        logger.warning("MCP server not ready - rejecting request to %s", request.url.path)
+        return JSONResponse(status_code=503, content={"detail": "MCP server unavailable"})
+    return await call_next(request)
 
 
 # Custom OpenAPI schema
@@ -324,6 +340,9 @@ for tool in TOOLS:
     )(endpoint_func)
 
 logger.info("Registered %d MCP tools as HTTP endpoints", len(TOOLS))
+
+# Paths that require the MCP server to be initialized
+MCP_ENDPOINTS = [f"/{tool.name}" for tool in TOOLS] + ["/tools", "/health/mcp", "/mcp", "/mcp/messages/"]
 
 
 # Standard API routes
