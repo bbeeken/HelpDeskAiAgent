@@ -77,10 +77,10 @@ JSON body matching the tool's schema.
 - `POST /staff_report` – Technician ticket report. Example: `{"assigned_email": "tech@example.com"}`
 - `POST /tickets_by_timeframe` – Tickets filtered by status and age. Example: `{"days": 7}`
 - `POST /search_tickets` – Search tickets. Example: `{"query": "printer"}`
-- `POST /list_sites` – List sites. Example: `{"limit": 10}`
-- `POST /list_assets` – List assets. Example: `{"limit": 10}`
-- `POST /list_vendors` – List vendors. Example: `{"limit": 10}`
-- `POST /list_categories` – List categories. Example: `{}`
+- `POST /list_sites` – List sites. Example: `{"limit": 10, "filters": {}, "sort": ["Label"]}`
+- `POST /list_assets` – List assets. Example: `{"limit": 10, "filters": {}, "sort": ["Label"]}`
+- `POST /list_vendors` – List vendors. Example: `{"limit": 10, "filters": {}, "sort": ["Name"]}`
+- `POST /list_categories` – List categories. Example: `{"filters": {}}`
 - `POST /get_ticket_full_context` – Full context for a ticket. Example: `{"ticket_id": 123}`
 - `POST /get_system_snapshot` – System snapshot. Example: `{}`
 
