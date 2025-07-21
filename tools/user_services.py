@@ -1,1 +1,3 @@
-from src.core.services.user_services import *  # noqa: F401,F403
+from src.core.services.user_services import UserManager
+
+__all__ = ["UserManager"]
