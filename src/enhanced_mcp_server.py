@@ -366,13 +366,23 @@ async def _add_ticket_message(
         return {"status": "error", "error": str(e)}
 
 
-async def _get_open_tickets(filters: _Dict[str, Any] | None = None) -> _Dict[str, Any]:
-    """Return open tickets with optional filters."""
+async def _get_open_tickets(
+    days: int = 3650,
+    limit: int = 10,
+    skip: int = 0,
+    filters: _Dict[str, Any] | None = None,
+    sort: list[str] | None = None,
+) -> _Dict[str, Any]:
+    """Return open tickets with optional filters and sorting."""
     try:
         async with db.SessionLocal() as db_session:
             tickets = await TicketManager().get_tickets_by_timeframe(
-                db_session, status="open", days=3650
+                db_session,
+                status="open",
+                days=days,
+                limit=limit + skip if limit else None,
             )
+
             if filters:
                 filtered = []
                 for t in tickets:
@@ -384,9 +394,30 @@ async def _get_open_tickets(filters: _Dict[str, Any] | None = None) -> _Dict[str
                     if match:
                         filtered.append(t)
                 tickets = filtered
-            data = [
-                TicketExpandedOut.model_validate(t).model_dump() for t in tickets
-            ]
+
+            if sort:
+                for key in reversed(sort):
+                    direction = "asc"
+                    column = key
+                    if key.startswith("-"):
+                        column = key[1:]
+                        direction = "desc"
+                    elif " " in key:
+                        column, dir_part = key.rsplit(" ", 1)
+                        if dir_part.lower() in {"asc", "desc"}:
+                            direction = dir_part.lower()
+                    if tickets and hasattr(tickets[0], column):
+                        tickets.sort(
+                            key=lambda t: getattr(t, column),
+                            reverse=direction == "desc",
+                        )
+
+            if skip:
+                tickets = tickets[skip:]
+            if limit:
+                tickets = tickets[:limit]
+
+            data = [TicketExpandedOut.model_validate(t).model_dump() for t in tickets]
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in get_open_tickets: {e}")
@@ -612,7 +643,13 @@ ENHANCED_TOOLS: List[Tool] = [
         description="List open tickets with optional filters",
         inputSchema={
             "type": "object",
-            "properties": {"filters": {"type": "object"}},
+            "properties": {
+                "days": {"type": "integer", "default": 3650},
+                "limit": {"type": "integer", "default": 10},
+                "skip": {"type": "integer", "default": 0},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
         },
         _implementation=_get_open_tickets,
     ),
