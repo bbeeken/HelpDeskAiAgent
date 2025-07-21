@@ -152,7 +152,7 @@ SELECT t.Ticket_ID,
        t.Created_Date,
        t.Assigned_Name,
        t.Assigned_Email,
-       t.Priority_ID,
+       t.Severity_ID,
        t.Assigned_Vendor_ID,
        t.Closed_Date,
        t.LastModified,
@@ -165,7 +165,7 @@ LEFT JOIN Assets a ON a.ID = t.Asset_ID
 LEFT JOIN Sites s ON s.ID = t.Site_ID
 LEFT JOIN Ticket_Categories c ON c.ID = t.Ticket_Category_ID
 LEFT JOIN Vendors v ON v.ID = t.Assigned_Vendor_ID
-LEFT JOIN Priority_Levels p ON p.ID = t.Priority_ID;
+LEFT JOIN Priority_Levels p ON p.ID = t.Severity_ID;
 ```
 
 

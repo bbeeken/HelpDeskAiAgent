@@ -447,7 +447,7 @@ class EnhancedOperationsManager:
                 "restore_values": {
                     "Assigned_Email": prev_ticket.get("Assigned_Email"),
                     "Ticket_Status_ID": prev_ticket.get("Ticket_Status_ID"),
-                    "Priority_ID": prev_ticket.get("Priority_ID"),
+                    "Severity_ID": prev_ticket.get("Severity_ID"),
                     "Resolution": prev_ticket.get("Resolution")
                 }
             }
