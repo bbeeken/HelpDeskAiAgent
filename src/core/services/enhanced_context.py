@@ -58,9 +58,12 @@ class EnhancedContextManager:
             if end_aware and start_aware:
                 delta = end_aware - start_aware
                 return delta.total_seconds() / 3600
-        except Exception as e:  # pragma: no cover - defensive
+        except (TypeError, ValueError, AttributeError) as e:  # pragma: no cover - defensive
             logger.warning(f"Failed to calculate datetime difference: {e}")
             return None
+        except Exception:  # pragma: no cover - unexpected
+            logger.exception("Unexpected error calculating datetime difference")
+            raise
 
         return None
 
@@ -332,9 +335,12 @@ class EnhancedContextManager:
         if created:
             try:
                 business_hours_age = self._calculate_business_hours_age(created, now)
-            except Exception as e:  # pragma: no cover - defensive
+            except (TypeError, ValueError) as e:  # pragma: no cover - defensive
                 logger.warning(f"Failed to calculate business hours age: {e}")
                 business_hours_age = 0.0
+            except Exception:  # pragma: no cover - unexpected
+                logger.exception("Unexpected error calculating business hours age")
+                raise
 
         resolution_hours = None
         if closed_date and created:
@@ -395,9 +401,18 @@ class EnhancedContextManager:
             business_ratio = 40 / 168
             return total_hours * business_ratio
 
-        except Exception as e:  # pragma: no cover - defensive
-            logger.warning(f"Error calculating business hours between {start} and {end}: {e}")
+        except (TypeError, ValueError) as e:  # pragma: no cover - defensive
+            logger.warning(
+                f"Error calculating business hours between {start} and {end}: {e}"
+            )
             return 0.0
+        except Exception:  # pragma: no cover - unexpected
+            logger.exception(
+                "Unexpected error calculating business hours between %s and %s",
+                start,
+                end,
+            )
+            raise
 
     def _priority_id_to_text(self, priority_id: Optional[int]) -> str:
         """Convert priority ID to text."""
@@ -837,11 +852,20 @@ class EnhancedContextManager:
             }
 
         except (OperationalError, IntegrityError, SQLAlchemyError) as e:
-            logger.error(f"Database error calculating stats for {user_email}: {e}")
+            logger.error(
+                f"Database error calculating stats for {user_email}: {e}"
+            )
+            return self._get_default_user_stats()
+        except ValueError as e:
+            logger.error(
+                f"Value error calculating user ticket statistics for {user_email}: {e}"
+            )
             return self._get_default_user_stats()
         except Exception:
-            logger.exception(f"Unexpected error calculating user ticket statistics for {user_email}")
-            return self._get_default_user_stats()
+            logger.exception(
+                f"Unexpected error calculating user ticket statistics for {user_email}"
+            )
+            raise
 
     async def _analyze_user_communication_patterns(self, user_email: str) -> Dict[str, Any]:
         """Analyze user's communication patterns with error handling."""
@@ -871,14 +895,21 @@ class EnhancedContextManager:
                 "communication_style": "detailed" if avg_length > 200 else "concise",
                 "last_message_date": messages[0].DateTimeStamp if messages else None,
             }
-        except Exception as e:
-            logger.error(f"Error analyzing communication patterns for {user_email}: {e}")
+        except SQLAlchemyError as e:
+            logger.error(
+                f"Error analyzing communication patterns for {user_email}: {e}"
+            )
             return {
                 "message_count": 0,
                 "avg_message_length": 0.0,
                 "communication_style": "unknown",
                 "last_message_date": None,
             }
+        except Exception:
+            logger.exception(
+                f"Unexpected error analyzing communication patterns for {user_email}"
+            )
+            raise
 
     async def _get_user_technical_context(self, user_email: str) -> Dict[str, Any]:
         """Get technical context for a user with error handling."""
@@ -907,13 +938,20 @@ class EnhancedContextManager:
                 "common_assets": assets,
                 "technical_expertise": "high" if len(associations) > 5 else "normal",
             }
-        except Exception as e:
-            logger.error(f"Error getting technical context for {user_email}: {e}")
+        except SQLAlchemyError as e:
+            logger.error(
+                f"Error getting technical context for {user_email}: {e}"
+            )
             return {
                 "primary_sites": [],
                 "common_assets": [],
                 "technical_expertise": "normal",
             }
+        except Exception:
+            logger.exception(
+                f"Unexpected error getting technical context for {user_email}"
+            )
+            raise
 
     async def _get_user_current_tickets(self, user_email: str) -> List[Dict[str, Any]]:
         """Get user's current open tickets with error handling."""
@@ -949,9 +987,16 @@ class EnhancedContextManager:
                 }
                 for t in tickets
             ]
-        except Exception as e:
-            logger.error(f"Error getting current tickets for {user_email}: {e}")
+        except SQLAlchemyError as e:
+            logger.error(
+                f"Error getting current tickets for {user_email}: {e}"
+            )
             return []
+        except Exception:
+            logger.exception(
+                f"Unexpected error getting current tickets for {user_email}"
+            )
+            raise
 
     async def _get_user_recent_resolved_tickets(self, user_email: str) -> List[Dict[str, Any]]:
         """Get user's recently resolved tickets with error handling."""
@@ -987,6 +1032,13 @@ class EnhancedContextManager:
                 }
                 for t in tickets
             ]
-        except Exception as e:
-            logger.error(f"Error getting recent resolved tickets for {user_email}: {e}")
+        except SQLAlchemyError as e:
+            logger.error(
+                f"Error getting recent resolved tickets for {user_email}: {e}"
+            )
             return []
+        except Exception:
+            logger.exception(
+                f"Unexpected error getting recent resolved tickets for {user_email}"
+            )
+            raise
