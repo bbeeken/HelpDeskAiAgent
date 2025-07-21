@@ -1,1 +1,3 @@
-from src.shared.schemas.oncall import *  # noqa: F401,F403
+from src.shared.schemas.oncall import OnCallShiftBase, OnCallShiftOut
+
+__all__ = ["OnCallShiftBase", "OnCallShiftOut"]
