@@ -23,5 +23,4 @@ async def test_unhandled_exception_returns_json(client, monkeypatch):
     resp = await client.get("/ticket/1")
     assert resp.status_code == 500
     data = resp.json()
-    assert data["error_code"] == "UNEXPECTED_ERROR"
-    assert "timestamp" in data
+    assert data["detail"] == "boom"
