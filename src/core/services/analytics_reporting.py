@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone, date as date_cls
 from typing import Any, Dict, List, Optional
 import os
 import time
+import threading
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from .system_utilities import OperationResult
@@ -54,6 +55,7 @@ class TrendAnalysis:
 
 
 _analytics_cache: dict[str, tuple[float, Any]] = {}
+_cache_lock = threading.RLock()
 _cache_ttl = 300  # 5 minutes
 
 # Disable caching when running tests to avoid stale data issues
@@ -66,10 +68,13 @@ async def tickets_by_status(
     """Return counts of tickets grouped by status with caching."""
     cache_key = "tickets_by_status"
 
-    if _cache_enabled and cache_key in _analytics_cache:
-        cached_time, result = _analytics_cache[cache_key]
-        if time.time() - cached_time < _cache_ttl:
-            return OperationResult(success=True, data=result)
+    if _cache_enabled:
+        with _cache_lock:
+            cached = _analytics_cache.get(cache_key)
+        if cached:
+            cached_time, result = cached
+            if time.time() - cached_time < _cache_ttl:
+                return OperationResult(success=True, data=result)
 
     logger.info("Calculating tickets by status")
     try:
@@ -93,7 +98,8 @@ async def tickets_by_status(
         ]
 
         if _cache_enabled:
-            _analytics_cache[cache_key] = (time.time(), status_counts)
+            with _cache_lock:
+                _analytics_cache[cache_key] = (time.time(), status_counts)
         return OperationResult(success=True, data=status_counts)
     except Exception as e:
         logger.exception("Failed to get tickets by status")
