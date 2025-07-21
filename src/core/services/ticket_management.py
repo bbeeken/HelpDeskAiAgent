@@ -151,12 +151,12 @@ class TicketManager:
         )
 
     def _sanitize_search_input(self, query: str) -> str:
-        """Clean potentially dangerous search strings."""
-        query = query.strip()
-        if not query:
-            return ""
-        sanitized = re.sub(r'[^\w\s\\\-.]', '', query)
-        return sanitized[:100]
+
+
+        """Basic sanitization of search input."""
+        return html.escape(query).strip()
+
+
 
 
     async def search_tickets(
