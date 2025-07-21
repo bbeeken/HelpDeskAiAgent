@@ -75,6 +75,7 @@ JSON body matching the tool's schema.
 - `POST /waiting_on_user` – Tickets waiting on user. Example: `{}`
 - `POST /sla_breaches` – Count SLA breaches. Example: `{"days": 2}`
 - `POST /staff_report` – Technician ticket report. Example: `{"assigned_email": "tech@example.com"}`
+- `POST /get_open_tickets` – List open tickets. Example: `{"days": 30, "limit": 20, "skip": 0, "sort": ["Priority_Level"]}`
 - `POST /tickets_by_timeframe` – Tickets filtered by status and age. Example: `{"days": 7}`
 - `POST /search_tickets` – Search tickets. Example: `{"query": "printer"}`
 - `POST /list_sites` – List sites. Example: `{"limit": 10}`
