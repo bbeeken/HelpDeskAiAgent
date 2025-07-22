@@ -62,27 +62,110 @@ This document lists the available HTTP endpoints provided by the HelpDesk servic
 ### MCP Tool Routes
 
 The following POST endpoints are generated from the MCP tools. Each expects a
-JSON body matching the tool's schema.
+JSON body matching the tool's schema. See
+[MCP_TOOLS_GUIDE.md](MCP_TOOLS_GUIDE.md) for a full description of each tool.
 
 - `POST /get_ticket` – Get a ticket by ID. Example: `{"ticket_id": 123}`
 - `POST /list_tickets` – List recent tickets. Example: `{"limit": 5}`
-- `POST /tickets_by_user` – List tickets for a user. Example: `{"identifier": "user@example.com"}`
-- `POST /by_user` – Alias of `tickets_by_user`.
-- `POST /open_by_site` – Open tickets by site. Example: `{}`
-- `POST /open_by_assigned_user` – Open tickets by technician. Example: `{"filters": {}}`
-- `POST /tickets_by_status` – Ticket counts by status. Example: `{}`
-- `POST /ticket_trend` – Ticket trend information. Example: `{"days": 7}`
-- `POST /waiting_on_user` – Tickets waiting on user. Example: `{}`
-- `POST /sla_breaches` – Count SLA breaches. Example: `{"days": 2}`
-- `POST /staff_report` – Technician ticket report. Example: `{"assigned_email": "tech@example.com"}`
-- `POST /get_open_tickets` – List open tickets. Example: `{"days": 30, "limit": 20, "skip": 0, "sort": ["Priority_Level"]}`
-- `POST /tickets_by_timeframe` – Tickets filtered by status and age. Example: `{"days": 7}`
+- `POST /create_ticket` – Create a ticket. Example: see `TicketCreate` schema
+- `POST /update_ticket` – Update a ticket. Example: `{"ticket_id": 1, "updates": {}}`
+- `POST /close_ticket` – Close a ticket with a resolution.
+- `POST /assign_ticket` – Assign a technician.
+- `POST /add_ticket_message` – Add a message to a ticket.
 - `POST /search_tickets` – Search tickets. Example: `{"query": "printer"}`
-- `POST /list_sites` – List sites. Example: `{"limit": 10, "filters": {}, "sort": ["Label"]}`
-- `POST /list_assets` – List assets. Example: `{"limit": 10, "filters": {}, "sort": ["Label"]}`
-- `POST /list_vendors` – List vendors. Example: `{"limit": 10, "filters": {}, "sort": ["Name"]}`
-- `POST /list_categories` – List categories. Example: `{"filters": {}}`
+- `POST /get_tickets_by_user` – Tickets for a user. Example: `{"identifier": "user@example.com"}`
+- `POST /get_open_tickets` – List open tickets. Example: `{"days": 30}`
+- `POST /get_analytics` – Analytics reports. Example: `{"type": "site_counts"}`
+- `POST /list_reference_data` – Reference data lookup. Example: `{"type": "sites"}`
 - `POST /get_ticket_full_context` – Full context for a ticket. Example: `{"ticket_id": 123}`
 - `POST /get_system_snapshot` – System snapshot. Example: `{}`
+- `POST /advanced_search` – Advanced ticket search. Example: `{"text_search": "printer"}`
+- `POST /escalate_ticket` – Escalate a ticket. Example: `{"ticket_id": 42}`
+- `POST /sla_metrics` – SLA metrics summary. Example: `{}`
+- `POST /bulk_update_tickets` – Bulk ticket updates. Example: `{"ticket_ids": [1,2], "updates": {}}`
 
 Endpoints under `/mcp-tools` are also exposed as HTTP routes with the same names as the MCP tools. Refer to the OpenAPI schema or `/docs` endpoint when running the application for the full specification.
+
+## Ticket Schemas
+
+### TicketCreate
+
+Use this schema when creating a ticket. The server automatically populates `Created_Date` so it should be omitted from the payload. All other fields match the database columns and most are optional. If `Ticket_Status_ID` is not supplied it defaults to `1` (Open).
+
+Example:
+
+```json
+{
+  "Subject": "Printer not working",
+  "Ticket_Body": "The office printer is jammed and displays error code 34.",
+  "Ticket_Contact_Name": "Jane Doe",
+  "Ticket_Contact_Email": "jane@example.com",
+  "Asset_ID": 5,
+  "Site_ID": 2,
+  "Ticket_Category_ID": 1
+}
+```
+
+Another example showing assignment and severity:
+
+```json
+{
+  "Subject": "Website down",
+  "Ticket_Body": "The main website returns a 500 Internal Server Error.",
+  "Ticket_Contact_Name": "Alice Admin",
+  "Ticket_Contact_Email": "alice@example.com",
+  "Assigned_Name": "Bob Ops",
+  "Assigned_Email": "bob.ops@example.com",
+  "Ticket_Status_ID": 1,
+  "Site_ID": 3,
+  "Severity_ID": 3
+}
+```
+
+### TicketUpdate
+
+This schema is used to partially update an existing ticket. Provide only the fields you want to change; omitted fields remain unchanged. Unknown fields are rejected and `Created_Date` cannot be updated.
+
+Example payloads:
+
+```json
+{"Subject": "Updated"}
+```
+
+```json
+{"Assigned_Name": "Agent", "Ticket_Status_ID": 2}
+```
+
+```json
+{"Ticket_Status_ID": 3}
+```
+
+### TicketExpandedOut
+
+`TicketExpandedOut` extends `TicketOut` with additional labels and timestamps.
+Fields include:
+
+- `status_label` (maps to `Ticket_Status_Label`)
+- `Site_Label`
+- `Site_ID`
+- `Asset_Label`
+- `category_label` (maps to `Ticket_Category_Label`)
+- `Assigned_Vendor_Name`
+- `Priority_Level`
+- `Closed_Date`
+- `LastModified`
+
+Example:
+
+```json
+{
+  "Ticket_ID": 1,
+  "Subject": "Printer not working",
+  "status_label": "Open",
+  "Site_Label": "HQ",
+  "Site_ID": 2,
+  "Priority_Level": "High",
+  "Closed_Date": null,
+  "LastModified": null
+}
+```

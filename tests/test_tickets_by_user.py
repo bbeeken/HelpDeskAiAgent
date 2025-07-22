@@ -53,6 +53,7 @@ async def test_get_tickets_by_user_function():
             Created_Date=now,
         )
         await TicketManager().create_ticket(db, t4)
+        await db.commit()
         msg = TicketMessage(
             Ticket_ID=t3.Ticket_ID,
             Message="hi",
@@ -89,6 +90,7 @@ async def test_tickets_by_user_endpoint():
                 Created_Date=now,
             )
             await TicketManager().create_ticket(db, t)
+            await db.commit()
         resp = await ac.get("/tickets/by_user", params={"identifier": "endpoint@example.com"})
         assert resp.status_code == 200
         data = resp.json()
@@ -110,6 +112,7 @@ async def test_tickets_by_user_tool():
             Created_Date=now,
         )
         await TicketManager().create_ticket(db, t)
+        await db.commit()
 
     server = create_enhanced_server()
     tool = next(x for x in server._tools if x.name == "tickets_by_user")
@@ -146,6 +149,7 @@ async def test_status_and_filtering():
             )
             await TicketManager().create_ticket(db, open_t)
             await TicketManager().create_ticket(db, closed_t)
+            await db.commit()
 
         resp = await ac.get(
             "/tickets/by_user",

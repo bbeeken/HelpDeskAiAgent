@@ -329,7 +329,10 @@ def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
 server = create_enhanced_server()
 logger.info("Enhanced MCP server active with %d tools", len(TOOLS))
 
-for tool in TOOLS:
+EXCLUDED_TOOLS = {"get_open_tickets", "get_analytics", "list_reference_data"}
+EXPOSED_TOOLS = [t for t in TOOLS if t.name not in EXCLUDED_TOOLS]
+
+for tool in EXPOSED_TOOLS:
     schema = tool.inputSchema if isinstance(tool.inputSchema, dict) else {}
     endpoint_func = build_mcp_endpoint(tool, schema)
 
@@ -346,10 +349,10 @@ for tool in TOOLS:
         tags=["mcp-tools"]
     )(endpoint_func)
 
-logger.info("Registered %d MCP tools as HTTP endpoints", len(TOOLS))
+logger.info("Registered %d MCP tools as HTTP endpoints", len(EXPOSED_TOOLS))
 
 # Paths that require the MCP server to be initialized
-MCP_ENDPOINTS = [f"/{tool.name}" for tool in TOOLS] + ["/tools", "/health/mcp", "/mcp", "/mcp/messages/"]
+MCP_ENDPOINTS = [f"/{tool.name}" for tool in EXPOSED_TOOLS] + ["/tools", "/health/mcp", "/mcp", "/mcp/messages/"]
 
 
 # Standard API routes
@@ -360,7 +363,7 @@ register_routes(app)
 @app.get("/tools", tags=["mcp"])
 async def list_tools() -> Dict[str, List[Dict[str, Any]]]:
     """Return a dictionary of available MCP tools."""
-    return {"tools": [t.to_dict() for t in TOOLS]}
+    return {"tools": [t.to_dict() for t in EXPOSED_TOOLS]}
 
 
 @app.get("/health", tags=["system"])
@@ -396,8 +399,8 @@ async def health_mcp() -> Dict[str, Any]:
     return {
         "status": "healthy",
         "enhanced": getattr(server, "is_enhanced", False),
-        "tool_count": len(TOOLS),
-        "tools": [tool.name for tool in TOOLS]
+        "tool_count": len(EXPOSED_TOOLS),
+        "tools": [tool.name for tool in EXPOSED_TOOLS]
     }
 
 

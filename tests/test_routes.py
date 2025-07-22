@@ -91,9 +91,56 @@ async def test_update_ticket(client: AsyncClient):
     ticket = resp.json()
     tid = ticket["Ticket_ID"]
 
+    # LastModified should be None right after creation
+    get_resp = await client.get(f"/ticket/{tid}")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["LastModified"] is None
+
     resp = await client.put(f"/ticket/{tid}", json={"Subject": "Updated"})
     assert resp.status_code == 200
     assert resp.json()["Subject"] == "Updated"
+
+    get_resp = await client.get(f"/ticket/{tid}")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["LastModified"] is not None
+
+
+@pytest.mark.asyncio
+async def test_update_ticket_multiple_fields(client: AsyncClient):
+    resp = await _create_ticket(client)
+    assert resp.status_code == 201
+    ticket = resp.json()
+    tid = ticket["Ticket_ID"]
+
+    payload = {"Assigned_Name": "Agent Smith", "Ticket_Status_ID": 2, "Severity_ID": 3}
+    resp = await client.put(f"/ticket/{tid}", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["Assigned_Name"] == "Agent Smith"
+    assert data["Ticket_Status_ID"] == 2
+    assert data["Severity_ID"] == 3
+
+
+@pytest.mark.asyncio
+async def test_update_ticket_multiple_fields_persisted(client: AsyncClient):
+    resp = await _create_ticket(client)
+    assert resp.status_code == 201
+    tid = resp.json()["Ticket_ID"]
+
+    payload = {"Assigned_Name": "Neo", "Ticket_Status_ID": 2, "Severity_ID": 4}
+    update_resp = await client.put(f"/ticket/{tid}", json=payload)
+    assert update_resp.status_code == 200
+    updated = update_resp.json()
+    assert updated["Assigned_Name"] == "Neo"
+    assert updated["Ticket_Status_ID"] == 2
+    assert updated["Severity_ID"] == 4
+
+    get_resp = await client.get(f"/ticket/{tid}")
+    assert get_resp.status_code == 200
+    fetched = get_resp.json()
+    assert fetched["Assigned_Name"] == "Neo"
+    assert fetched["Ticket_Status_ID"] == 2
+    assert fetched["Severity_ID"] == 4
 
 
 @pytest.mark.asyncio

@@ -26,6 +26,7 @@ async def test_date_range_and_sort():
         )
         await TicketManager().create_ticket(db, t1)
         await TicketManager().create_ticket(db, t2)
+        await db.commit()
 
         filters = AdvancedFilters(
             created_from=datetime(2023, 1, 5, tzinfo=UTC),
@@ -58,6 +59,7 @@ async def test_multi_value_and_bool_filter():
         )
         await TicketManager().create_ticket(db, t1)
         await TicketManager().create_ticket(db, t2)
+        await db.commit()
         filters = AdvancedFilters(site_ids=[1, 2], assigned=False)
         res = await TicketManager().list_tickets(db, filters=filters)
         ids = {t.Ticket_ID for t in res}
