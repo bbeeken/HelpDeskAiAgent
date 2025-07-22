@@ -862,49 +862,41 @@ async def _get_open_tickets(
         return {"status": "error", "error": str(e)}
 
 
-async def _get_analytics(type: str, params: Dict[str, Any] | None = None) -> Dict[str, Any]:
-    """Return analytics data based on requested type."""
+async def _get_analytics_unified(
+    type: str, params: Dict[str, Any] | None = None
+) -> Dict[str, Any]:
+    """Unified analytics endpoint supporting multiple report types."""
     try:
-        async with db.SessionLocal() as db_session:
-            data = None
-            
-            if type == "status_counts":
-                result = await tickets_by_status(db_session)
-                data = result.data if hasattr(result, "data") and hasattr(result, "success") and result.success else []
-                
-            elif type == "site_counts":
-                data = await open_tickets_by_site(db_session)
-                
-            elif type == "technician_workload":
-                data = await open_tickets_by_user(db_session, params)
-                
-            elif type == "sla_breaches":
-                days = params.get("sla_days", 2) if params else 2
-                status_ids = params.get("status_ids") if params else None
-                breach_count = await sla_breaches(
-                    db_session, sla_days=days, status_ids=status_ids, filters=params
-                )
-                data = {
-                    "breaches": breach_count,
-                    "sla_days": days,
-                    "filters_applied": bool(params)
-                }
-                
-            elif type == "trends":
-                days = params.get("days", 7) if params else 7
-                data = await ticket_trend(db_session, days)
-                
-            else:
-                return {"status": "error", "error": f"Unknown analytics type: {type}"}
-                
-            return {
-                "status": "success",
-                "data": data,
-                "type": type,
-                "params": params
-            }
+        params = params or {}
+
+        if type == "overview":
+            return await _system_snapshot()
+
+        if type == "ticket_counts":
+            return await _get_ticket_stats()
+
+        if type == "workload":
+            return await _get_workload_analytics()
+
+        if type == "sla_performance":
+            days = params.get("days", 30)
+            return await _sla_metrics(days=days)
+
+        if type == "trends":
+            days = params.get("days", 7)
+            async with db.SessionLocal() as db_session:
+                trend = await ticket_trend(db_session, days)
+            return {"status": "success", "data": trend, "days": days}
+
+        if type == "overdue_tickets":
+            async with db.SessionLocal() as db_session:
+                mgr = EnhancedContextManager(db_session)
+                overdue = await mgr._get_overdue_tickets_summary()
+            return {"status": "success", "data": overdue}
+
+        return {"status": "error", "error": f"Unknown analytics type: {type}"}
     except Exception as e:
-        logger.error(f"Error in get_analytics: {e}")
+        logger.error(f"Error in get_analytics_unified: {e}")
         return {"status": "error", "error": str(e)}
 
 
@@ -1403,42 +1395,25 @@ ENHANCED_TOOLS: List[Tool] = [
     ),
     Tool(
         name="get_analytics",
-        description="Retrieve various analytics data",
+        description="Retrieve analytics reports",
         inputSchema={
             "type": "object",
             "properties": {
                 "type": {
                     "type": "string",
-                    "enum": ["status_counts", "site_counts", "technician_workload", "sla_breaches", "trends"],
-                    "description": "Type of analytics to retrieve"
+                    "enum": ["overview", "ticket_counts", "workload", "sla_performance", "trends", "overdue_tickets"],
+                    "description": "Analytics report type"
                 },
-                "params": {"type": "object", "description": "Additional parameters for the analytics"},
+                "params": {"type": "object", "description": "Optional parameters for the report"},
             },
             "required": ["type"],
             "examples": [
-                {"type": "status_counts"},
+                {"type": "overview"},
                 {"type": "trends", "params": {"days": 7}},
-                {"type": "sla_breaches", "params": {"sla_days": 2}}
+                {"type": "sla_performance", "params": {"days": 30}}
             ],
         },
-        _implementation=_get_analytics,
-    ),
-    Tool(
-        name="get_sla_metrics",
-        description="Get SLA compliance statistics",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "sla_days": {"type": "integer", "default": 2, "description": "SLA threshold in days"},
-                "filters": {"type": "object", "description": "Additional filters"},
-                "status_ids": {"type": "array", "items": {"type": "integer"}, "description": "Filter by status IDs"},
-            },
-            "examples": [
-                {"sla_days": 2},
-                {"sla_days": 3, "filters": {"Site_ID": 1}}
-            ],
-        },
-        _implementation=_get_sla_metrics,
+        _implementation=_get_analytics_unified,
     ),
     Tool(
         name="get_reference_data",
@@ -1484,6 +1459,23 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_ticket_full_context,
     ),
     Tool(
+
+        name="advanced_search",
+        description="Run a detailed ticket search with advanced options",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "text_search": {"type": "string", "description": "Text to search for"},
+                "limit": {"type": "integer", "default": 100},
+                "offset": {"type": "integer", "default": 0},
+            },
+            "examples": [
+                {"text_search": "printer issue", "limit": 10},
+                {"text_search": "network", "limit": 50, "offset": 20}
+            ],
+        },
+        _implementation=_advanced_search,
+
         name="get_system_snapshot",
         description="Get current system overview and statistics",
         inputSchema={
@@ -1527,6 +1519,7 @@ ENHANCED_TOOLS: List[Tool] = [
             ],
         },
         _implementation=_sla_metrics,
+
     ),
 ]
 
