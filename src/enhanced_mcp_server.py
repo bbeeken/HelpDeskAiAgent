@@ -1270,6 +1270,14 @@ async def _sla_metrics(days: int = 30) -> Dict[str, Any]:
 ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="get_ticket",
+
+        description="Get a ticket by ID with full details",
+        inputSchema={
+            "type": "object",
+            "properties": {"ticket_id": {"type": "integer", "description": "The ticket ID"}},
+            "required": ["ticket_id"],
+            "examples": [{"ticket_id": 123}],
+
         description="Get a ticket by ID with optional context",
         inputSchema={
             "type": "object",
@@ -1286,6 +1294,7 @@ ENHANCED_TOOLS: List[Tool] = [
                 {"ticket_id": 123},
                 {"ticket_id": 123, "include_full_context": True},
             ],
+
         },
         _implementation=_get_ticket,
     ),
