@@ -66,6 +66,7 @@ class TicketManager:
         for key, value in updates.items():
             if hasattr(ticket, key):
                 setattr(ticket, key, value)
+        ticket.LastModified = datetime.now(timezone.utc)
         try:
             await db.commit()
             await db.refresh(ticket)
