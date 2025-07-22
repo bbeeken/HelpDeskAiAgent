@@ -138,5 +138,6 @@ class TicketExpandedOut(TicketOut):
     Site_ID: Optional[int] = None
     Closed_Date: Optional[datetime] = None
     LastModified: Optional[datetime] = None
+    LastModifiedBy: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

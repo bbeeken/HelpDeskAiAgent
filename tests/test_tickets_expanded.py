@@ -55,6 +55,8 @@ async def test_tickets_expanded_endpoint(client: AsyncClient):
     assert item["Closed_Date"] is None
     assert "LastModified" in item
     assert item["LastModified"] is None
+    assert "LastModifiedBy" in item
+    assert item["LastModifiedBy"] is None
 
 
 def test_ticket_expanded_schema():
@@ -69,6 +71,7 @@ def test_ticket_expanded_schema():
     assert obj.status_label == "Open"
     assert obj.Closed_Date is None
     assert obj.LastModified is None
+    assert obj.LastModifiedBy is None
 
 
 @pytest.mark.asyncio
@@ -140,3 +143,4 @@ def test_ticket_expanded_from_orm_blank_assigned_email():
     assert obj.Assigned_Email is None
     assert obj.Closed_Date is None
     assert obj.LastModified is None
+    assert obj.LastModifiedBy is None
