@@ -25,6 +25,8 @@ class TicketBase(BaseModel):
 class TicketCreate(TicketBase):
     """Schema used when creating a new ticket."""
 
+    LastModified: Optional[datetime] = None
+
     model_config = ConfigDict(
         str_max_length=None,
         json_schema_extra={

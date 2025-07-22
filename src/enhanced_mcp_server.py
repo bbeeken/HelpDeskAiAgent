@@ -249,6 +249,7 @@ async def _create_ticket(**payload: Any) -> _Dict[str, Any]:
     try:
         async with db.SessionLocal() as db_session:
             payload.setdefault("Created_Date", datetime.now(timezone.utc))
+            payload.setdefault("LastModified", datetime.now(timezone.utc))
             result = await TicketManager().create_ticket(db_session, payload)
             await db_session.commit()
             if not result.success:
