@@ -163,6 +163,88 @@ from src.core.services.analytics_reporting import (
     sla_breaches,
 )
 from src.core.services.enhanced_context import EnhancedContextManager
+import re
+
+
+_STATUS_MAP = {
+    "open": 1,
+    "closed": 4,
+    "resolved": 4,
+    "in_progress": 2,
+    "progress": 2,
+}
+
+_PRIORITY_MAP = {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+}
+
+
+def _format_ticket_by_level(ticket: Any) -> dict:
+    """Return a dict representation of a ticket with consistent priority labeling."""
+    if isinstance(ticket, dict):
+        data = ticket.copy()
+    else:
+        data = TicketExpandedOut.model_validate(ticket).model_dump()
+
+    level = data.get("Priority_Level")
+    if level:
+        data["Priority_Level"] = level.capitalize()
+
+    return data
+
+
+def _calculate_search_relevance(ticket: dict, query: str) -> float:
+    """Very simple relevance scoring based on query matches."""
+    q = query.lower()
+    subject = (ticket.get("Subject") or "").lower()
+    body = (ticket.get("body_preview") or "").lower()
+
+    score = 0.0
+    if q in subject:
+        score += 2.0
+    elif any(word in subject for word in q.split()):
+        score += 1.0
+
+    if q in body:
+        score += 1.0
+    elif any(word in body for word in q.split()):
+        score += 0.5
+
+    return score
+
+
+def _generate_search_highlights(ticket: dict, query: str) -> dict:
+    """Highlight query terms in the subject and body preview."""
+    pattern = re.compile(re.escape(query), re.IGNORECASE)
+    subject = ticket.get("Subject") or ""
+    body = ticket.get("body_preview") or ""
+    return {
+        "subject": pattern.sub(lambda m: f"<em>{m.group()}</em>", subject),
+        "body": pattern.sub(lambda m: f"<em>{m.group()}</em>", body),
+    }
+
+
+def _apply_semantic_filters(filters: dict[str, Any]) -> dict[str, Any]:
+    """Translate human friendly filters into database column filters."""
+    translated: dict[str, Any] = {}
+    for key, value in filters.items():
+        k = key.lower()
+        if k in {"status", "ticket_status"}:
+            if isinstance(value, str):
+                translated["Ticket_Status_ID"] = _STATUS_MAP.get(value.lower(), value)
+            else:
+                translated["Ticket_Status_ID"] = value
+        elif k in {"priority", "priority_level"}:
+            if isinstance(value, str):
+                translated["Priority_Level"] = _PRIORITY_MAP.get(value.lower(), value)
+            else:
+                translated["Severity_ID"] = value
+        else:
+            translated[key] = value
+    return translated
 
 
 async def _get_ticket(ticket_id: int) -> _Dict[str, Any]:
@@ -185,19 +267,18 @@ async def _list_tickets(
     filters: _Dict[str, Any] | None = None,
     sort: list[str] | None = None,
 ) -> _Dict[str, Any]:
-    """List tickets with optional filtering."""
+    """List tickets using semantic filters and return serialized results."""
     try:
         async with db.SessionLocal() as db_session:
+            applied = _apply_semantic_filters(filters or {})
             tickets = await TicketManager().list_tickets(
                 db_session,
-                filters=filters or None,
+                filters=applied or None,
                 skip=skip,
                 limit=limit,
                 sort=sort,
             )
-            data = [
-                TicketExpandedOut.model_validate(t).model_dump() for t in tickets
-            ]
+            data = [_format_ticket_by_level(t) for t in tickets]
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in list_tickets: {e}")
@@ -232,13 +313,23 @@ async def _get_tickets_by_user(
 
 
 async def _search_tickets(query: str, limit: int = 10) -> _Dict[str, Any]:
-    """Search tickets by text query."""
+    """Search tickets and return results scored by relevance."""
     try:
         async with db.SessionLocal() as db_session:
             results = await TicketManager().search_tickets(
                 db_session, query, limit=limit
             )
-            return {"status": "success", "data": results}
+            enriched = []
+            for r in results:
+                score = _calculate_search_relevance(r, query)
+                highlights = _generate_search_highlights(r, query)
+                r = _format_ticket_by_level(r)
+                r["relevance"] = score
+                r["highlights"] = highlights
+                enriched.append(r)
+
+            enriched.sort(key=lambda d: d["relevance"], reverse=True)
+            return {"status": "success", "data": enriched}
     except Exception as e:
         logger.error(f"Error in search_tickets: {e}")
         return {"status": "error", "error": str(e)}
