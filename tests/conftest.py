@@ -9,7 +9,7 @@ import pytest
 import pytest_asyncio
 from src.core.repositories.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
 from sqlalchemy import text
-from src.core.repositories.models import Base
+from src.core.repositories.models import Base, Priority
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 import src.infrastructure.database as mssql
@@ -69,3 +69,14 @@ async def db_setup():
 def clear_analytics_cache():
     analytics_reporting._analytics_cache.clear()
     yield
+
+@pytest_asyncio.fixture
+async def sample_priorities():
+    async with mssql.SessionLocal() as db:
+        low = Priority(Level="Low")
+        high = Priority(Level="High")
+        db.add_all([low, high])
+        await db.commit()
+        await db.refresh(low)
+        await db.refresh(high)
+        return [low, high]
