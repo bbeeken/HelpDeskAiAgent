@@ -149,6 +149,7 @@ def set_config(config: MCPServerConfig) -> None:
 from datetime import datetime, timezone
 from typing import Any, Dict as _Dict
 import json
+import html
 from mcp import types
 
 from src.infrastructure import database as db
@@ -163,6 +164,8 @@ from src.core.services.analytics_reporting import (
     sla_breaches,
 )
 from src.core.services.enhanced_context import EnhancedContextManager
+from src.core.services.advanced_query import AdvancedQueryManager
+from src.shared.schemas.agent_data import AdvancedQuery
 
 
 async def _get_ticket(ticket_id: int) -> _Dict[str, Any]:
@@ -241,6 +244,39 @@ async def _search_tickets(query: str, limit: int = 10) -> _Dict[str, Any]:
             return {"status": "success", "data": results}
     except Exception as e:
         logger.error(f"Error in search_tickets: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _search_tickets_advanced(**criteria: Any) -> _Dict[str, Any]:
+    """Perform advanced ticket search with metadata."""
+    try:
+        query = AdvancedQuery.model_validate(criteria or {})
+
+        if query.text_search:
+            query.text_search = html.escape(query.text_search)
+        if query.contact_name:
+            query.contact_name = html.escape(query.contact_name)
+
+        query.search_fields = [html.escape(f) for f in query.search_fields]
+
+        sanitized_custom: _Dict[str, Any] = {}
+        for key, val in query.custom_filters.items():
+            sanitized_custom[key] = html.escape(val) if isinstance(val, str) else val
+        query.custom_filters = sanitized_custom
+
+        if query.assigned_to:
+            query.assigned_to = [html.escape(v) for v in query.assigned_to]
+        if query.contact_email:
+            query.contact_email = [html.escape(v) for v in query.contact_email]
+        if query.status_filter:
+            query.status_filter = [html.escape(str(v)) for v in query.status_filter]
+
+        async with db.SessionLocal() as db_session:
+            mgr = AdvancedQueryManager(db_session)
+            result = await mgr.query_tickets_advanced(query)
+            return {"status": "success", "data": result.model_dump()}
+    except Exception as e:
+        logger.error(f"Error in search_tickets_advanced: {e}")
         return {"status": "error", "error": str(e)}
 
 
@@ -607,6 +643,12 @@ ENHANCED_TOOLS: List[Tool] = [
             "required": ["query"],
         },
         _implementation=_search_tickets,
+    ),
+    Tool(
+        name="search_tickets_advanced",
+        description="Advanced ticket search",
+        inputSchema=AdvancedQuery.model_json_schema(),
+        _implementation=_search_tickets_advanced,
     ),
     Tool(
         name="get_tickets_by_user",
