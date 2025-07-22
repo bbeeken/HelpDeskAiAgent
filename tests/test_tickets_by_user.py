@@ -115,9 +115,10 @@ async def test_tickets_by_user_tool():
         await db.commit()
 
     server = create_enhanced_server()
-    tool = next(x for x in server._tools if x.name == "tickets_by_user")
-    res = await tool._implementation(identifier="tool@example.com")
-    ids = {r.Ticket_ID for r in res}
+    tool = next(x for x in server._tools if x.name == "search_tickets")
+    res = await tool._implementation(user="tool@example.com")
+    assert res["status"] in {"success", "error"}
+    ids = {r["Ticket_ID"] for r in res.get("data", [])}
     assert t.Ticket_ID in ids
 
 
@@ -168,14 +169,14 @@ async def test_status_and_filtering():
         assert ids == [open_t.Ticket_ID]
 
     server = create_enhanced_server()
-    tool = next(x for x in server._tools if x.name == "by_user")
+    tool = next(x for x in server._tools if x.name == "search_tickets")
     res = await tool._implementation(
-        identifier="filter@example.com", status="closed"
+        user="filter@example.com", filters={"status": "closed"}
     )
-    ids = {r.Ticket_ID for r in res}
+    ids = {r["Ticket_ID"] for r in res.get("data", [])}
     assert ids == {closed_t.Ticket_ID}
     res = await tool._implementation(
-        identifier="filter@example.com", filters={"Site_ID": 1}
+        user="filter@example.com", filters={"Site_ID": 1}
     )
-    ids = {r.Ticket_ID for r in res}
+    ids = {r["Ticket_ID"] for r in res.get("data", [])}
     assert ids == {open_t.Ticket_ID}

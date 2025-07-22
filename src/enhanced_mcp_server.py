@@ -7,7 +7,7 @@ import os
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
 import anyio
@@ -406,6 +406,112 @@ async def _search_tickets(query: str, limit: int = 10) -> Dict[str, Any]:
             }
     except Exception as e:
         logger.error(f"Error in search_tickets: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _search_tickets_unified(
+    text: str | None = None,
+    user: str | None = None,
+    days: int | None = None,
+    limit: int = 10,
+    skip: int = 0,
+    filters: Dict[str, Any] | None = None,
+    sort: list[str] | None = None,
+) -> Dict[str, Any]:
+    """Unified ticket search supporting text, user and timeframe filters."""
+    try:
+        async with db.SessionLocal() as db_session:
+            base_stmt = select(VTicketMasterExpanded)
+
+            if text:
+                sanitized = html.escape(text)
+                pattern = f"%{sanitized}%"
+                base_stmt = base_stmt.filter(
+                    or_(
+                        VTicketMasterExpanded.Subject.ilike(pattern),
+                        VTicketMasterExpanded.Ticket_Body.ilike(pattern),
+                    )
+                )
+
+            if user:
+                ident = user.lower()
+                base_stmt = base_stmt.filter(
+                    or_(
+                        func.lower(VTicketMasterExpanded.Ticket_Contact_Name) == ident,
+                        func.lower(VTicketMasterExpanded.Ticket_Contact_Email) == ident,
+                        func.lower(VTicketMasterExpanded.Assigned_Name) == ident,
+                        func.lower(VTicketMasterExpanded.Assigned_Email) == ident,
+                    )
+                )
+
+            if days is not None and days >= 0:
+                cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+                base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date >= cutoff)
+
+            if filters:
+                applied = _apply_semantic_filters(filters)
+                for key, value in applied.items():
+                    if hasattr(VTicketMasterExpanded, key):
+                        col = getattr(VTicketMasterExpanded, key)
+                        if isinstance(value, list):
+                            base_stmt = base_stmt.filter(col.in_(value))
+                        else:
+                            base_stmt = base_stmt.filter(col == value)
+
+            # Sorting
+            order_stmt = base_stmt
+            if sort:
+                for key in reversed(sort):
+                    direction = "asc"
+                    column = key
+                    if key.startswith("-"):
+                        column = key[1:]
+                        direction = "desc"
+                    elif " " in key:
+                        column, dir_part = key.rsplit(" ", 1)
+                        if dir_part.lower() in {"asc", "desc"}:
+                            direction = dir_part.lower()
+                    if hasattr(VTicketMasterExpanded, column):
+                        attr = getattr(VTicketMasterExpanded, column)
+                        order_stmt = order_stmt.order_by(
+                            attr.desc() if direction == "desc" else attr.asc()
+                        )
+            else:
+                order_stmt = order_stmt.order_by(VTicketMasterExpanded.Created_Date.desc())
+
+            count_stmt = select(func.count()).select_from(order_stmt.subquery())
+            total_count = await db_session.scalar(count_stmt) or 0
+
+            if skip:
+                order_stmt = order_stmt.offset(skip)
+            if limit:
+                order_stmt = order_stmt.limit(limit)
+
+            result = await db_session.execute(order_stmt)
+            records = result.scalars().all()
+
+            data = []
+            for r in records:
+                item = _format_ticket_by_level(r)
+                if text:
+                    score = _calculate_search_relevance(item, text)
+                    item["relevance"] = round(score, 2)
+                    item["highlights"] = _generate_search_highlights(item, text)
+                data.append(item)
+
+            if text:
+                data.sort(key=lambda d: d.get("relevance", 0), reverse=True)
+
+            return {
+                "status": "success",
+                "data": data,
+                "count": len(data),
+                "total_count": total_count,
+                "skip": skip,
+                "limit": limit,
+            }
+    except Exception as e:
+        logger.error(f"Error in search_tickets_unified: {e}")
         return {"status": "error", "error": str(e)}
 
 
@@ -1403,24 +1509,6 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_get_ticket,
     ),
     Tool(
-        name="list_tickets",
-        description="List tickets with optional semantic filters (e.g., status='open', priority='high')",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "limit": {"type": "integer", "default": 10, "description": "Maximum number of tickets to return"},
-                "skip": {"type": "integer", "default": 0, "description": "Number of tickets to skip"},
-                "filters": {"type": "object", "description": "Filter criteria (supports semantic values like status='open')"},
-                "sort": {"type": "array", "items": {"type": "string"}, "description": "Sort fields (prefix with - for descending)"},
-            },
-            "examples": [
-                {"limit": 5, "filters": {"status": "open"}},
-                {"limit": 10, "filters": {"priority": "high"}, "sort": ["-Created_Date"]}
-            ],
-        },
-        _implementation=_list_tickets,
-    ),
-    Tool(
         name="create_ticket",
         description="Create a new ticket",
         inputSchema=TicketCreate.model_json_schema(),
@@ -1561,65 +1649,25 @@ ENHANCED_TOOLS: List[Tool] = [
     ),
     Tool(
         name="search_tickets",
-        description="Search tickets by text with relevance scoring",
+        description="Unified ticket search with text, user, timeframe and filters",
         inputSchema={
             "type": "object",
             "properties": {
-                "query": {"type": "string", "description": "Search query text"},
-                "limit": {"type": "integer", "default": 10, "description": "Maximum results"},
-            },
-            "required": ["query"],
-            "examples": [
-                {"query": "printer", "limit": 5},
-                {"query": "network connectivity"}
-            ],
-        },
-        _implementation=_search_tickets,
-    ),
-    Tool(
-        name="search_tickets_advanced",
-        description="Advanced ticket search with multiple criteria",
-        inputSchema=AdvancedQuery.model_json_schema(),
-        _implementation=_search_tickets_advanced,
-    ),
-    Tool(
-        name="get_tickets_by_user",
-        description="Retrieve tickets associated with a user",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "identifier": {"type": "string", "description": "User email or identifier"},
-                "skip": {"type": "integer", "default": 0},
-                "limit": {"type": "integer", "default": 100},
-                "status": {"type": "string", "description": "Filter by status"},
-                "filters": {"type": "object", "description": "Additional filters"},
-            },
-            "required": ["identifier"],
-            "examples": [
-                {"identifier": "user@example.com", "status": "open"},
-                {"identifier": "john.doe@company.com", "limit": 20}
-            ],
-        },
-        _implementation=_get_tickets_by_user,
-    ),
-    Tool(
-        name="get_open_tickets",
-        description="List open tickets with timeframe and filtering",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "days": {"type": "integer", "default": 3650, "description": "Tickets from last N days"},
+                "text": {"type": "string", "description": "Search query text"},
+                "user": {"type": "string", "description": "User email or name"},
+                "days": {"type": "integer", "description": "Tickets from last N days", "default": 30},
                 "limit": {"type": "integer", "default": 10},
                 "skip": {"type": "integer", "default": 0},
                 "filters": {"type": "object"},
                 "sort": {"type": "array", "items": {"type": "string"}},
             },
             "examples": [
-                {"days": 30, "limit": 20},
-                {"days": 7, "filters": {"priority": "high"}, "sort": ["-Created_Date"]}
+                {"text": "printer error", "days": 7},
+                {"user": "tech@example.com", "filters": {"status": "open"}},
+                {"text": "network", "user": "alice@example.com", "days": 30}
             ],
         },
-        _implementation=_get_open_tickets,
+        _implementation=_search_tickets_unified,
     ),
     Tool(
         name="get_analytics",
@@ -1733,23 +1781,6 @@ ENHANCED_TOOLS: List[Tool] = [
             "examples": [{}],
         },
         _implementation=_get_workload_analytics,
-    ),
-    Tool(
-        name="advanced_search",
-        description="Run a detailed ticket search with advanced options",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "text_search": {"type": "string", "description": "Text to search for"},
-                "limit": {"type": "integer", "default": 100},
-                "offset": {"type": "integer", "default": 0},
-            },
-            "examples": [
-                {"text_search": "printer issue", "limit": 10},
-                {"text_search": "network", "limit": 50, "offset": 20}
-            ],
-        },
-        _implementation=_advanced_search,
     ),
     Tool(
         name="sla_metrics",
