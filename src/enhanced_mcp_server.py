@@ -163,6 +163,8 @@ from src.core.services.analytics_reporting import (
     sla_breaches,
 )
 from src.core.services.enhanced_context import EnhancedContextManager
+from src.core.repositories.models import Ticket, TicketStatus
+from sqlalchemy import select, func, or_
 
 
 async def _get_ticket(ticket_id: int) -> _Dict[str, Any]:
@@ -278,6 +280,41 @@ async def _update_ticket(ticket_id: int, updates: _Dict[str, Any]) -> _Dict[str,
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in update_ticket: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _bulk_update_tickets(
+    ticket_ids: list[int],
+    updates: _Dict[str, Any],
+    dry_run: bool = False,
+) -> _Dict[str, Any]:
+    """Apply the same updates to multiple tickets."""
+    try:
+        async with db.SessionLocal() as db_session:
+            mgr = TicketManager()
+            updated: list[_Dict[str, Any]] = []
+            missing: list[int] = []
+            for tid in ticket_ids:
+                result = await mgr.update_ticket(db_session, tid, updates)
+                if not result:
+                    missing.append(tid)
+                    continue
+                ticket = await mgr.get_ticket(db_session, tid)
+                updated.append(TicketExpandedOut.model_validate(ticket).model_dump())
+
+            if dry_run:
+                await db_session.rollback()
+            else:
+                await db_session.commit()
+
+            return {
+                "status": "success",
+                "data": updated,
+                "missing": missing,
+                "dry_run": dry_run,
+            }
+    except Exception as e:
+        logger.error(f"Error in bulk_update_tickets: {e}")
         return {"status": "error", "error": str(e)}
 
 
@@ -449,6 +486,53 @@ async def _get_analytics(type: str, params: _Dict[str, Any] | None = None) -> _D
         return {"status": "error", "error": str(e)}
 
 
+async def _get_sla_metrics(
+    sla_days: int = 2,
+    filters: _Dict[str, Any] | None = None,
+    status_ids: list[int] | None = None,
+) -> _Dict[str, Any]:
+    """Return SLA compliance metrics."""
+    try:
+        async with db.SessionLocal() as db_session:
+            query = (
+                select(func.count(Ticket.Ticket_ID))
+                .join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
+                .filter(
+                    or_(
+                        TicketStatus.Label.ilike("%open%"),
+                        TicketStatus.Label.ilike("%progress%"),
+                    )
+                )
+            )
+            if filters:
+                for key, value in filters.items():
+                    if hasattr(Ticket, key):
+                        query = query.filter(getattr(Ticket, key) == value)
+
+            open_count = await db_session.scalar(query) or 0
+
+            breaches = await sla_breaches(
+                db_session,
+                sla_days=sla_days,
+                filters=filters,
+                status_ids=status_ids,
+            )
+
+            compliance = ((open_count - breaches) / open_count * 100) if open_count else 100.0
+
+            return {
+                "status": "success",
+                "data": {
+                    "open_tickets": open_count,
+                    "sla_breaches": breaches,
+                    "sla_compliance_pct": round(compliance, 2),
+                },
+            }
+    except Exception as e:
+        logger.error(f"Error in get_sla_metrics: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 async def _list_reference_data(
     type: str,
     limit: int = 10,
@@ -553,6 +637,20 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_update_ticket,
     ),
     Tool(
+        name="bulk_update_tickets",
+        description="Update multiple tickets at once",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "ticket_ids": {"type": "array", "items": {"type": "integer"}},
+                "updates": {"type": "object"},
+                "dry_run": {"type": "boolean", "default": False},
+            },
+            "required": ["ticket_ids", "updates"],
+        },
+        _implementation=_bulk_update_tickets,
+    ),
+    Tool(
         name="close_ticket",
         description="Close a ticket with resolution",
         inputSchema={
@@ -651,6 +749,19 @@ ENHANCED_TOOLS: List[Tool] = [
             "required": ["type"],
         },
         _implementation=_get_analytics,
+    ),
+    Tool(
+        name="get_sla_metrics",
+        description="SLA compliance statistics",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "sla_days": {"type": "integer", "default": 2},
+                "filters": {"type": "object"},
+                "status_ids": {"type": "array", "items": {"type": "integer"}},
+            },
+        },
+        _implementation=_get_sla_metrics,
     ),
     Tool(
         name="list_reference_data",
