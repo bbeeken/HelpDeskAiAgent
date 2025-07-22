@@ -15,6 +15,13 @@ async def test_dynamic_tool_routes():
         resp = await client.post("/get_ticket", json={"ticket_id": 1, "extra": 1})
         assert resp.status_code == 422
 
+        resp = await client.post(
+            "/get_ticket",
+            json={"ticket_id": 1, "include_full_context": True},
+        )
+        assert resp.status_code == 200
+        assert resp.json().get("status") in {"success", "error"}
+
         resp = await client.post("/get_ticket", json={})
         assert resp.status_code == 422
 

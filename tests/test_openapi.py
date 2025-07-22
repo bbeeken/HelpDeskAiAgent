@@ -21,3 +21,6 @@ async def test_tool_request_body_present():
         assert "requestBody" in g_ticket_post
         content = g_ticket_post["requestBody"]["content"]
         assert "application/json" in content
+        props = content["application/json"]["schema"]["properties"]
+        assert "include_full_context" in props
+        assert props["include_full_context"]["type"] == "boolean"
