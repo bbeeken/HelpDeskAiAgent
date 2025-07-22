@@ -18,39 +18,16 @@ Parameters:
 - `ticket_id` – integer ID of the ticket.
 - `updates` – object of fields to modify.
 
+`updates` can include semantic fields such as `status`, `priority`,
+`assignee_email`, `assignee_name`, `severity_id` or `resolution` to
+close, assign or escalate a ticket in a single call.
+
 Example:
 ```bash
 curl -X POST http://localhost:8000/update_ticket \
   -d '{"ticket_id": 5, "updates": {"Assigned_Email": "tech@example.com"}}'
 ```
 
-## close_ticket
-Close a ticket with a resolution message.
-
-Parameters:
-- `ticket_id` – integer ticket ID.
-- `resolution` – resolution text.
-- `status_id` – optional status (defaults to 4).
-
-Example:
-```bash
-curl -X POST http://localhost:8000/close_ticket \
-  -d '{"ticket_id": 5, "resolution": "Replaced toner"}'
-```
-
-## assign_ticket
-Assign a ticket to a technician.
-
-Parameters:
-- `ticket_id` – integer ID.
-- `assignee_email` – technician email.
-- `assignee_name` – optional technician name.
-
-Example:
-```bash
-curl -X POST http://localhost:8000/assign_ticket \
-  -d '{"ticket_id": 5, "assignee_email": "tech@example.com"}'
-```
 
 ## add_ticket_message
 Append a message to a ticket thread.
@@ -182,17 +159,6 @@ curl -X POST http://localhost:8000/advanced_search \
   -d '{"text_search": "printer", "limit": 10}'
 ```
 
-## escalate_ticket
-Escalate a ticket for faster attention.
-
-Parameters:
-- `ticket_id` – integer ID of the ticket to escalate.
-
-Example:
-```bash
-curl -X POST http://localhost:8000/escalate_ticket \
-  -d '{"ticket_id": 123}'
-```
 
 ## sla_metrics
 Retrieve SLA performance metrics for the helpdesk.
