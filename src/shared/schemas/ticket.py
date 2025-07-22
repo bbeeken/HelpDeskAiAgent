@@ -128,14 +128,13 @@ class TicketExpandedOut(TicketOut):
     """Ticket output schema that includes related labels."""
 
     status_label: Optional[str] = Field(None, alias="Ticket_Status_Label")
-    Site_Label: Optional[str] = None
-    Site_ID: Optional[int] = None
-    Asset_Label: Optional[str] = None
+    site_label: Optional[str] = Field(None, alias="Site_Label")
+    asset_label: Optional[str] = Field(None, alias="Asset_Label")
     category_label: Optional[str] = Field(None, alias="Ticket_Category_Label")
-
-    Assigned_Vendor_Name: Optional[str] = None
-    Priority_Level: Optional[str] = None
+    vendor_name: Optional[str] = Field(None, alias="Assigned_Vendor_Name")
+    priority_level: Optional[str] = Field(None, alias="Priority_Level")
+    Site_ID: Optional[int] = None
     Closed_Date: Optional[datetime] = None
     LastModified: Optional[datetime] = None
 
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True, str_max_length=None)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
