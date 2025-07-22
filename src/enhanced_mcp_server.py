@@ -251,8 +251,8 @@ async def _create_ticket(**payload: Any) -> _Dict[str, Any]:
             payload.setdefault("Created_Date", datetime.now(timezone.utc))
             payload.setdefault("LastModified", datetime.now(timezone.utc))
             result = await TicketManager().create_ticket(db_session, payload)
-            await db_session.commit()
             if not result.success:
+                await db_session.rollback()
                 raise Exception(result.error or "create failed")
             await db_session.commit()
             ticket = await TicketManager().get_ticket(
@@ -270,8 +270,8 @@ async def _update_ticket(ticket_id: int, updates: _Dict[str, Any]) -> _Dict[str,
     try:
         async with db.SessionLocal() as db_session:
             updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
-            await db_session.commit()
             if not updated:
+                await db_session.rollback()
                 return {"status": "error", "error": "Ticket not found"}
             await db_session.commit()
             ticket = await TicketManager().get_ticket(db_session, ticket_id)
@@ -296,8 +296,8 @@ async def _close_ticket(
                 "Closed_Date": datetime.now(timezone.utc),
             }
             updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
-            await db_session.commit()
             if not updated:
+                await db_session.rollback()
                 return {"status": "error", "error": "Ticket not found"}
             await db_session.commit()
             ticket = await TicketManager().get_ticket(db_session, ticket_id)
@@ -321,8 +321,8 @@ async def _assign_ticket(
                 "Assigned_Name": assignee_name or assignee_email,
             }
             updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
-            await db_session.commit()
             if not updated:
+                await db_session.rollback()
                 return {"status": "error", "error": "Ticket not found"}
             await db_session.commit()
             ticket = await TicketManager().get_ticket(db_session, ticket_id)
