@@ -361,6 +361,51 @@ async def _add_ticket_message(
         return {"status": "error", "error": str(e)}
 
 
+async def _get_ticket_messages(ticket_id: int) -> _Dict[str, Any]:
+    """Return messages for a ticket with message length."""
+    try:
+        async with db.SessionLocal() as db_session:
+            msgs = await TicketManager().get_messages(db_session, ticket_id)
+            data = [
+                {
+                    "ID": m.ID,
+                    "Ticket_ID": m.Ticket_ID,
+                    "Message": m.Message,
+                    "SenderUserCode": m.SenderUserCode,
+                    "SenderUserName": m.SenderUserName,
+                    "DateTimeStamp": m.DateTimeStamp,
+                    "message_length": len(m.Message or ""),
+                }
+                for m in msgs
+            ]
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in get_ticket_messages: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _get_ticket_attachments(ticket_id: int) -> _Dict[str, Any]:
+    """Return attachments for a ticket with file type."""
+    try:
+        async with db.SessionLocal() as db_session:
+            atts = await TicketManager().get_attachments(db_session, ticket_id)
+            data = [
+                {
+                    "ID": a.ID,
+                    "Ticket_ID": a.Ticket_ID,
+                    "Name": a.Name,
+                    "WebURl": a.WebURl,
+                    "UploadDateTime": a.UploadDateTime,
+                    "file_type": os.path.splitext(a.Name)[1].lstrip(".").lower(),
+                }
+                for a in atts
+            ]
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in get_ticket_attachments: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 async def _get_open_tickets(
     days: int = 3650,
     limit: int = 10,
@@ -594,6 +639,26 @@ ENHANCED_TOOLS: List[Tool] = [
             "required": ["ticket_id", "message", "sender_name"],
         },
         _implementation=_add_ticket_message,
+    ),
+    Tool(
+        name="get_ticket_messages",
+        description="Retrieve messages for a ticket",
+        inputSchema={
+            "type": "object",
+            "properties": {"ticket_id": {"type": "integer"}},
+            "required": ["ticket_id"],
+        },
+        _implementation=_get_ticket_messages,
+    ),
+    Tool(
+        name="get_ticket_attachments",
+        description="Retrieve attachments for a ticket",
+        inputSchema={
+            "type": "object",
+            "properties": {"ticket_id": {"type": "integer"}},
+            "required": ["ticket_id"],
+        },
+        _implementation=_get_ticket_attachments,
     ),
     Tool(
         name="search_tickets",
