@@ -28,6 +28,9 @@ from src.shared.exceptions import DatabaseError, ErrorResponse, NotFoundError, V
 from limiter import limiter
 from src.mcp_server import Tool, create_enhanced_server
 from src.tool_list import TOOLS
+import logging
+logging.basicConfig(level=logging.INFO)
+logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
