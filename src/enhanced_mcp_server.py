@@ -293,14 +293,36 @@ def _apply_semantic_filters(filters: dict[str, Any]) -> dict[str, Any]:
 # MCP Server Tool Implementations
 # ---------------------------------------------------------------------------
 
-async def _get_ticket(ticket_id: int) -> Dict[str, Any]:
-    """Retrieve a ticket by ID and return full details."""
+async def _get_ticket(ticket_id: int, include_full_context: bool = False) -> Dict[str, Any]:
+    """Retrieve a ticket by ID and return full details.
+
+    If ``include_full_context`` is true, the response also contains the last few
+    messages, attachments and a short user ticket history for additional
+    context.
+    """
     try:
         async with db.SessionLocal() as db_session:
             ticket = await TicketManager().get_ticket(db_session, ticket_id)
             if not ticket:
                 return {"status": "error", "error": f"Ticket {ticket_id} not found"}
             data = _format_ticket_by_level(ticket)
+
+            if include_full_context:
+                mgr = EnhancedContextManager(db_session)
+                messages = await mgr._get_ticket_messages(ticket_id)
+                attachments = await mgr._get_ticket_attachments(ticket_id)
+                history = await mgr._get_user_ticket_history(
+                    ticket.Ticket_Contact_Email,
+                    limit=5,
+                )
+                return {
+                    "status": "success",
+                    "data": data,
+                    "messages": messages[-5:],
+                    "attachments": attachments[-5:],
+                    "user_history": history,
+                }
+
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in get_ticket: {e}")
@@ -1305,12 +1327,22 @@ async def _sla_metrics(days: int = 30) -> Dict[str, Any]:
 ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="get_ticket",
-        description="Get a ticket by ID with full details",
+        description="Get a ticket by ID with optional context",
         inputSchema={
             "type": "object",
-            "properties": {"ticket_id": {"type": "integer", "description": "The ticket ID"}},
+            "properties": {
+                "ticket_id": {"type": "integer", "description": "The ticket ID"},
+                "include_full_context": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Include recent messages and history",
+                },
+            },
             "required": ["ticket_id"],
-            "examples": [{"ticket_id": 123}],
+            "examples": [
+                {"ticket_id": 123},
+                {"ticket_id": 123, "include_full_context": True},
+            ],
         },
         _implementation=_get_ticket,
     ),
@@ -1699,7 +1731,17 @@ ENHANCED_REFERENCE_TOOLS: List[Tool] = [
 ]
 
 # Combine all tools
-ENHANCED_TOOLS.extend(ENHANCED_REFERENCE_TOOLS)
+# Rebuild ENHANCED_TOOLS with all tool definitions while preserving order and
+# eliminating any duplicate tool names. This ensures ``list_tools`` exposes a
+# clean set regardless of how tools were defined above.
+_combined_tools: List[Tool] = []
+_seen_names = set()
+for _tool in ENHANCED_TOOLS + ENHANCED_REFERENCE_TOOLS:
+    if _tool.name not in _seen_names:
+        _combined_tools.append(_tool)
+        _seen_names.add(_tool.name)
+
+ENHANCED_TOOLS = _combined_tools
 
 
 # ---------------------------------------------------------------------------

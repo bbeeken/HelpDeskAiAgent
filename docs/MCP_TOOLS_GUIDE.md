@@ -2,6 +2,24 @@
 
 This document describes the JSON-RPC tools exposed by the MCP server. Each section lists the purpose of the tool, the parameters expected in the request body and an example invocation.
 
+## get_ticket
+Fetch a ticket by ID.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/get_ticket \
+  -d '{"ticket_id": 1}'
+```
+
+## list_tickets
+List tickets with optional filters.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/list_tickets \
+  -d '{"limit": 5, "filters": {"status": "open"}}'
+```
+
 ## create_ticket
 Create a new ticket. Parameters match the `TicketCreate` schema described in [API.md](API.md).
 
@@ -27,6 +45,30 @@ Example:
 curl -X POST http://localhost:8000/update_ticket \
   -d '{"ticket_id": 5, "updates": {"Assigned_Email": "tech@example.com"}}'
 ```
+
+
+## close_ticket
+Close a ticket with a resolution.
+
+Parameters:
+- `ticket_id` – integer ticket ID.
+- `resolution` – resolution text.
+- `status_id` – optional status (defaults to 4).
+
+
+Example:
+```bash
+curl -X POST http://localhost:8000/update_ticket \
+  -d '{"ticket_id": 5, "updates": {"Ticket_Status_ID": 4, "Resolution": "Replaced toner"}}'
+```
+
+## assign_ticket (removed)
+Use `update_ticket` with `Assigned_Email` and `Assigned_Name`.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/update_ticket \
+  -d '{"ticket_id": 5, "updates": {"Assigned_Email": "tech@example.com"}}'
 
 
 ## add_ticket_message
@@ -73,57 +115,6 @@ curl -X POST http://localhost:8000/get_tickets_by_user \
   -d '{"identifier": "user@example.com", "status": "open"}'
 ```
 
-## get_open_tickets
-List open tickets with optional filters.
-
-Parameters:
-- `days` – look back period (default 3650).
-- `limit` – result limit (default 10).
-- `skip` – result offset (default 0).
-- `filters` – optional filter mapping.
-- `sort` – optional list of columns to sort by.
-
-Example:
-```bash
-curl -X POST http://localhost:8000/get_open_tickets \
-  -d '{"days": 30, "limit": 20, "sort": ["Priority_Level"]}'
-```
-
-## get_analytics
-Return analytics information. The `type` field selects the report.
-
-Allowed types include:
-- `status_counts`
-- `site_counts`
-- `technician_workload`
-- `sla_breaches`
-- `trends`
-
-Parameters:
-- `type` – report type.
-- `params` – optional additional parameters for the chosen report.
-
-Example:
-```bash
-curl -X POST http://localhost:8000/get_analytics \
-  -d '{"type": "site_counts"}'
-```
-
-## list_reference_data
-Return reference data such as sites, assets or vendors.
-
-Parameters:
-- `type` – one of `sites`, `assets`, `vendors`, `categories`.
-- `limit` – optional limit (default 10).
-- `filters` – optional filter mapping.
-- `sort` – optional list of sort columns.
-
-Example:
-```bash
-curl -X POST http://localhost:8000/list_reference_data \
-  -d '{"type": "sites", "limit": 5}'
-```
-
 ## get_ticket_full_context
 Return a ticket along with related labels and history.
 
@@ -146,17 +137,23 @@ Example:
 curl -X POST http://localhost:8000/get_system_snapshot -d '{}'
 ```
 
-## advanced_search
-Perform a detailed ticket search using advanced criteria.
 
-Parameters:
-- `text_search` – search string.
-- `limit` – optional result limit.
+## advanced_search (removed)
+Use `search_tickets` with a query string.
 
 Example:
 ```bash
-curl -X POST http://localhost:8000/advanced_search \
-  -d '{"text_search": "printer", "limit": 10}'
+curl -X POST http://localhost:8000/search_tickets \
+  -d '{"query": "printer", "limit": 10}'
+```
+
+## escalate_ticket (removed)
+Use `update_ticket` to change `Severity_ID` or assignment.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/update_ticket \
+  -d '{"ticket_id": 123, "updates": {"Severity_ID": 1}}'
 ```
 
 
@@ -182,3 +179,4 @@ Example:
 curl -X POST http://localhost:8000/bulk_update_tickets \
   -d '{"ticket_ids": [1,2,3], "updates": {"Assigned_Email": "tech@example.com"}}'
 ```
+

@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import importlib
 import logging
-
-logger = logging.getLogger(__name__)
-
 from dotenv import load_dotenv
 from pydantic import ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+logger = logging.getLogger(__name__)
 load_dotenv()
 
 
@@ -37,7 +35,6 @@ class Settings(BaseSettings):
             raise ValueError("Synchronous driver 'mssql+pyodbc' is not supported")
         return value
 
-
     @field_validator("DEFAULT_TIMEZONE")
     @classmethod
     def validate_timezone(cls, v: str) -> str:
@@ -52,7 +49,6 @@ class Settings(BaseSettings):
                 return "UTC"
             return v
 
-
     @field_validator("API_BASE_URL")
     @classmethod
     def validate_api_base_url(cls, value: str) -> str:
@@ -65,7 +61,6 @@ class Settings(BaseSettings):
         env_file=".env",
         validate_assignment=True,
     )
-
 
 
 try:

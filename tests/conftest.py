@@ -13,8 +13,6 @@ from src.core.repositories.models import Base, Priority
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 import src.infrastructure.database as mssql
-
-import os
 import src.core.services.analytics_reporting as analytics_reporting
 
 
@@ -45,7 +43,6 @@ async def _init_models():
 asyncio.get_event_loop().run_until_complete(_init_models())
 
 
-
 @pytest_asyncio.fixture(autouse=True)
 async def app_lifespan():
     async with LifespanManager(app):
@@ -69,6 +66,7 @@ async def db_setup():
 def clear_analytics_cache():
     analytics_reporting._analytics_cache.clear()
     yield
+
 
 @pytest_asyncio.fixture
 async def sample_priorities():
