@@ -347,15 +347,18 @@ key containing the available tools. The verification script fetches this route
 and compares the returned names against a predefined mapping. It exits with a
 non-zero status when any tools are missing or unexpected. The default mapping
 checks for the ``get_ticket`` and ``list_tickets`` endpoints. The route also
+
 lists additional operations such as ``sla_metrics`` and ``bulk_update_tickets``.
+
+Verify the list of available tools with:
+
 
 ```bash
 python verify_tools.py http://localhost:8000
 ```
 
-Include this check in deployment pipelines to catch configuration issues early.
-
 ### Tool Reference
+
 
 The MCP server exposes several JSON-RPC tools. `get_tickets_by_user` returns
 expanded ticket records for a user. It accepts an `identifier`, optional
@@ -403,6 +406,23 @@ Additional tools are available:
   curl -X POST http://localhost:8000/bulk_update_tickets \
     -d '{"ticket_ids": [1,2,3], "updates": {"Assigned_Email": "tech@example.com"}}'
   ```
+
+The server exposes eleven core JSON-RPC tools. Each expects a JSON body matching its schema.
+
+- `get_ticket` – `{"ticket_id": 123}`
+- `list_tickets` – `{"limit": 5}`
+- `create_ticket` – see `TicketCreate` schema
+- `update_ticket` – `{"ticket_id": 1, "updates": {}}`
+- `close_ticket` – `{"ticket_id": 1, "resolution": "Fixed"}`
+- `assign_ticket` – `{"ticket_id": 1, "assignee_email": "tech@example.com"}`
+- `add_ticket_message` – `{"ticket_id": 1, "message": "Checking", "sender_name": "Agent"}`
+- `search_tickets` – `{"query": "printer"}`
+- `get_tickets_by_user` – `{"identifier": "user@example.com"}`
+- `get_ticket_full_context` – `{"ticket_id": 123}`
+- `get_system_snapshot` – `{}`
+
+See [docs/MCP_TOOLS_GUIDE.md](docs/MCP_TOOLS_GUIDE.md) for detailed descriptions.
+
 
 ## License
 
