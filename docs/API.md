@@ -84,6 +84,10 @@ JSON body matching the tool's schema.
 - `POST /list_categories` – List categories. Example: `{"filters": {}}`
 - `POST /get_ticket_full_context` – Full context for a ticket. Example: `{"ticket_id": 123}`
 - `POST /get_system_snapshot` – System snapshot. Example: `{}`
+- `POST /advanced_search` – Advanced ticket search. Example: `{"text_search": "printer"}`
+- `POST /escalate_ticket` – Escalate a ticket. Example: `{"ticket_id": 42}`
+- `POST /sla_metrics` – SLA metrics summary. Example: `{}`
+- `POST /bulk_update_tickets` – Bulk ticket updates. Example: `{"ticket_ids": [1,2], "updates": {}}`
 
 Endpoints under `/mcp-tools` are also exposed as HTTP routes with the same names as the MCP tools. Refer to the OpenAPI schema or `/docs` endpoint when running the application for the full specification.
 
@@ -139,4 +143,34 @@ Example payloads:
 
 ```json
 {"Ticket_Status_ID": 3}
+```
+
+### TicketExpandedOut
+
+`TicketExpandedOut` extends `TicketOut` with additional labels and timestamps.
+Fields include:
+
+- `status_label` (maps to `Ticket_Status_Label`)
+- `Site_Label`
+- `Site_ID`
+- `Asset_Label`
+- `category_label` (maps to `Ticket_Category_Label`)
+- `Assigned_Vendor_Name`
+- `Priority_Level`
+- `Closed_Date`
+- `LastModified`
+
+Example:
+
+```json
+{
+  "Ticket_ID": 1,
+  "Subject": "Printer not working",
+  "status_label": "Open",
+  "Site_Label": "HQ",
+  "Site_ID": 2,
+  "Priority_Level": "High",
+  "Closed_Date": null,
+  "LastModified": null
+}
 ```
