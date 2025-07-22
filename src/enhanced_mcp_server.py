@@ -154,7 +154,7 @@ from mcp import types
 from src.infrastructure import database as db
 from src.core.services.ticket_management import TicketManager
 from src.core.services.reference_data import ReferenceDataManager
-from src.shared.schemas.ticket import TicketExpandedOut
+from src.shared.schemas.ticket import TicketExpandedOut, TicketCreate
 from src.core.services.analytics_reporting import (
     open_tickets_by_site,
     open_tickets_by_user,
@@ -244,24 +244,11 @@ async def _search_tickets(query: str, limit: int = 10) -> _Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-async def _create_ticket(
-    subject: str,
-    body: str,
-    contact_name: str,
-    contact_email: str,
-    **extras: Any,
-) -> _Dict[str, Any]:
+async def _create_ticket(**payload: Any) -> _Dict[str, Any]:
     """Create a new ticket and return the created record."""
     try:
         async with db.SessionLocal() as db_session:
-            payload = {
-                "Subject": subject,
-                "Ticket_Body": body,
-                "Ticket_Contact_Name": contact_name,
-                "Ticket_Contact_Email": contact_email,
-                "Created_Date": datetime.now(timezone.utc),
-            }
-            payload.update(extras)
+            payload.setdefault("Created_Date", datetime.now(timezone.utc))
             result = await TicketManager().create_ticket(db_session, payload)
             if not result.success:
                 raise Exception(result.error or "create failed")
@@ -541,16 +528,7 @@ ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="create_ticket",
         description="Create a new ticket",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "subject": {"type": "string"},
-                "body": {"type": "string"},
-                "contact_name": {"type": "string"},
-                "contact_email": {"type": "string"},
-            },
-            "required": ["subject", "body", "contact_name", "contact_email"],
-        },
+        inputSchema=TicketCreate.model_json_schema(),
         _implementation=_create_ticket,
     ),
     Tool(
