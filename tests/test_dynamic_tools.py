@@ -44,3 +44,21 @@ async def test_tools_list_route():
         names = {t["name"] for t in tools}
         assert "get_ticket" in names
         assert "list_tickets" in names
+
+
+@pytest.mark.asyncio
+async def test_dynamic_create_ticket():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        payload = {
+            "Subject": "Dynamic",
+            "Ticket_Body": "Created via tool",
+            "Ticket_Contact_Name": "Tester",
+            "Ticket_Contact_Email": "tester@example.com",
+            "Ticket_Status_ID": 2,
+        }
+        resp = await client.post("/create_ticket", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data.get("status") == "success"
+        assert data["data"]["Ticket_Status_ID"] == 2
