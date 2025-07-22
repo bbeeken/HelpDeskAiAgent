@@ -95,6 +95,10 @@ async def test_update_ticket(client: AsyncClient):
     assert resp.status_code == 200
     assert resp.json()["Subject"] == "Updated"
 
+    get_resp = await client.get(f"/ticket/{tid}")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["LastModified"] is not None
+
 
 @pytest.mark.asyncio
 async def test_update_ticket_invalid_field(client: AsyncClient):
