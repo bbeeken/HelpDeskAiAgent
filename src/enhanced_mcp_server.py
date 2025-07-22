@@ -155,6 +155,8 @@ from src.infrastructure import database as db
 from src.core.services.ticket_management import TicketManager
 from src.core.services.reference_data import ReferenceDataManager
 from src.shared.schemas.ticket import TicketExpandedOut, TicketCreate
+from src.core.repositories.models import Priority
+from sqlalchemy import select
 from src.core.services.analytics_reporting import (
     open_tickets_by_site,
     open_tickets_by_user,
@@ -361,6 +363,44 @@ async def _add_ticket_message(
         return {"status": "error", "error": str(e)}
 
 
+async def _escalate_ticket(
+    ticket_id: int,
+    severity_id: int,
+    assignee_email: str,
+    assignee_name: str | None = None,
+    message: str | None = None,
+) -> _Dict[str, Any]:
+    """Escalate a ticket by updating severity and assignee."""
+    try:
+        async with db.SessionLocal() as db_session:
+            updates = {
+                "Severity_ID": severity_id,
+                "Assigned_Email": assignee_email,
+                "Assigned_Name": assignee_name or assignee_email,
+            }
+            updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
+            await db_session.commit()
+            if not updated:
+                return {"status": "error", "error": "Ticket not found"}
+
+            note = message or "Ticket escalated"
+            await TicketManager().post_message(
+                db_session,
+                ticket_id,
+                note,
+                assignee_email,
+                assignee_name or assignee_email,
+            )
+            await db_session.commit()
+
+            ticket = await TicketManager().get_ticket(db_session, ticket_id)
+            data = TicketExpandedOut.model_validate(ticket).model_dump()
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in escalate_ticket: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 async def _get_open_tickets(
     days: int = 3650,
     limit: int = 10,
@@ -484,6 +524,19 @@ async def _list_reference_data(
         return {"status": "error", "error": str(e)}
 
 
+async def _list_priorities() -> _Dict[str, Any]:
+    """Return available priority levels ordered by ID."""
+    try:
+        async with db.SessionLocal() as db_session:
+            result = await db_session.execute(select(Priority).order_by(Priority.ID))
+            records = result.scalars().all()
+            data = [{"id": p.ID, "level": p.Level} for p in records]
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in list_priorities: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 async def _ticket_full_context(ticket_id: int) -> _Dict[str, Any]:
     """Return extended context for a ticket."""
     try:
@@ -581,6 +634,22 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_assign_ticket,
     ),
     Tool(
+        name="escalate_ticket",
+        description="Escalate a ticket and update assignment",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "ticket_id": {"type": "integer"},
+                "severity_id": {"type": "integer"},
+                "assignee_email": {"type": "string"},
+                "assignee_name": {"type": "string"},
+                "message": {"type": "string"},
+            },
+            "required": ["ticket_id", "severity_id", "assignee_email"],
+        },
+        _implementation=_escalate_ticket,
+    ),
+    Tool(
         name="add_ticket_message",
         description="Add a message to a ticket",
         inputSchema={
@@ -666,6 +735,12 @@ ENHANCED_TOOLS: List[Tool] = [
             "required": ["type"],
         },
         _implementation=_list_reference_data,
+    ),
+    Tool(
+        name="list_priorities",
+        description="List available priority levels",
+        inputSchema={},
+        _implementation=_list_priorities,
     ),
     Tool(
         name="get_ticket_full_context",
