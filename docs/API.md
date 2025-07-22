@@ -62,26 +62,21 @@ This document lists the available HTTP endpoints provided by the HelpDesk servic
 ### MCP Tool Routes
 
 The following POST endpoints are generated from the MCP tools. Each expects a
-JSON body matching the tool's schema.
+JSON body matching the tool's schema. See
+[MCP_TOOLS_GUIDE.md](MCP_TOOLS_GUIDE.md) for a full description of each tool.
 
 - `POST /get_ticket` – Get a ticket by ID. Example: `{"ticket_id": 123}`
 - `POST /list_tickets` – List recent tickets. Example: `{"limit": 5}`
-- `POST /tickets_by_user` – List tickets for a user. Example: `{"identifier": "user@example.com"}`
-- `POST /by_user` – Alias of `tickets_by_user`.
-- `POST /open_by_site` – Open tickets by site. Example: `{}`
-- `POST /open_by_assigned_user` – Open tickets by technician. Example: `{"filters": {}}`
-- `POST /tickets_by_status` – Ticket counts by status. Example: `{}`
-- `POST /ticket_trend` – Ticket trend information. Example: `{"days": 7}`
-- `POST /waiting_on_user` – Tickets waiting on user. Example: `{}`
-- `POST /sla_breaches` – Count SLA breaches. Example: `{"days": 2}`
-- `POST /staff_report` – Technician ticket report. Example: `{"assigned_email": "tech@example.com"}`
-- `POST /get_open_tickets` – List open tickets. Example: `{"days": 30, "limit": 20, "skip": 0, "sort": ["Priority_Level"]}`
-- `POST /tickets_by_timeframe` – Tickets filtered by status and age. Example: `{"days": 7}`
+- `POST /create_ticket` – Create a ticket. Example: see `TicketCreate` schema
+- `POST /update_ticket` – Update a ticket. Example: `{"ticket_id": 1, "updates": {}}`
+- `POST /close_ticket` – Close a ticket with a resolution.
+- `POST /assign_ticket` – Assign a technician.
+- `POST /add_ticket_message` – Add a message to a ticket.
 - `POST /search_tickets` – Search tickets. Example: `{"query": "printer"}`
-- `POST /list_sites` – List sites. Example: `{"limit": 10, "filters": {}, "sort": ["Label"]}`
-- `POST /list_assets` – List assets. Example: `{"limit": 10, "filters": {}, "sort": ["Label"]}`
-- `POST /list_vendors` – List vendors. Example: `{"limit": 10, "filters": {}, "sort": ["Name"]}`
-- `POST /list_categories` – List categories. Example: `{"filters": {}}`
+- `POST /get_tickets_by_user` – Tickets for a user. Example: `{"identifier": "user@example.com"}`
+- `POST /get_open_tickets` – List open tickets. Example: `{"days": 30}`
+- `POST /get_analytics` – Analytics reports. Example: `{"type": "site_counts"}`
+- `POST /list_reference_data` – Reference data lookup. Example: `{"type": "sites"}`
 - `POST /get_ticket_full_context` – Full context for a ticket. Example: `{"ticket_id": 123}`
 - `POST /get_system_snapshot` – System snapshot. Example: `{}`
 - `POST /advanced_search` – Advanced ticket search. Example: `{"text_search": "printer"}`
