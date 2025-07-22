@@ -30,6 +30,7 @@ async def test_search_skips_oversized_ticket_body():
         )
         await TicketManager().create_ticket(db, valid)
         await TicketManager().create_ticket(db, invalid)
+        await db.commit()
         valid_id = valid.Ticket_ID
 
     transport = ASGITransport(app=app)
@@ -67,6 +68,7 @@ async def test_search_filters_and_sort():
         )
         await TicketManager().create_ticket(db, first)
         await TicketManager().create_ticket(db, second)
+        await db.commit()
         first_id = first.Ticket_ID
         second_id = second.Ticket_ID
 
@@ -97,6 +99,7 @@ async def test_search_accepts_json():
             Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(db, t)
+        await db.commit()
         tid = t.Ticket_ID
 
     transport = ASGITransport(app=app)

@@ -38,6 +38,7 @@ async def test_search_tickets():
         )
 
         await TicketManager().create_ticket(db, t)
+        await db.commit()
         params = TicketSearchParams()
         results = await TicketManager().search_tickets(db, "Network", params=params)
         assert results and results[0]["Subject"] == "Network issue"
@@ -56,6 +57,7 @@ async def test_search_endpoint_skips_invalid_ticket():
             Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(db, bad)
+        await db.commit()
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -85,6 +87,7 @@ async def test_search_filters_escape_special_chars():
         await TicketManager().create_ticket(db, t1)
         await TicketManager().create_ticket(db, t2)
         await TicketManager().create_ticket(db, t3)
+        await db.commit()
 
         params = TicketSearchParams(Subject="100% guaranteed")
         res = await TicketManager().search_tickets(db, "", params=params)

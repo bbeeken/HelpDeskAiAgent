@@ -18,6 +18,7 @@ async def test_validate_ticket_update_success():
             Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(db, ticket)
+        await db.commit()
         manager = EnhancedOperationsManager(db)
         res = await manager.validate_operation_before_execution(
             "update_ticket", ticket.Ticket_ID, {"Subject": "New"}
@@ -38,6 +39,7 @@ async def test_validate_ticket_update_invalid_field():
             Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(db, ticket)
+        await db.commit()
         manager = EnhancedOperationsManager(db)
         res = await manager.validate_operation_before_execution(
             "update_ticket", ticket.Ticket_ID, {"BadField": "x"}
@@ -58,6 +60,7 @@ async def test_validate_ticket_assignment_missing_email():
             Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(db, ticket)
+        await db.commit()
         manager = EnhancedOperationsManager(db)
         res = await manager.validate_operation_before_execution(
             "assign_ticket", ticket.Ticket_ID, {"assignee_name": "A"}

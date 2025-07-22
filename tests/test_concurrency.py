@@ -19,6 +19,7 @@ async def _add_sample_ticket():
             Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(session, t)
+        await session.commit()
 
 
 async def _search_worker():

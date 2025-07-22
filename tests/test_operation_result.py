@@ -20,6 +20,7 @@ async def test_create_ticket_returns_operation_result():
             Ticket_Status_ID=1,
         )
         result = await TicketManager().create_ticket(db, ticket)
+        await db.commit()
         assert isinstance(result, OperationResult)
         assert result.success
         assert isinstance(result.data, Ticket)

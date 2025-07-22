@@ -56,6 +56,7 @@ async def test_ticket_list_filters_and_sort():
         )
         await TicketManager().create_ticket(db, t1)
         await TicketManager().create_ticket(db, t2)
+        await db.commit()
 
         res = await TicketManager().list_tickets(db, filters={"Subject": "F2"})
         assert len(res) == 1 and res[0].Subject == "F2"
