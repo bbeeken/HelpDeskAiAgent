@@ -91,6 +91,11 @@ async def test_update_ticket(client: AsyncClient):
     ticket = resp.json()
     tid = ticket["Ticket_ID"]
 
+    # LastModified should be None right after creation
+    get_resp = await client.get(f"/ticket/{tid}")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["LastModified"] is None
+
     resp = await client.put(f"/ticket/{tid}", json={"Subject": "Updated"})
     assert resp.status_code == 200
     assert resp.json()["Subject"] == "Updated"
