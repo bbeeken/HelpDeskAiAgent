@@ -161,8 +161,11 @@ from src.core.services.analytics_reporting import (
     tickets_by_status,
     ticket_trend,
     sla_breaches,
+    AnalyticsManager,
 )
 from src.core.services.enhanced_context import EnhancedContextManager
+from src.core.services.advanced_query import AdvancedQueryManager
+from src.shared.schemas.agent_data import AdvancedQuery
 
 
 async def _get_ticket(ticket_id: int) -> _Dict[str, Any]:
@@ -509,6 +512,61 @@ async def _system_snapshot() -> _Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
+async def _advanced_search(**query: Any) -> _Dict[str, Any]:
+    """Run an advanced ticket search."""
+    try:
+        async with db.SessionLocal() as db_session:
+            manager = AdvancedQueryManager(db_session)
+            q = AdvancedQuery(**query)
+            result = await manager.query_tickets_advanced(q)
+            return {"status": "success", "data": result.model_dump()}
+    except Exception as e:
+        logger.error(f"Error in advanced_search: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _escalate_ticket(ticket_id: int, priority: int = 1) -> _Dict[str, Any]:
+    """Escalate a ticket by adjusting its priority."""
+    try:
+        async with db.SessionLocal() as db_session:
+            updates = {"Severity_ID": priority}
+            updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
+            await db_session.commit()
+            if not updated:
+                return {"status": "error", "error": "Ticket not found"}
+            ticket = await TicketManager().get_ticket(db_session, ticket_id)
+            data = TicketExpandedOut.model_validate(ticket).model_dump()
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in escalate_ticket: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _sla_metrics(days: int = 30) -> _Dict[str, Any]:
+    """Retrieve SLA metrics dashboard."""
+    try:
+        async with db.SessionLocal() as db_session:
+            mgr = AnalyticsManager(db_session)
+            dashboard = await mgr.get_comprehensive_dashboard(time_range_days=days)
+            return {"status": "success", "data": dashboard}
+    except Exception as e:
+        logger.error(f"Error in sla_metrics: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _bulk_update_tickets(ticket_ids: list[int], updates: _Dict[str, Any]) -> _Dict[str, Any]:
+    """Apply updates to multiple tickets."""
+    try:
+        async with db.SessionLocal() as db_session:
+            for tid in ticket_ids:
+                await TicketManager().update_ticket(db_session, tid, updates)
+            await db_session.commit()
+            return {"status": "success", "data": {"updated": len(ticket_ids)}}
+    except Exception as e:
+        logger.error(f"Error in bulk_update_tickets: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="get_ticket",
@@ -517,6 +575,7 @@ ENHANCED_TOOLS: List[Tool] = [
             "type": "object",
             "properties": {"ticket_id": {"type": "integer"}},
             "required": ["ticket_id"],
+            "examples": [{"ticket_id": 123}],
         },
         _implementation=_get_ticket,
     ),
@@ -531,6 +590,7 @@ ENHANCED_TOOLS: List[Tool] = [
                 "filters": {"type": "object"},
                 "sort": {"type": "array", "items": {"type": "string"}},
             },
+            "examples": [{"limit": 5}],
         },
         _implementation=_list_tickets,
     ),
@@ -550,6 +610,7 @@ ENHANCED_TOOLS: List[Tool] = [
                 "updates": {"type": "object"},
             },
             "required": ["ticket_id", "updates"],
+            "examples": [{"ticket_id": 1, "updates": {"Subject": "Updated"}}],
         },
         _implementation=_update_ticket,
     ),
@@ -564,6 +625,9 @@ ENHANCED_TOOLS: List[Tool] = [
                 "status_id": {"type": "integer", "default": 4},
             },
             "required": ["ticket_id", "resolution"],
+            "examples": [
+                {"ticket_id": 1, "resolution": "Fixed", "status_id": 4}
+            ],
         },
         _implementation=_close_ticket,
     ),
@@ -578,6 +642,13 @@ ENHANCED_TOOLS: List[Tool] = [
                 "assignee_name": {"type": "string"},
             },
             "required": ["ticket_id", "assignee_email"],
+            "examples": [
+                {
+                    "ticket_id": 1,
+                    "assignee_email": "agent@example.com",
+                    "assignee_name": "Agent"
+                }
+            ],
         },
         _implementation=_assign_ticket,
     ),
@@ -593,21 +664,15 @@ ENHANCED_TOOLS: List[Tool] = [
                 "sender_code": {"type": "string"},
             },
             "required": ["ticket_id", "message", "sender_name"],
+            "examples": [
+                {
+                    "ticket_id": 1,
+                    "message": "Working on it",
+                    "sender_name": "Agent"
+                }
+            ],
         },
         _implementation=_add_ticket_message,
-    ),
-    Tool(
-        name="search_tickets",
-        description="Search tickets",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "query": {"type": "string"},
-                "limit": {"type": "integer", "default": 10},
-            },
-            "required": ["query"],
-        },
-        _implementation=_search_tickets,
     ),
     Tool(
         name="get_tickets_by_user",
@@ -622,6 +687,9 @@ ENHANCED_TOOLS: List[Tool] = [
                 "filters": {"type": "object"},
             },
             "required": ["identifier"],
+            "examples": [
+                {"identifier": "user@example.com", "status": "open"}
+            ],
         },
         _implementation=_get_tickets_by_user,
     ),
@@ -637,6 +705,7 @@ ENHANCED_TOOLS: List[Tool] = [
                 "filters": {"type": "object"},
                 "sort": {"type": "array", "items": {"type": "string"}},
             },
+            "examples": [{"days": 30, "limit": 20, "skip": 0, "sort": ["Priority_Level"]}],
         },
         _implementation=_get_open_tickets,
     ),
@@ -650,6 +719,10 @@ ENHANCED_TOOLS: List[Tool] = [
                 "params": {"type": "object"},
             },
             "required": ["type"],
+            "examples": [
+                {"type": "status_counts"},
+                {"type": "trends", "params": {"days": 7}}
+            ],
         },
         _implementation=_get_analytics,
     ),
@@ -665,6 +738,9 @@ ENHANCED_TOOLS: List[Tool] = [
                 "sort": {"type": "array", "items": {"type": "string"}},
             },
             "required": ["type"],
+            "examples": [
+                {"type": "sites", "limit": 10, "filters": {}, "sort": ["Label"]}
+            ],
         },
         _implementation=_list_reference_data,
     ),
@@ -675,14 +751,67 @@ ENHANCED_TOOLS: List[Tool] = [
             "type": "object",
             "properties": {"ticket_id": {"type": "integer"}},
             "required": ["ticket_id"],
+            "examples": [{"ticket_id": 123}],
         },
         _implementation=_ticket_full_context,
     ),
     Tool(
         name="get_system_snapshot",
         description="System snapshot",
-        inputSchema={},
+        inputSchema={"type": "object", "examples": [{}]},
         _implementation=_system_snapshot,
+    ),
+    Tool(
+        name="advanced_search",
+        description="Run a detailed ticket search",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "text_search": {"type": "string"},
+                "limit": {"type": "integer", "default": 100},
+                "offset": {"type": "integer", "default": 0},
+            },
+            "examples": [{"text_search": "printer", "limit": 10}],
+        },
+        _implementation=_advanced_search,
+    ),
+    Tool(
+        name="escalate_ticket",
+        description="Escalate a ticket for faster attention",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "ticket_id": {"type": "integer"},
+                "priority": {"type": "integer", "default": 1},
+            },
+            "required": ["ticket_id"],
+            "examples": [{"ticket_id": 42}],
+        },
+        _implementation=_escalate_ticket,
+    ),
+    Tool(
+        name="sla_metrics",
+        description="Retrieve SLA performance metrics",
+        inputSchema={
+            "type": "object",
+            "properties": {"days": {"type": "integer", "default": 30}},
+            "examples": [{}],
+        },
+        _implementation=_sla_metrics,
+    ),
+    Tool(
+        name="bulk_update_tickets",
+        description="Apply updates to many tickets at once",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "ticket_ids": {"type": "array", "items": {"type": "integer"}},
+                "updates": {"type": "object"},
+            },
+            "required": ["ticket_ids", "updates"],
+            "examples": [{"ticket_ids": [1, 2], "updates": {}}],
+        },
+        _implementation=_bulk_update_tickets,
     ),
 ]
 
