@@ -42,6 +42,7 @@ curl -X POST http://localhost:8000/update_ticket \
   -d '{"ticket_id": 5, "updates": {"Assigned_Email": "tech@example.com"}}'
 ```
 
+
 ## close_ticket
 Close a ticket with a resolution.
 
@@ -50,24 +51,20 @@ Parameters:
 - `resolution` – resolution text.
 - `status_id` – optional status (defaults to 4).
 
+
 Example:
 ```bash
-curl -X POST http://localhost:8000/close_ticket \
-  -d '{"ticket_id": 5, "resolution": "Replaced toner"}'
+curl -X POST http://localhost:8000/update_ticket \
+  -d '{"ticket_id": 5, "updates": {"Ticket_Status_ID": 4, "Resolution": "Replaced toner"}}'
 ```
 
-## assign_ticket
-Assign a ticket to a technician.
-
-Parameters:
-- `ticket_id` – integer ID.
-- `assignee_email` – technician email.
-- `assignee_name` – optional technician name.
+## assign_ticket (removed)
+Use `update_ticket` with `Assigned_Email` and `Assigned_Name`.
 
 Example:
 ```bash
-curl -X POST http://localhost:8000/assign_ticket \
-  -d '{"ticket_id": 5, "assignee_email": "tech@example.com"}'
+curl -X POST http://localhost:8000/update_ticket \
+  -d '{"ticket_id": 5, "updates": {"Assigned_Email": "tech@example.com"}}'
 ```
 
 ## add_ticket_message
@@ -135,3 +132,46 @@ Example:
 ```bash
 curl -X POST http://localhost:8000/get_system_snapshot -d '{}'
 ```
+
+
+## advanced_search (removed)
+Use `search_tickets` with a query string.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/search_tickets \
+  -d '{"query": "printer", "limit": 10}'
+```
+
+## escalate_ticket (removed)
+Use `update_ticket` to change `Severity_ID` or assignment.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/update_ticket \
+  -d '{"ticket_id": 123, "updates": {"Severity_ID": 1}}'
+```
+
+## sla_metrics
+Retrieve SLA performance metrics for the helpdesk.
+
+Parameters: none.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/sla_metrics -d '{}'
+```
+
+## bulk_update_tickets
+Apply updates to multiple tickets.
+
+Parameters:
+- `ticket_ids` – list of ticket IDs.
+- `updates` – fields to apply to each ticket.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/bulk_update_tickets \
+  -d '{"ticket_ids": [1,2,3], "updates": {"Assigned_Email": "tech@example.com"}}'
+```
+

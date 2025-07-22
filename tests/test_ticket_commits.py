@@ -6,8 +6,6 @@ from src.core.services.ticket_management import TicketManager
 from src.enhanced_mcp_server import (
     _create_ticket,
     _update_ticket,
-    _close_ticket,
-    _assign_ticket,
 )
 
 
@@ -65,41 +63,3 @@ async def test_update_ticket_commits_once(monkeypatch):
     assert counter[0] == 1
 
 
-@pytest.mark.asyncio
-async def test_close_ticket_commits_once(monkeypatch):
-    async with db.SessionLocal() as setup:
-        ticket = {
-            "Subject": "C",
-            "Ticket_Body": "b",
-            "Ticket_Contact_Name": "u",
-            "Ticket_Contact_Email": "u@example.com",
-        }
-        res = await TicketManager().create_ticket(setup, ticket)
-        await setup.commit()
-        tid = res.data.Ticket_ID
-
-    counter = [0]
-    await _patched_session(monkeypatch, counter)
-    result = await _close_ticket(tid, "done")
-    assert result["status"] == "success"
-    assert counter[0] == 1
-
-
-@pytest.mark.asyncio
-async def test_assign_ticket_commits_once(monkeypatch):
-    async with db.SessionLocal() as setup:
-        ticket = {
-            "Subject": "A",
-            "Ticket_Body": "b",
-            "Ticket_Contact_Name": "u",
-            "Ticket_Contact_Email": "u@example.com",
-        }
-        res = await TicketManager().create_ticket(setup, ticket)
-        await setup.commit()
-        tid = res.data.Ticket_ID
-
-    counter = [0]
-    await _patched_session(monkeypatch, counter)
-    result = await _assign_ticket(tid, "tech@example.com")
-    assert result["status"] == "success"
-    assert counter[0] == 1
