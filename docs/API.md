@@ -91,7 +91,7 @@ Endpoints under `/mcp-tools` are also exposed as HTTP routes with the same names
 
 ### TicketCreate
 
-Use this schema when creating a ticket. The server automatically populates `Created_Date` so it should be omitted from the payload. All other fields match the database columns and most are optional.
+Use this schema when creating a ticket. The server automatically populates `Created_Date` so it should be omitted from the payload. All other fields match the database columns and most are optional. If `Ticket_Status_ID` is not supplied it defaults to `1` (Open).
 
 Example:
 
@@ -125,7 +125,7 @@ Another example showing assignment and severity:
 
 ### TicketUpdate
 
-This schema is used to partially update an existing ticket. Provide only the fields you want to change; omitted fields remain unchanged. `Created_Date` cannot be updated.
+This schema is used to partially update an existing ticket. Provide only the fields you want to change; omitted fields remain unchanged. Unknown fields are rejected and `Created_Date` cannot be updated.
 
 Example payloads:
 
