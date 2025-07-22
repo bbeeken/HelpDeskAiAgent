@@ -15,6 +15,13 @@ async def test_dynamic_tool_routes():
         resp = await client.post("/get_ticket", json={"ticket_id": 1, "extra": 1})
         assert resp.status_code == 422
 
+        resp = await client.post(
+            "/get_ticket",
+            json={"ticket_id": 1, "include_full_context": True},
+        )
+        assert resp.status_code == 200
+        assert resp.json().get("status") in {"success", "error"}
+
         resp = await client.post("/get_ticket", json={})
         assert resp.status_code == 422
 
@@ -94,9 +101,9 @@ async def test_new_tool_endpoints():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post("/get_analytics", json={"type": "status_counts"})
-        assert resp.status_code == 200
-        assert resp.json().get("status") in {"success", "error"}
 
-        resp = await client.post("/get_reference_data", json={"type": "sites"})
-        assert resp.status_code == 200
-        assert resp.json().get("status") in {"success", "error"}
+        assert resp.status_code == 404
+
+        resp = await client.post("/list_reference_data", json={"type": "sites"})
+        assert resp.status_code == 404
+

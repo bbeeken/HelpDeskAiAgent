@@ -48,33 +48,3 @@ async def test_validate_ticket_update_invalid_field():
         assert res.blocking_errors
 
 
-@pytest.mark.asyncio
-async def test_validate_ticket_assignment_missing_email():
-    async with SessionLocal() as db:
-        ticket = Ticket(
-            Subject="Assign",
-            Ticket_Body="b",
-            Ticket_Contact_Name="n",
-            Ticket_Contact_Email="e@example.com",
-            Created_Date=datetime.now(UTC),
-            Ticket_Status_ID=1,
-        )
-        await TicketManager().create_ticket(db, ticket)
-        await db.commit()
-        manager = EnhancedOperationsManager(db)
-        res = await manager.validate_operation_before_execution(
-            "assign_ticket", ticket.Ticket_ID, {"assignee_name": "A"}
-        )
-        assert not res.is_valid
-        assert res.blocking_errors
-
-
-@pytest.mark.asyncio
-async def test_validate_ticket_closure_ticket_not_found():
-    async with SessionLocal() as db:
-        manager = EnhancedOperationsManager(db)
-        res = await manager.validate_operation_before_execution(
-            "close_ticket", 9999, {"resolution": "done"}
-        )
-        assert not res.is_valid
-        assert res.blocking_errors

@@ -293,14 +293,36 @@ def _apply_semantic_filters(filters: dict[str, Any]) -> dict[str, Any]:
 # MCP Server Tool Implementations
 # ---------------------------------------------------------------------------
 
-async def _get_ticket(ticket_id: int) -> Dict[str, Any]:
-    """Retrieve a ticket by ID and return full details."""
+async def _get_ticket(ticket_id: int, include_full_context: bool = False) -> Dict[str, Any]:
+    """Retrieve a ticket by ID and return full details.
+
+    If ``include_full_context`` is true, the response also contains the last few
+    messages, attachments and a short user ticket history for additional
+    context.
+    """
     try:
         async with db.SessionLocal() as db_session:
             ticket = await TicketManager().get_ticket(db_session, ticket_id)
             if not ticket:
                 return {"status": "error", "error": f"Ticket {ticket_id} not found"}
             data = _format_ticket_by_level(ticket)
+
+            if include_full_context:
+                mgr = EnhancedContextManager(db_session)
+                messages = await mgr._get_ticket_messages(ticket_id)
+                attachments = await mgr._get_ticket_attachments(ticket_id)
+                history = await mgr._get_user_ticket_history(
+                    ticket.Ticket_Contact_Email,
+                    limit=5,
+                )
+                return {
+                    "status": "success",
+                    "data": data,
+                    "messages": messages[-5:],
+                    "attachments": attachments[-5:],
+                    "user_history": history,
+                }
+
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in get_ticket: {e}")
@@ -481,18 +503,37 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
         async with db.SessionLocal() as db_session:
             # Apply semantic filters to updates
             applied_updates = _apply_semantic_filters(updates)
+            message = applied_updates.pop("message", None)
+
+            # Closing logic
+            if applied_updates.get("Ticket_Status_ID") == 4 and "Closed_Date" not in applied_updates:
+                applied_updates["Closed_Date"] = datetime.now(timezone.utc)
+
+            # Assignment defaults
+            if "Assigned_Email" in applied_updates and "Assigned_Name" not in applied_updates:
+                applied_updates["Assigned_Name"] = applied_updates.get("Assigned_Email")
+
             applied_updates["LastModified"] = datetime.now(timezone.utc)
-            
+
             updated = await TicketManager().update_ticket(db_session, ticket_id, applied_updates)
             if not updated:
                 await db_session.rollback()
                 return {"status": "error", "error": f"Ticket {ticket_id} not found"}
-                
+
+            if message:
+                await TicketManager().post_message(
+                    db_session,
+                    ticket_id,
+                    message,
+                    applied_updates.get("Assigned_Email", "system"),
+                    applied_updates.get("Assigned_Name", applied_updates.get("Assigned_Email", "system")),
+                )
+
             await db_session.commit()
-            
+
             ticket = await TicketManager().get_ticket(db_session, ticket_id)
             data = _format_ticket_by_level(ticket)
-            
+
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in update_ticket: {e}")
@@ -544,67 +585,6 @@ async def _bulk_update_tickets(
         return {"status": "error", "error": str(e)}
 
 
-async def _close_ticket(
-    ticket_id: int,
-    resolution: str,
-    status_id: int = 4,
-) -> Dict[str, Any]:
-    """Close a ticket with a resolution."""
-    try:
-        async with db.SessionLocal() as db_session:
-            updates = {
-                "Ticket_Status_ID": status_id,
-                "Resolution": resolution,
-                "Closed_Date": datetime.now(timezone.utc),
-                "LastModified": datetime.now(timezone.utc)
-            }
-            
-            updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
-            if not updated:
-                await db_session.rollback()
-                return {"status": "error", "error": f"Ticket {ticket_id} not found"}
-                
-            await db_session.commit()
-            
-            ticket = await TicketManager().get_ticket(db_session, ticket_id)
-            data = _format_ticket_by_level(ticket)
-            
-            return {"status": "success", "data": data}
-    except Exception as e:
-        logger.error(f"Error in close_ticket: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _assign_ticket(
-    ticket_id: int,
-    assignee_email: str,
-    assignee_name: str | None = None,
-) -> Dict[str, Any]:
-    """Assign a ticket to a technician."""
-    try:
-        async with db.SessionLocal() as db_session:
-            updates = {
-                "Assigned_Email": assignee_email,
-                "Assigned_Name": assignee_name or assignee_email,
-                "LastModified": datetime.now(timezone.utc)
-            }
-            
-            updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
-            if not updated:
-                await db_session.rollback()
-                return {"status": "error", "error": f"Ticket {ticket_id} not found"}
-                
-            await db_session.commit()
-            
-            ticket = await TicketManager().get_ticket(db_session, ticket_id)
-            data = _format_ticket_by_level(ticket)
-            
-            return {"status": "success", "data": data}
-    except Exception as e:
-        logger.error(f"Error in assign_ticket: {e}")
-        return {"status": "error", "error": str(e)}
-
-
 async def _add_ticket_message(
     ticket_id: int,
     message: str,
@@ -639,52 +619,6 @@ async def _add_ticket_message(
         return {"status": "error", "error": str(e)}
 
 
-async def _escalate_ticket(
-    ticket_id: int,
-    severity_id: int,
-    assignee_email: str,
-    assignee_name: str | None = None,
-    message: str | None = None,
-) -> Dict[str, Any]:
-    """Escalate a ticket by updating severity and assignee."""
-    try:
-        async with db.SessionLocal() as db_session:
-            updates = {
-                "Severity_ID": severity_id,
-                "Assigned_Email": assignee_email,
-                "Assigned_Name": assignee_name or assignee_email,
-                "LastModified": datetime.now(timezone.utc)
-            }
-            
-            updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
-            if not updated:
-                await db_session.rollback()
-                return {"status": "error", "error": f"Ticket {ticket_id} not found"}
-            
-            await db_session.commit()
-            
-            # Add escalation note
-            if message:
-                note = message
-            else:
-                note = f"Ticket escalated to severity {severity_id} and assigned to {assignee_name or assignee_email}"
-                
-            await TicketManager().post_message(
-                db_session,
-                ticket_id,
-                note,
-                assignee_email,
-                assignee_name or assignee_email,
-            )
-            await db_session.commit()
-
-            ticket = await TicketManager().get_ticket(db_session, ticket_id)
-            data = _format_ticket_by_level(ticket)
-            
-            return {"status": "success", "data": data}
-    except Exception as e:
-        logger.error(f"Error in escalate_ticket: {e}")
-        return {"status": "error", "error": str(e)}
 
 
 async def _get_ticket_messages(ticket_id: int) -> Dict[str, Any]:
@@ -1230,12 +1164,22 @@ async def _sla_metrics(days: int = 30) -> Dict[str, Any]:
 ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="get_ticket",
-        description="Get a ticket by ID with full details",
+        description="Get a ticket by ID with optional context",
         inputSchema={
             "type": "object",
-            "properties": {"ticket_id": {"type": "integer", "description": "The ticket ID"}},
+            "properties": {
+                "ticket_id": {"type": "integer", "description": "The ticket ID"},
+                "include_full_context": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Include recent messages and history",
+                },
+            },
             "required": ["ticket_id"],
-            "examples": [{"ticket_id": 123}],
+            "examples": [
+                {"ticket_id": 123},
+                {"ticket_id": 123, "include_full_context": True},
+            ],
         },
         _implementation=_get_ticket,
     ),
@@ -1297,64 +1241,6 @@ ENHANCED_TOOLS: List[Tool] = [
             ],
         },
         _implementation=_bulk_update_tickets,
-    ),
-    Tool(
-        name="close_ticket",
-        description="Close a ticket with resolution",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "ticket_id": {"type": "integer", "description": "The ticket ID to close"},
-                "resolution": {"type": "string", "description": "Resolution description"},
-                "status_id": {"type": "integer", "default": 4, "description": "Closed status ID"},
-            },
-            "required": ["ticket_id", "resolution"],
-            "examples": [
-                {"ticket_id": 1, "resolution": "Issue resolved by restarting service"}
-            ],
-        },
-        _implementation=_close_ticket,
-    ),
-    Tool(
-        name="assign_ticket",
-        description="Assign a ticket to a technician",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "ticket_id": {"type": "integer", "description": "The ticket ID"},
-                "assignee_email": {"type": "string", "description": "Assignee's email address"},
-                "assignee_name": {"type": "string", "description": "Assignee's display name"},
-            },
-            "required": ["ticket_id", "assignee_email"],
-            "examples": [
-                {"ticket_id": 1, "assignee_email": "tech@example.com", "assignee_name": "John Doe"}
-            ],
-        },
-        _implementation=_assign_ticket,
-    ),
-    Tool(
-        name="escalate_ticket",
-        description="Escalate a ticket by updating severity and assignment",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "ticket_id": {"type": "integer", "description": "The ticket ID"},
-                "severity_id": {"type": "integer", "description": "New severity level (1=Critical, 2=High, 3=Medium, 4=Low)"},
-                "assignee_email": {"type": "string", "description": "Email of escalation assignee"},
-                "assignee_name": {"type": "string", "description": "Name of escalation assignee"},
-                "message": {"type": "string", "description": "Escalation note"},
-            },
-            "required": ["ticket_id", "severity_id", "assignee_email"],
-            "examples": [
-                {
-                    "ticket_id": 123,
-                    "severity_id": 1,
-                    "assignee_email": "senior@example.com",
-                    "message": "Escalating due to production impact"
-                }
-            ],
-        },
-        _implementation=_escalate_ticket,
     ),
     Tool(
         name="add_ticket_message",
@@ -1603,6 +1489,96 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_sla_metrics,
     ),
 ]
+
+
+# Enhanced reference data tools with ticket counts
+ENHANCED_REFERENCE_TOOLS: List[Tool] = [
+    Tool(
+        name="list_sites_enhanced",
+        description="List sites with open/total ticket counts",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "default": 10},
+                "skip": {"type": "integer", "default": 0},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "examples": [
+                {"limit": 20},
+                {"limit": 10, "sort": ["Label"]}
+            ],
+        },
+        _implementation=_list_sites_enhanced,
+    ),
+    Tool(
+        name="list_assets_enhanced",
+        description="List assets with open/total ticket counts",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "default": 10},
+                "skip": {"type": "integer", "default": 0},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "examples": [
+                {"limit": 20},
+                {"limit": 10, "filters": {"Site_ID": 1}}
+            ],
+        },
+        _implementation=_list_assets_enhanced,
+    ),
+    Tool(
+        name="list_vendors_enhanced",
+        description="List vendors with open/total ticket counts",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "default": 10},
+                "skip": {"type": "integer", "default": 0},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "examples": [
+                {"limit": 20},
+                {"limit": 10, "sort": ["Label"]}
+            ],
+        },
+        _implementation=_list_vendors_enhanced,
+    ),
+    Tool(
+        name="list_categories_enhanced",
+        description="List categories with open/total ticket counts",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "default": 10},
+                "skip": {"type": "integer", "default": 0},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+            "examples": [
+                {"limit": 20},
+                {"limit": 10, "sort": ["Name"]}
+            ],
+        },
+        _implementation=_list_categories_enhanced,
+    ),
+]
+
+# Combine all tools
+# Rebuild ENHANCED_TOOLS with all tool definitions while preserving order and
+# eliminating any duplicate tool names. This ensures ``list_tools`` exposes a
+# clean set regardless of how tools were defined above.
+_combined_tools: List[Tool] = []
+_seen_names = set()
+for _tool in ENHANCED_TOOLS + ENHANCED_REFERENCE_TOOLS:
+    if _tool.name not in _seen_names:
+        _combined_tools.append(_tool)
+        _seen_names.add(_tool.name)
+
+ENHANCED_TOOLS = _combined_tools
 
 
 
