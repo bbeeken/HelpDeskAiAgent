@@ -77,7 +77,12 @@ async def test_get_ticket_attachments_error(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_escalate_ticket_success(client: AsyncClient):
     tid = await _create_ticket(client)
-    resp = await client.post("/escalate_ticket", json={"ticket_id": tid})
+    payload = {
+        "ticket_id": tid,
+        "severity_id": 1,
+        "assignee_email": "tech@example.com",
+    }
+    resp = await client.post("/escalate_ticket", json=payload)
     assert resp.status_code == 200
     assert resp.json().get("status") in {"success", "error"}
 
@@ -118,7 +123,8 @@ async def test_search_tickets_advanced_success(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_search_tickets_advanced_error(client: AsyncClient):
     resp = await client.post("/search_tickets_advanced", json={"limit": -1})
-    assert resp.status_code == 422
+    assert resp.status_code == 200
+    assert resp.json().get("status") == "error"
 
 
 @pytest.mark.asyncio
