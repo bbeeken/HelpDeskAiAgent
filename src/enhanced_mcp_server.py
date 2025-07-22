@@ -1845,7 +1845,17 @@ ENHANCED_REFERENCE_TOOLS: List[Tool] = [
 ]
 
 # Combine all tools
-ENHANCED_TOOLS.extend(ENHANCED_REFERENCE_TOOLS)
+# Rebuild ENHANCED_TOOLS with all tool definitions while preserving order and
+# eliminating any duplicate tool names. This ensures ``list_tools`` exposes a
+# clean set regardless of how tools were defined above.
+_combined_tools: List[Tool] = []
+_seen_names = set()
+for _tool in ENHANCED_TOOLS + ENHANCED_REFERENCE_TOOLS:
+    if _tool.name not in _seen_names:
+        _combined_tools.append(_tool)
+        _seen_names.add(_tool.name)
+
+ENHANCED_TOOLS = _combined_tools
 
 
 # ---------------------------------------------------------------------------
