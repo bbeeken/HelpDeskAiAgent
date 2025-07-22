@@ -167,6 +167,11 @@ from src.core.services.analytics_reporting import (
     AnalyticsManager,
 )
 from src.core.services.enhanced_context import EnhancedContextManager
+from sqlalchemy import select, func, or_
+from src.core.repositories.models import (
+    VTicketMasterExpanded,
+    TicketStatus,
+)
 
 from src.core.services.advanced_query import AdvancedQueryManager
 from src.shared.schemas.agent_data import AdvancedQuery
@@ -695,6 +700,180 @@ async def _list_reference_data(
         return {"status": "error", "error": str(e)}
 
 
+
+async def _count_open_tickets_by_field(
+    db_session, field_name: str, ids: list[int]
+) -> dict[int, int]:
+    """Return open ticket counts grouped by the specified field."""
+    if not ids:
+        return {}
+    column = getattr(VTicketMasterExpanded, field_name)
+    result = await db_session.execute(
+        select(column, func.count(VTicketMasterExpanded.Ticket_ID))
+        .join(
+            TicketStatus,
+            VTicketMasterExpanded.Ticket_Status_ID == TicketStatus.ID,
+            isouter=True,
+        )
+        .filter(column.in_(ids))
+        .filter(
+            or_(
+                TicketStatus.Label.ilike("%open%"),
+                TicketStatus.Label.ilike("%progress%"),
+            )
+        )
+        .group_by(column)
+    )
+    return {row[0]: row[1] for row in result.all()}
+
+
+async def _count_total_tickets_by_field(
+    db_session, field_name: str, ids: list[int]
+) -> dict[int, int]:
+    """Return total ticket counts grouped by a field."""
+    if not ids:
+        return {}
+    column = getattr(VTicketMasterExpanded, field_name)
+    result = await db_session.execute(
+        select(column, func.count(VTicketMasterExpanded.Ticket_ID))
+        .filter(column.in_(ids))
+        .group_by(column)
+    )
+    return {row[0]: row[1] for row in result.all()}
+
+
+async def _list_sites_enhanced(
+    limit: int = 10,
+    skip: int = 0,
+    filters: _Dict[str, Any] | None = None,
+    sort: list[str] | None = None,
+) -> _Dict[str, Any]:
+    """List sites with ticket counts."""
+    try:
+        async with db.SessionLocal() as db_session:
+            mgr = ReferenceDataManager()
+            sites = await mgr.list_sites(
+                db_session,
+                skip=skip,
+                limit=limit,
+                filters=filters or None,
+                sort=sort,
+            )
+            ids = [s.ID for s in sites]
+            open_counts = await _count_open_tickets_by_field(db_session, "Site_ID", ids)
+            total_counts = await _count_total_tickets_by_field(db_session, "Site_ID", ids)
+            data = []
+            for s in sites:
+                item = s.__dict__.copy()
+                item["open_tickets"] = open_counts.get(s.ID, 0)
+                item["total_tickets"] = total_counts.get(s.ID, 0)
+                data.append(item)
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in list_sites_enhanced: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _list_assets_enhanced(
+    limit: int = 10,
+    skip: int = 0,
+    filters: _Dict[str, Any] | None = None,
+    sort: list[str] | None = None,
+) -> _Dict[str, Any]:
+    """List assets with ticket counts."""
+    try:
+        async with db.SessionLocal() as db_session:
+            mgr = ReferenceDataManager()
+            assets = await mgr.list_assets(
+                db_session,
+                skip=skip,
+                limit=limit,
+                filters=filters or None,
+                sort=sort,
+            )
+            ids = [a.ID for a in assets]
+            open_counts = await _count_open_tickets_by_field(db_session, "Asset_ID", ids)
+            total_counts = await _count_total_tickets_by_field(db_session, "Asset_ID", ids)
+            data = []
+            for a in assets:
+                item = a.__dict__.copy()
+                item["open_tickets"] = open_counts.get(a.ID, 0)
+                item["total_tickets"] = total_counts.get(a.ID, 0)
+                data.append(item)
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in list_assets_enhanced: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _list_vendors_enhanced(
+    limit: int = 10,
+    skip: int = 0,
+    filters: _Dict[str, Any] | None = None,
+    sort: list[str] | None = None,
+) -> _Dict[str, Any]:
+    """List vendors with ticket counts."""
+    try:
+        async with db.SessionLocal() as db_session:
+            mgr = ReferenceDataManager()
+            vendors = await mgr.list_vendors(
+                db_session,
+                skip=skip,
+                limit=limit,
+                filters=filters or None,
+                sort=sort,
+            )
+            ids = [v.ID for v in vendors]
+            open_counts = await _count_open_tickets_by_field(db_session, "Assigned_Vendor_ID", ids)
+            total_counts = await _count_total_tickets_by_field(db_session, "Assigned_Vendor_ID", ids)
+            data = []
+            for v in vendors:
+                item = v.__dict__.copy()
+                item["open_tickets"] = open_counts.get(v.ID, 0)
+                item["total_tickets"] = total_counts.get(v.ID, 0)
+                data.append(item)
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in list_vendors_enhanced: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _list_categories_enhanced(
+    limit: int = 10,
+    skip: int = 0,
+    filters: _Dict[str, Any] | None = None,
+    sort: list[str] | None = None,
+) -> _Dict[str, Any]:
+    """List categories with ticket counts."""
+    try:
+        async with db.SessionLocal() as db_session:
+            mgr = ReferenceDataManager()
+            cats = await mgr.list_categories(
+                db_session,
+                filters=filters or None,
+                sort=sort,
+            )
+            ids = [c.ID for c in cats]
+            open_counts = await _count_open_tickets_by_field(
+                db_session,
+                "Ticket_Category_ID",
+                ids,
+            )
+            total_counts = await _count_total_tickets_by_field(
+                db_session,
+                "Ticket_Category_ID",
+                ids,
+            )
+            data = []
+            for c in cats:
+                item = c.__dict__.copy()
+                item["open_tickets"] = open_counts.get(c.ID, 0)
+                item["total_tickets"] = total_counts.get(c.ID, 0)
+                data.append(item)
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in list_categories_enhanced: {e}")
+
 async def _list_priorities() -> _Dict[str, Any]:
     """Return available priority levels ordered by ID."""
     try:
@@ -705,6 +884,7 @@ async def _list_priorities() -> _Dict[str, Any]:
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in list_priorities: {e}")
+
         return {"status": "error", "error": str(e)}
 
 
@@ -731,6 +911,37 @@ async def _system_snapshot() -> _Dict[str, Any]:
         logger.error(f"Error in get_system_snapshot: {e}")
         return {"status": "error", "error": str(e)}
 
+
+async def _get_ticket_stats() -> _Dict[str, Any]:
+    """Return ticket statistics across multiple dimensions."""
+    try:
+        async with db.SessionLocal() as db_session:
+            mgr = EnhancedContextManager(db_session)
+            data = {
+                "by_status": await mgr._get_ticket_counts_by_status(),
+                "by_priority": await mgr._get_ticket_counts_by_priority(),
+                "by_site": await mgr._get_ticket_counts_by_site(),
+                "by_category": await mgr._get_ticket_counts_by_category(),
+            }
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in get_ticket_stats: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _get_workload_analytics() -> _Dict[str, Any]:
+    """Return workload analytics for technicians and queues."""
+    try:
+        async with db.SessionLocal() as db_session:
+            mgr = EnhancedContextManager(db_session)
+            data = {
+                "technician_workloads": await mgr._get_all_technician_workloads(),
+                "unassigned_tickets": await mgr._get_unassigned_tickets_summary(),
+                "overdue_tickets": await mgr._get_overdue_tickets_summary(),
+            }
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in get_workload_analytics: {e}")
 
 async def _advanced_search(**query: Any) -> _Dict[str, Any]:
     """Run an advanced ticket search."""
@@ -784,6 +995,7 @@ async def _bulk_update_tickets(ticket_ids: list[int], updates: _Dict[str, Any]) 
             return {"status": "success", "data": {"updated": len(ticket_ids)}}
     except Exception as e:
         logger.error(f"Error in bulk_update_tickets: {e}")
+
         return {"status": "error", "error": str(e)}
 
 
@@ -1124,6 +1336,69 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_bulk_update_tickets,
     ),
 ]
+
+# Additional reference data tools providing ticket counts
+ADDITIONAL_REFERENCE_TOOLS: List[Tool] = [
+    Tool(
+        name="list_sites_enhanced",
+        description="List sites with ticket counts",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "default": 10},
+                "skip": {"type": "integer", "default": 0},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+        _implementation=_list_sites_enhanced,
+    ),
+    Tool(
+        name="list_assets_enhanced",
+        description="List assets with ticket counts",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "default": 10},
+                "skip": {"type": "integer", "default": 0},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+        _implementation=_list_assets_enhanced,
+    ),
+    Tool(
+        name="list_vendors_enhanced",
+        description="List vendors with ticket counts",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "default": 10},
+                "skip": {"type": "integer", "default": 0},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+        _implementation=_list_vendors_enhanced,
+    ),
+    Tool(
+        name="list_categories_enhanced",
+        description="List categories with ticket counts",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "default": 10},
+                "skip": {"type": "integer", "default": 0},
+                "filters": {"type": "object"},
+                "sort": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+        _implementation=_list_categories_enhanced,
+    ),
+]
+
+# Include new tools in the main tool list
+ENHANCED_TOOLS.extend(ADDITIONAL_REFERENCE_TOOLS)
 
 
 def create_server() -> Server:
