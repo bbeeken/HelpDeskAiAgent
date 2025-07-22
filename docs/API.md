@@ -69,18 +69,15 @@ JSON body matching the tool's schema. See
 - `POST /list_tickets` – List recent tickets. Example: `{"limit": 5}`
 - `POST /create_ticket` – Create a ticket. Example: see `TicketCreate` schema
 - `POST /update_ticket` – Update a ticket. Example: `{"ticket_id": 1, "updates": {}}`
-- `POST /close_ticket` – Close a ticket with a resolution.
-- `POST /assign_ticket` – Assign a technician.
 - `POST /add_ticket_message` – Add a message to a ticket.
 - `POST /search_tickets` – Search tickets. Example: `{"query": "printer"}`
+- `POST /update_ticket` – Update a ticket or close/assign by modifying fields.
 - `POST /get_tickets_by_user` – Tickets for a user. Example: `{"identifier": "user@example.com"}`
 - `POST /get_open_tickets` – List open tickets. Example: `{"days": 30}`
 - `POST /get_analytics` – Analytics reports. Example: `{"type": "site_counts"}`
 - `POST /list_reference_data` – Reference data lookup. Example: `{"type": "sites"}`
 - `POST /get_ticket_full_context` – Full context for a ticket. Example: `{"ticket_id": 123}`
 - `POST /get_system_snapshot` – System snapshot. Example: `{}`
-- `POST /advanced_search` – Advanced ticket search. Example: `{"text_search": "printer"}`
-- `POST /escalate_ticket` – Escalate a ticket. Example: `{"ticket_id": 42}`
 - `POST /sla_metrics` – SLA metrics summary. Example: `{}`
 - `POST /bulk_update_tickets` – Bulk ticket updates. Example: `{"ticket_ids": [1,2], "updates": {}}`
 
