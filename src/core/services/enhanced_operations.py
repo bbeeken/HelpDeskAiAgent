@@ -388,7 +388,12 @@ class EnhancedOperationsManager:
     async def _capture_ticket_state(self, ticket_id: int) -> Dict[str, Any]:
         """Capture current ticket state for comparison."""
         try:
-            context = await self.context_manager.get_ticket_full_context(ticket_id, include_deep_history=False)
+            context = await self.context_manager.get_ticket_full_context(
+                ticket_id,
+                include_deep_history=False,
+                include_user_history=False,
+                include_related_tickets=False,
+            )
             return {
                 "ticket": context.ticket,
                 "message_count": len(context.messages),

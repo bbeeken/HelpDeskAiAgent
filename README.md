@@ -425,7 +425,7 @@ The server exposes eleven core JSON-RPC tools. Each expects a JSON body matching
 - `add_ticket_message` – `{"ticket_id": 1, "message": "Checking", "sender_name": "Agent"}`
 - `search_tickets` – `{"query": "printer"}`
 - `get_tickets_by_user` – `{"identifier": "user@example.com"}`
-- `get_ticket_full_context` – `{"ticket_id": 123}`
+- `get_ticket_full_context` – `{"ticket_id": 123}` (no user history or nested related tickets)
 - `get_system_snapshot` – `{}`
 
 See [docs/MCP_TOOLS_GUIDE.md](docs/MCP_TOOLS_GUIDE.md) for detailed descriptions.

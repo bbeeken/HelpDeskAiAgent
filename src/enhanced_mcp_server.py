@@ -1165,7 +1165,11 @@ async def _ticket_full_context(ticket_id: int) -> Dict[str, Any]:
     try:
         async with db.SessionLocal() as db_session:
             mgr = EnhancedContextManager(db_session)
-            context = await mgr.get_ticket_full_context(ticket_id)
+            context = await mgr.get_ticket_full_context(
+                ticket_id,
+                include_user_history=False,
+                include_related_tickets=False,
+            )
             
             return {
                 "status": "success",

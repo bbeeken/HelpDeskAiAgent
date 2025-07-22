@@ -14,7 +14,7 @@ class TicketFullContext(BaseModel):
     attachments: List[Dict[str, Any]]  # All attachment metadata
 
     # User context
-    user_history: List[Dict[str, Any]]  # User's past tickets
+    user_history: Optional[List[Dict[str, Any]]] = None  # User's past tickets
     user_profile: Dict[str, Any]  # User info from Graph API
 
     # Asset and site context
@@ -22,7 +22,7 @@ class TicketFullContext(BaseModel):
     site_context: Optional[Dict[str, Any]]  # Site info and current state
 
     # Relationship data
-    related_tickets: List[Dict[str, Any]]  # Same user/asset/site tickets
+    related_tickets: Optional[List[Dict[str, Any]]] = None  # Same user/asset/site tickets
 
     # Timeline and metadata
     timeline_events: List[Dict[str, Any]]  # All status changes

@@ -170,7 +170,8 @@ curl -X POST http://localhost:8000/get_reference_data \
 
 
 ## get_ticket_full_context
-Return a ticket along with related labels and history.
+Return a ticket along with messages and metadata.
+User history and nested related tickets are omitted.
 
 Parameters:
 - `ticket_id` – integer ID.

@@ -80,7 +80,9 @@ class EnhancedContextManager:
     async def get_ticket_full_context(
         self,
         ticket_id: int,
-        include_deep_history: bool = True
+        include_deep_history: bool = True,
+        include_user_history: bool = False,
+        include_related_tickets: bool = True,
     ) -> TicketFullContext:
         """Get comprehensive ticket context for agent analysis."""
 
@@ -98,10 +100,12 @@ class EnhancedContextManager:
         # Get all related data in parallel
         messages = await self._get_ticket_messages(ticket_id)
         attachments = await self._get_ticket_attachments(ticket_id)
-        user_history = await self._get_user_ticket_history(
-            ticket.Ticket_Contact_Email,
-            limit=50 if include_deep_history else 10
-        )
+        user_history = None
+        if include_user_history:
+            user_history = await self._get_user_ticket_history(
+                ticket.Ticket_Contact_Email,
+                limit=50 if include_deep_history else 10,
+            )
         user_profile = await self.user_manager.get_user_by_email(ticket.Ticket_Contact_Email)
 
         # Asset and site context
@@ -114,7 +118,9 @@ class EnhancedContextManager:
             site_context = await self._get_site_complete_info(ticket.Site_ID)
 
         # Related tickets
-        related_tickets = await self._find_related_tickets(ticket)
+        related_tickets = None
+        if include_related_tickets:
+            related_tickets = await self._find_related_tickets(ticket)
 
         # Timeline events
         timeline_events = await self._get_ticket_timeline(ticket_id)

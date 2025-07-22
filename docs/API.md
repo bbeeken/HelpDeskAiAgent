@@ -78,7 +78,7 @@ JSON body matching the tool's schema. See
 - `POST /get_analytics` – Analytics reports. Example: `{"type": "site_counts"}`
 - `POST /get_reference_data` – Reference data lookup. Example: `{"type": "sites"}`
 
-- `POST /get_ticket_full_context` – Full context for a ticket. Example: `{"ticket_id": 123}`
+- `POST /get_ticket_full_context` – Full context for a ticket without user history or nested related tickets. Example: `{"ticket_id": 123}`
 - `POST /get_system_snapshot` – System snapshot. Example: `{}`
 
 - `POST /advanced_search` – Advanced ticket search. Example: `{"text_search": "printer"}`
