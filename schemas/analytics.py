@@ -32,3 +32,15 @@ class TrendCount(BaseModel):
 
     date: date
     count: int
+
+
+class LateTicketDetail(BaseModel):
+    """Detailed information about tickets that have breached the SLA."""
+
+    ticket_id: int
+    priority: Optional[int] = None
+    age_days: int
+    owner: Optional[str] = None
+    status_id: Optional[int] = None
+    sla_deadline: date
+

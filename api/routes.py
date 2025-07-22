@@ -35,6 +35,7 @@ from tools.analysis_tools import (
     open_tickets_by_site,
     open_tickets_by_user,
     sla_breaches,
+    list_sla_breaches,
     tickets_waiting_on_user,
     ticket_trend,
 )
@@ -59,7 +60,14 @@ from schemas.basic import (
     TicketAttachmentOut,
     TicketMessageOut,
 )
-from schemas.analytics import StatusCount, SiteOpenCount, UserOpenCount, WaitingOnUserCount, TrendCount
+from schemas.analytics import (
+    StatusCount,
+    SiteOpenCount,
+    UserOpenCount,
+    WaitingOnUserCount,
+    TrendCount,
+    LateTicketDetail,
+)
 from schemas.oncall import OnCallShiftOut
 from schemas.paginated import PaginatedResponse
 
@@ -344,6 +352,22 @@ async def sla_breaches_endpoint(
     filters = extract_filters(request)
     breaches = await sla_breaches(db, sla_days, filters=filters or None, status_ids=status_id or None)
     return {"breaches": breaches}
+
+
+@analytics_router.get("/late_tickets", response_model=List[LateTicketDetail])
+async def list_late_tickets_endpoint(
+    request: Request,
+    sla_days: int = Query(2, ge=0),
+    status_id: List[int] = Query(default_factory=list),
+    db: AsyncSession = Depends(get_db),
+) -> List[LateTicketDetail]:
+    filters = extract_filters(request)
+    return await list_sla_breaches(
+        db,
+        sla_days,
+        filters=filters or None,
+        status_ids=status_id or None,
+    )
 
 @analytics_router.get("/trend", response_model=List[TrendCount])
 async def ticket_trend_endpoint(days: int = Query(7, ge=1), db: AsyncSession = Depends(get_db)) -> List[TrendCount]:

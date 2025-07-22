@@ -168,3 +168,19 @@ async def test_ticket_trend(client: AsyncClient):
     data = {item["date"]: item["count"] for item in resp.json()}
     assert data[(now - timedelta(days=2)).date().isoformat()] == 1
     assert data[(now - timedelta(days=1)).date().isoformat()] == 2
+
+
+@pytest.mark.asyncio
+async def test_list_late_tickets(client: AsyncClient):
+    old1 = datetime.now(UTC) - timedelta(days=5)
+    old2 = datetime.now(UTC) - timedelta(days=3)
+    t1 = await _add_ticket(Created_Date=old1, Priority_ID=1, Ticket_Status_ID=1)
+    t2 = await _add_ticket(Created_Date=old2, Priority_ID=2, Ticket_Status_ID=1)
+    await _add_ticket()  # not late
+
+    resp = await client.get("/analytics/late_tickets", params={"sla_days": 2})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert [item["ticket_id"] for item in data] == [t1.Ticket_ID, t2.Ticket_ID]
+    assert data[0]["age_days"] >= 5
+    assert data[1]["age_days"] >= 3

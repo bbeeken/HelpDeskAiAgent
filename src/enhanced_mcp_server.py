@@ -198,6 +198,18 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_db_wrapper(analysis_tools.sla_breaches),
     ),
     Tool(
+        name="list_sla_breaches",
+        description="List tickets that have breached the SLA",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "sla_days": {"type": "integer"},
+            },
+            "required": [],
+        },
+        _implementation=_db_wrapper(analysis_tools.list_sla_breaches),
+    ),
+    Tool(
         name="ticket_trend",
         description="Ticket trend",
         inputSchema={"type": "object", "properties": {"days": {"type": "integer"}}, "required": []},

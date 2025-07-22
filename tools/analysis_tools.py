@@ -16,6 +16,7 @@ from schemas.analytics import (
     UserOpenCount,
     WaitingOnUserCount,
     TrendCount,
+    LateTicketDetail,
 )
 
 
@@ -137,12 +138,8 @@ async def sla_breaches(
             status_ids = [status_ids]
         query = query.filter(Ticket.Ticket_Status_ID.in_(status_ids))
     else:
-<<<<<<< HEAD
-        query = query.filter(Ticket.Ticket_Status_ID != 3,7)
-=======
         # Default to counting only open or in-progress tickets
         query = query.filter(Ticket.Ticket_Status_ID.in_([1, 2]))
->>>>>>> 4482d4edf44a12cca9d42188f38f7bc3e7ab8d93
 
     if filters:
         for key, value in filters.items():
@@ -151,6 +148,62 @@ async def sla_breaches(
 
     result = await db.execute(query)
     return result.scalar_one()
+
+
+async def list_sla_breaches(
+    db: AsyncSession,
+    sla_days: int = 2,
+    filters: Optional[Dict[str, Any]] = None,
+    status_ids: Optional[List[int] | int] = None,
+) -> List[LateTicketDetail]:
+    """Return details on tickets breaching the SLA."""
+
+    logger.info(
+        "Listing SLA breaches older than %s days with filters=%s statuses=%s",
+        sla_days,
+        filters,
+        status_ids,
+    )
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=sla_days)
+    query = select(
+        Ticket.Ticket_ID,
+        Ticket.Priority_ID,
+        Ticket.Assigned_Email,
+        Ticket.Ticket_Status_ID,
+        Ticket.Created_Date,
+    ).filter(Ticket.Created_Date < cutoff)
+
+    if status_ids is not None:
+        if isinstance(status_ids, int):
+            status_ids = [status_ids]
+        query = query.filter(Ticket.Ticket_Status_ID.in_(status_ids))
+    else:
+        query = query.filter(Ticket.Ticket_Status_ID.in_([1, 2]))
+
+    if filters:
+        for key, value in filters.items():
+            if hasattr(Ticket, key):
+                query = query.filter(getattr(Ticket, key) == value)
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    now = datetime.now()
+    records = [
+        LateTicketDetail(
+            ticket_id=row[0],
+            priority=row[1],
+            owner=row[2],
+            status_id=row[3],
+            age_days=(now - row[4]).days,
+            sla_deadline=(row[4] + timedelta(days=sla_days)).date(),
+        )
+        for row in rows
+    ]
+
+    records.sort(key=lambda r: ((r.priority or 99), -r.age_days))
+    return records
 
 
 async def open_tickets_by_user(db: AsyncSession) -> List[UserOpenCount]:
