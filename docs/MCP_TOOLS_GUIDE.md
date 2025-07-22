@@ -36,6 +36,10 @@ Parameters:
 - `ticket_id` – integer ID of the ticket.
 - `updates` – object of fields to modify.
 
+`updates` can include semantic fields such as `status`, `priority`,
+`assignee_email`, `assignee_name`, `severity_id` or `resolution` to
+close, assign or escalate a ticket in a single call.
+
 Example:
 ```bash
 curl -X POST http://localhost:8000/update_ticket \
@@ -65,7 +69,7 @@ Example:
 ```bash
 curl -X POST http://localhost:8000/update_ticket \
   -d '{"ticket_id": 5, "updates": {"Assigned_Email": "tech@example.com"}}'
-```
+
 
 ## add_ticket_message
 Append a message to a ticket thread.
@@ -151,6 +155,7 @@ Example:
 curl -X POST http://localhost:8000/update_ticket \
   -d '{"ticket_id": 123, "updates": {"Severity_ID": 1}}'
 ```
+
 
 ## sla_metrics
 Retrieve SLA performance metrics for the helpdesk.

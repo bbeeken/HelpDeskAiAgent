@@ -101,7 +101,9 @@ async def test_new_tool_endpoints():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post("/get_analytics", json={"type": "status_counts"})
+
         assert resp.status_code == 404
 
         resp = await client.post("/list_reference_data", json={"type": "sites"})
         assert resp.status_code == 404
+

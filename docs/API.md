@@ -75,6 +75,9 @@ JSON body matching the tool's schema. See
 - `POST /get_tickets_by_user` – Tickets for a user. Example: `{"identifier": "user@example.com"}`
 - `POST /get_ticket_full_context` – Full context for a ticket. Example: `{"ticket_id": 123}`
 - `POST /get_system_snapshot` – System snapshot. Example: `{}`
+
+- `POST /advanced_search` – Advanced ticket search. Example: `{"text_search": "printer"}`
+
 - `POST /sla_metrics` – SLA metrics summary. Example: `{}`
 - `POST /bulk_update_tickets` – Bulk ticket updates. Example: `{"ticket_ids": [1,2], "updates": {}}`
 

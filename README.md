@@ -348,6 +348,10 @@ and compares the returned names against a predefined mapping. It exits with a
 non-zero status when any tools are missing or unexpected. The default mapping
 checks for the ``get_ticket`` and ``list_tickets`` endpoints. The route also
 
+lists new operations such as ``advanced_search``, ``sla_metrics`` and
+``bulk_update_tickets``.
+
+
 lists additional operations such as ``sla_metrics`` and ``bulk_update_tickets``.
 
 Verify the list of available tools with:
@@ -392,11 +396,13 @@ Additional tools are available:
   curl -X POST http://localhost:8000/search_tickets \
     -d '{"query": "printer", "limit": 10}'
   ```
+
 * `update_ticket` – modify an existing ticket, including escalation.
   ```bash
   curl -X POST http://localhost:8000/update_ticket \
     -d '{"ticket_id": 123, "updates": {"Severity_ID": 1}}'
   ```
+
 * `sla_metrics` – retrieve SLA performance metrics.
   ```bash
   curl -X POST http://localhost:8000/sla_metrics -d '{}'
