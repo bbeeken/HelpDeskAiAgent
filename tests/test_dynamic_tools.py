@@ -62,3 +62,4 @@ async def test_dynamic_create_ticket():
         data = resp.json()
         assert data.get("status") == "success"
         assert data["data"]["Ticket_Status_ID"] == 2
+        assert data["data"]["LastModified"] is not None

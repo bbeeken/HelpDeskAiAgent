@@ -149,12 +149,15 @@ def set_config(config: MCPServerConfig) -> None:
 from datetime import datetime, timezone
 from typing import Any, Dict as _Dict
 import json
+import html
 from mcp import types
 
 from src.infrastructure import database as db
 from src.core.services.ticket_management import TicketManager
 from src.core.services.reference_data import ReferenceDataManager
 from src.shared.schemas.ticket import TicketExpandedOut, TicketCreate
+from src.core.repositories.models import Priority
+from sqlalchemy import select
 from src.core.services.analytics_reporting import (
     open_tickets_by_site,
     open_tickets_by_user,
@@ -163,8 +166,13 @@ from src.core.services.analytics_reporting import (
     sla_breaches,
 )
 from src.core.services.enhanced_context import EnhancedContextManager
+
 from src.core.repositories.models import Ticket, TicketStatus
 from sqlalchemy import select, func, or_
+
+from src.core.services.advanced_query import AdvancedQueryManager
+from src.shared.schemas.agent_data import AdvancedQuery
+
 
 
 async def _get_ticket(ticket_id: int) -> _Dict[str, Any]:
@@ -246,11 +254,45 @@ async def _search_tickets(query: str, limit: int = 10) -> _Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
+async def _search_tickets_advanced(**criteria: Any) -> _Dict[str, Any]:
+    """Perform advanced ticket search with metadata."""
+    try:
+        query = AdvancedQuery.model_validate(criteria or {})
+
+        if query.text_search:
+            query.text_search = html.escape(query.text_search)
+        if query.contact_name:
+            query.contact_name = html.escape(query.contact_name)
+
+        query.search_fields = [html.escape(f) for f in query.search_fields]
+
+        sanitized_custom: _Dict[str, Any] = {}
+        for key, val in query.custom_filters.items():
+            sanitized_custom[key] = html.escape(val) if isinstance(val, str) else val
+        query.custom_filters = sanitized_custom
+
+        if query.assigned_to:
+            query.assigned_to = [html.escape(v) for v in query.assigned_to]
+        if query.contact_email:
+            query.contact_email = [html.escape(v) for v in query.contact_email]
+        if query.status_filter:
+            query.status_filter = [html.escape(str(v)) for v in query.status_filter]
+
+        async with db.SessionLocal() as db_session:
+            mgr = AdvancedQueryManager(db_session)
+            result = await mgr.query_tickets_advanced(query)
+            return {"status": "success", "data": result.model_dump()}
+    except Exception as e:
+        logger.error(f"Error in search_tickets_advanced: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 async def _create_ticket(**payload: Any) -> _Dict[str, Any]:
     """Create a new ticket and return the created record."""
     try:
         async with db.SessionLocal() as db_session:
             payload.setdefault("Created_Date", datetime.now(timezone.utc))
+            payload.setdefault("LastModified", datetime.now(timezone.utc))
             result = await TicketManager().create_ticket(db_session, payload)
             await db_session.commit()
             if not result.success:
@@ -395,6 +437,89 @@ async def _add_ticket_message(
             }
     except Exception as e:
         logger.error(f"Error in add_ticket_message: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+
+async def _escalate_ticket(
+    ticket_id: int,
+    severity_id: int,
+    assignee_email: str,
+    assignee_name: str | None = None,
+    message: str | None = None,
+) -> _Dict[str, Any]:
+    """Escalate a ticket by updating severity and assignee."""
+    try:
+        async with db.SessionLocal() as db_session:
+            updates = {
+                "Severity_ID": severity_id,
+                "Assigned_Email": assignee_email,
+                "Assigned_Name": assignee_name or assignee_email,
+            }
+            updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
+            await db_session.commit()
+            if not updated:
+                return {"status": "error", "error": "Ticket not found"}
+
+            note = message or "Ticket escalated"
+            await TicketManager().post_message(
+                db_session,
+                ticket_id,
+                note,
+                assignee_email,
+                assignee_name or assignee_email,
+            )
+            await db_session.commit()
+
+            ticket = await TicketManager().get_ticket(db_session, ticket_id)
+            data = TicketExpandedOut.model_validate(ticket).model_dump()
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in escalate_ticket: {e}")
+
+async def _get_ticket_messages(ticket_id: int) -> _Dict[str, Any]:
+    """Return messages for a ticket with message length."""
+    try:
+        async with db.SessionLocal() as db_session:
+            msgs = await TicketManager().get_messages(db_session, ticket_id)
+            data = [
+                {
+                    "ID": m.ID,
+                    "Ticket_ID": m.Ticket_ID,
+                    "Message": m.Message,
+                    "SenderUserCode": m.SenderUserCode,
+                    "SenderUserName": m.SenderUserName,
+                    "DateTimeStamp": m.DateTimeStamp,
+                    "message_length": len(m.Message or ""),
+                }
+                for m in msgs
+            ]
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in get_ticket_messages: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+async def _get_ticket_attachments(ticket_id: int) -> _Dict[str, Any]:
+    """Return attachments for a ticket with file type."""
+    try:
+        async with db.SessionLocal() as db_session:
+            atts = await TicketManager().get_attachments(db_session, ticket_id)
+            data = [
+                {
+                    "ID": a.ID,
+                    "Ticket_ID": a.Ticket_ID,
+                    "Name": a.Name,
+                    "WebURl": a.WebURl,
+                    "UploadDateTime": a.UploadDateTime,
+                    "file_type": os.path.splitext(a.Name)[1].lstrip(".").lower(),
+                }
+                for a in atts
+            ]
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in get_ticket_attachments: {e}")
+
         return {"status": "error", "error": str(e)}
 
 
@@ -568,6 +693,19 @@ async def _list_reference_data(
         return {"status": "error", "error": str(e)}
 
 
+async def _list_priorities() -> _Dict[str, Any]:
+    """Return available priority levels ordered by ID."""
+    try:
+        async with db.SessionLocal() as db_session:
+            result = await db_session.execute(select(Priority).order_by(Priority.ID))
+            records = result.scalars().all()
+            data = [{"id": p.ID, "level": p.Level} for p in records]
+            return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error in list_priorities: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 async def _ticket_full_context(ticket_id: int) -> _Dict[str, Any]:
     """Return extended context for a ticket."""
     try:
@@ -679,6 +817,22 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_assign_ticket,
     ),
     Tool(
+        name="escalate_ticket",
+        description="Escalate a ticket and update assignment",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "ticket_id": {"type": "integer"},
+                "severity_id": {"type": "integer"},
+                "assignee_email": {"type": "string"},
+                "assignee_name": {"type": "string"},
+                "message": {"type": "string"},
+            },
+            "required": ["ticket_id", "severity_id", "assignee_email"],
+        },
+        _implementation=_escalate_ticket,
+    ),
+    Tool(
         name="add_ticket_message",
         description="Add a message to a ticket",
         inputSchema={
@@ -694,6 +848,26 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_add_ticket_message,
     ),
     Tool(
+        name="get_ticket_messages",
+        description="Retrieve messages for a ticket",
+        inputSchema={
+            "type": "object",
+            "properties": {"ticket_id": {"type": "integer"}},
+            "required": ["ticket_id"],
+        },
+        _implementation=_get_ticket_messages,
+    ),
+    Tool(
+        name="get_ticket_attachments",
+        description="Retrieve attachments for a ticket",
+        inputSchema={
+            "type": "object",
+            "properties": {"ticket_id": {"type": "integer"}},
+            "required": ["ticket_id"],
+        },
+        _implementation=_get_ticket_attachments,
+    ),
+    Tool(
         name="search_tickets",
         description="Search tickets",
         inputSchema={
@@ -705,6 +879,12 @@ ENHANCED_TOOLS: List[Tool] = [
             "required": ["query"],
         },
         _implementation=_search_tickets,
+    ),
+    Tool(
+        name="search_tickets_advanced",
+        description="Advanced ticket search",
+        inputSchema=AdvancedQuery.model_json_schema(),
+        _implementation=_search_tickets_advanced,
     ),
     Tool(
         name="get_tickets_by_user",
@@ -777,6 +957,12 @@ ENHANCED_TOOLS: List[Tool] = [
             "required": ["type"],
         },
         _implementation=_list_reference_data,
+    ),
+    Tool(
+        name="list_priorities",
+        description="List available priority levels",
+        inputSchema={},
+        _implementation=_list_priorities,
     ),
     Tool(
         name="get_ticket_full_context",
