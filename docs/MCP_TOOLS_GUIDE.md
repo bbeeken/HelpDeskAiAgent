@@ -2,6 +2,24 @@
 
 This document describes the JSON-RPC tools exposed by the MCP server. Each section lists the purpose of the tool, the parameters expected in the request body and an example invocation.
 
+## get_ticket
+Fetch a ticket by ID.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/get_ticket \
+  -d '{"ticket_id": 1}'
+```
+
+## list_tickets
+List tickets with optional filters.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/list_tickets \
+  -d '{"limit": 5, "filters": {"status": "open"}}'
+```
+
 ## create_ticket
 Create a new ticket. Parameters match the `TicketCreate` schema described in [API.md](API.md).
 
@@ -18,39 +36,40 @@ Parameters:
 - `ticket_id` – integer ID of the ticket.
 - `updates` – object of fields to modify.
 
+`updates` can include semantic fields such as `status`, `priority`,
+`assignee_email`, `assignee_name`, `severity_id` or `resolution` to
+close, assign or escalate a ticket in a single call.
+
 Example:
 ```bash
 curl -X POST http://localhost:8000/update_ticket \
   -d '{"ticket_id": 5, "updates": {"Assigned_Email": "tech@example.com"}}'
 ```
 
+
 ## close_ticket
-Close a ticket with a resolution message.
+Close a ticket with a resolution.
 
 Parameters:
 - `ticket_id` – integer ticket ID.
 - `resolution` – resolution text.
 - `status_id` – optional status (defaults to 4).
 
-Example:
-```bash
-curl -X POST http://localhost:8000/close_ticket \
-  -d '{"ticket_id": 5, "resolution": "Replaced toner"}'
-```
-
-## assign_ticket
-Assign a ticket to a technician.
-
-Parameters:
-- `ticket_id` – integer ID.
-- `assignee_email` – technician email.
-- `assignee_name` – optional technician name.
 
 Example:
 ```bash
-curl -X POST http://localhost:8000/assign_ticket \
-  -d '{"ticket_id": 5, "assignee_email": "tech@example.com"}'
+curl -X POST http://localhost:8000/update_ticket \
+  -d '{"ticket_id": 5, "updates": {"Ticket_Status_ID": 4, "Resolution": "Replaced toner"}}'
 ```
+
+## assign_ticket (removed)
+Use `update_ticket` with `Assigned_Email` and `Assigned_Name`.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/update_ticket \
+  -d '{"ticket_id": 5, "updates": {"Assigned_Email": "tech@example.com"}}'
+
 
 ## add_ticket_message
 Append a message to a ticket thread.
@@ -132,20 +151,23 @@ curl -X POST http://localhost:8000/get_analytics \
   -d '{"type": "site_counts"}'
 ```
 
-## list_reference_data
-Return reference data such as sites, assets or vendors.
+## get_reference_data
+Return reference data such as sites, assets, vendors, categories, priorities, or statuses.
 
 Parameters:
-- `type` – one of `sites`, `assets`, `vendors`, `categories`.
+- `type` – one of `sites`, `assets`, `vendors`, `categories`, `priorities`, `statuses`.
 - `limit` – optional limit (default 10).
+- `skip` – optional offset (default 0).
 - `filters` – optional filter mapping.
 - `sort` – optional list of sort columns.
+- `include_counts` – set to `true` to include open/total ticket counts.
 
 Example:
 ```bash
-curl -X POST http://localhost:8000/list_reference_data \
-  -d '{"type": "sites", "limit": 5}'
+curl -X POST http://localhost:8000/get_reference_data \
+  -d '{"type": "sites", "include_counts": true}'
 ```
+
 
 ## get_ticket_full_context
 Return a ticket along with related labels and history.
@@ -169,30 +191,25 @@ Example:
 curl -X POST http://localhost:8000/get_system_snapshot -d '{}'
 ```
 
-## advanced_search
-Perform a detailed ticket search using advanced criteria.
 
-Parameters:
-- `text_search` – search string.
-- `limit` – optional result limit.
+## advanced_search (removed)
+Use `search_tickets` with a query string.
 
 Example:
 ```bash
-curl -X POST http://localhost:8000/advanced_search \
-  -d '{"text_search": "printer", "limit": 10}'
+curl -X POST http://localhost:8000/search_tickets \
+  -d '{"query": "printer", "limit": 10}'
 ```
 
-## escalate_ticket
-Escalate a ticket for faster attention.
-
-Parameters:
-- `ticket_id` – integer ID of the ticket to escalate.
+## escalate_ticket (removed)
+Use `update_ticket` to change `Severity_ID` or assignment.
 
 Example:
 ```bash
-curl -X POST http://localhost:8000/escalate_ticket \
-  -d '{"ticket_id": 123}'
+curl -X POST http://localhost:8000/update_ticket \
+  -d '{"ticket_id": 123, "updates": {"Severity_ID": 1}}'
 ```
+
 
 ## sla_metrics
 Retrieve SLA performance metrics for the helpdesk.
@@ -216,3 +233,4 @@ Example:
 curl -X POST http://localhost:8000/bulk_update_tickets \
   -d '{"ticket_ids": [1,2,3], "updates": {"Assigned_Email": "tech@example.com"}}'
 ```
+

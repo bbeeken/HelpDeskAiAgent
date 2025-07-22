@@ -2,8 +2,6 @@ import os
 
 os.environ.setdefault("DB_CONN_STRING", "sqlite+aiosqlite:///:memory:")
 
-import asyncio
-
 import pytest
 import pytest_asyncio
 from src.core.repositories.models import Base, Ticket

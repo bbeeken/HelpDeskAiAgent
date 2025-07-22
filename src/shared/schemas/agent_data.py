@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
@@ -113,6 +113,13 @@ class AdvancedQuery(BaseModel):
     include_messages: bool = False
     include_attachments: bool = False
     include_user_context: bool = False
+
+    @field_validator("limit", "offset")
+    @classmethod
+    def non_negative(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("must be >= 0")
+        return v
 
 
 class QueryResult(BaseModel):

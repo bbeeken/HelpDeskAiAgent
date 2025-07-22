@@ -2,7 +2,6 @@ import asyncio
 import logging
 import os
 import uuid
-import json
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from datetime import datetime, UTC
@@ -28,7 +27,6 @@ from src.shared.exceptions import DatabaseError, ErrorResponse, NotFoundError, V
 from limiter import limiter
 from src.mcp_server import Tool, create_enhanced_server
 from src.tool_list import TOOLS
-import logging
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
@@ -282,7 +280,6 @@ def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
     """Build a FastAPI endpoint from an MCP tool."""
     validator = Draft7Validator(schema)
 
-
     async def endpoint(request: Request):
         try:
             data = await request.json()
@@ -329,7 +326,11 @@ def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
 server = create_enhanced_server()
 logger.info("Enhanced MCP server active with %d tools", len(TOOLS))
 
+
+
 EXCLUDED_TOOLS = {"get_open_tickets"}
+
+
 EXPOSED_TOOLS = [t for t in TOOLS if t.name not in EXCLUDED_TOOLS]
 
 for tool in EXPOSED_TOOLS:
@@ -352,7 +353,10 @@ for tool in EXPOSED_TOOLS:
 logger.info("Registered %d MCP tools as HTTP endpoints", len(EXPOSED_TOOLS))
 
 # Paths that require the MCP server to be initialized
-MCP_ENDPOINTS = [f"/{tool.name}" for tool in EXPOSED_TOOLS] + ["/tools", "/health/mcp", "/mcp", "/mcp/messages/"]
+MCP_ENDPOINTS = (
+    [f"/{tool.name}" for tool in EXPOSED_TOOLS]
+    + ["/tools", "/health/mcp", "/mcp", "/mcp/messages/"]
+)
 
 
 # Standard API routes

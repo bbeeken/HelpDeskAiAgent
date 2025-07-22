@@ -1,6 +1,7 @@
 import pytest
 from src.core.services.ticket_management import TicketManager
 
+
 @pytest.mark.parametrize(
     "query,expected",
     [
@@ -15,4 +16,3 @@ from src.core.services.ticket_management import TicketManager
 def test_sanitize_search_input(query, expected):
     manager = TicketManager()
     assert manager._sanitize_search_input(query) == expected
-
