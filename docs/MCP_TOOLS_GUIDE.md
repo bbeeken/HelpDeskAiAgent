@@ -115,6 +115,60 @@ curl -X POST http://localhost:8000/get_tickets_by_user \
   -d '{"identifier": "user@example.com", "status": "open"}'
 ```
 
+## get_open_tickets
+List open tickets with optional filters.
+
+Parameters:
+- `days` – look back period (default 3650).
+- `limit` – result limit (default 10).
+- `skip` – result offset (default 0).
+- `filters` – optional filter mapping.
+- `sort` – optional list of columns to sort by.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/get_open_tickets \
+  -d '{"days": 30, "limit": 20, "sort": ["Priority_Level"]}'
+```
+
+## get_analytics
+Return analytics information. The `type` field selects the report.
+
+Allowed types include:
+- `status_counts`
+- `site_counts`
+- `technician_workload`
+- `sla_breaches`
+- `trends`
+
+Parameters:
+- `type` – report type.
+- `params` – optional additional parameters for the chosen report.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/get_analytics \
+  -d '{"type": "site_counts"}'
+```
+
+## get_reference_data
+Return reference data such as sites, assets, vendors, categories, priorities, or statuses.
+
+Parameters:
+- `type` – one of `sites`, `assets`, `vendors`, `categories`, `priorities`, `statuses`.
+- `limit` – optional limit (default 10).
+- `skip` – optional offset (default 0).
+- `filters` – optional filter mapping.
+- `sort` – optional list of sort columns.
+- `include_counts` – set to `true` to include open/total ticket counts.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/get_reference_data \
+  -d '{"type": "sites", "include_counts": true}'
+```
+
+
 ## get_ticket_full_context
 Return a ticket along with related labels and history.
 
