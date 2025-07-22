@@ -97,6 +97,6 @@ async def test_new_tool_endpoints():
         assert resp.status_code == 200
         assert resp.json().get("status") in {"success", "error"}
 
-        resp = await client.post("/list_reference_data", json={"type": "sites"})
+        resp = await client.post("/get_reference_data", json={"type": "sites"})
         assert resp.status_code == 200
         assert resp.json().get("status") in {"success", "error"}

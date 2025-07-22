@@ -132,19 +132,21 @@ curl -X POST http://localhost:8000/get_analytics \
   -d '{"type": "site_counts"}'
 ```
 
-## list_reference_data
-Return reference data such as sites, assets or vendors.
+## get_reference_data
+Return reference data such as sites, assets, vendors, categories, priorities, or statuses.
 
 Parameters:
-- `type` – one of `sites`, `assets`, `vendors`, `categories`.
+- `type` – one of `sites`, `assets`, `vendors`, `categories`, `priorities`, `statuses`.
 - `limit` – optional limit (default 10).
+- `skip` – optional offset (default 0).
 - `filters` – optional filter mapping.
 - `sort` – optional list of sort columns.
+- `include_counts` – set to `true` to include open/total ticket counts.
 
 Example:
 ```bash
-curl -X POST http://localhost:8000/list_reference_data \
-  -d '{"type": "sites", "limit": 5}'
+curl -X POST http://localhost:8000/get_reference_data \
+  -d '{"type": "sites", "include_counts": true}'
 ```
 
 ## get_ticket_full_context

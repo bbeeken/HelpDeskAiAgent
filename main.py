@@ -329,7 +329,7 @@ def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
 server = create_enhanced_server()
 logger.info("Enhanced MCP server active with %d tools", len(TOOLS))
 
-EXCLUDED_TOOLS = {"get_open_tickets", "get_analytics", "list_reference_data"}
+EXCLUDED_TOOLS = {"get_open_tickets", "get_analytics"}
 EXPOSED_TOOLS = [t for t in TOOLS if t.name not in EXCLUDED_TOOLS]
 
 for tool in EXPOSED_TOOLS:

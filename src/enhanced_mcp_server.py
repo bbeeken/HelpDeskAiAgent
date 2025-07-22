@@ -925,52 +925,107 @@ async def _get_sla_metrics(
         return {"status": "error", "error": str(e)}
 
 
-async def _list_reference_data(
+async def _get_reference_data_unified(
     type: str,
     limit: int = 10,
+    skip: int = 0,
     filters: Dict[str, Any] | None = None,
     sort: list[str] | None = None,
+    include_counts: bool = False,
 ) -> Dict[str, Any]:
-    """Return reference data such as sites, assets, vendors, or categories."""
+    """Return reference data records with optional ticket counts."""
     try:
         async with db.SessionLocal() as db_session:
             mgr = ReferenceDataManager()
-            
+
+            records: list[Any]
+            field = None
             if type == "sites":
-                records = await mgr.list_sites(
-                    db_session, limit=limit, filters=filters, sort=sort
-                )
+                records = await mgr.list_sites(db_session, skip=skip, limit=limit, filters=filters, sort=sort)
+                field = "Site_ID"
+                ids = [r.ID for r in records]
             elif type == "assets":
-                records = await mgr.list_assets(
-                    db_session, limit=limit, filters=filters, sort=sort
-                )
+                records = await mgr.list_assets(db_session, skip=skip, limit=limit, filters=filters, sort=sort)
+                field = "Asset_ID"
+                ids = [r.ID for r in records]
             elif type == "vendors":
-                records = await mgr.list_vendors(
-                    db_session, limit=limit, filters=filters, sort=sort
-                )
+                records = await mgr.list_vendors(db_session, skip=skip, limit=limit, filters=filters, sort=sort)
+                field = "Assigned_Vendor_ID"
+                ids = [r.ID for r in records]
             elif type == "categories":
-                records = await mgr.list_categories(
-                    db_session, filters=filters, sort=sort
-                )
+                records = await mgr.list_categories(db_session, filters=filters, sort=sort)
+                total_count = len(records)
+                if skip:
+                    records = records[skip:]
+                if limit:
+                    records = records[:limit]
+                field = "Ticket_Category_ID"
+                ids = [r.ID for r in records]
+            elif type == "priorities":
+                result = await db_session.execute(select(Priority).order_by(Priority.ID))
+                records = result.scalars().all()
+                total_count = len(records)
+                if skip:
+                    records = records[skip:]
+                if limit:
+                    records = records[:limit]
+                field = "Priority_Level"
+                ids = [r.Level for r in records]
+            elif type == "statuses":
+                result = await db_session.execute(select(TicketStatus).order_by(TicketStatus.ID))
+                records = result.scalars().all()
+                total_count = len(records)
+                if skip:
+                    records = records[skip:]
+                if limit:
+                    records = records[:limit]
+                field = "Ticket_Status_ID"
+                ids = [r.ID for r in records]
             else:
                 return {"status": "error", "error": f"Unknown reference data type: {type}"}
-                
-            # Convert to dictionaries and clean up
+
+            if include_counts and field:
+                open_counts = await _count_open_tickets_by_field(db_session, field, ids)
+                total_counts = await _count_total_tickets_by_field(db_session, field, ids)
+            else:
+                open_counts = {}
+                total_counts = {}
+
             data = []
             for r in records:
                 item = r.__dict__.copy()
-                # Remove SQLAlchemy internal attributes
-                item.pop('_sa_instance_state', None)
+                item.pop("_sa_instance_state", None)
+                if type == "priorities":
+                    item = {
+                        "id": r.ID,
+                        "level": r.Level,
+                        "semantic_name": _PRIORITY_MAP.get(r.Level.lower(), r.Level) if r.Level else None,
+                    }
+                    key = r.Level
+                else:
+                    key = r.ID
+
+                if include_counts:
+                    item["open_tickets"] = open_counts.get(key, 0)
+                    item["total_tickets"] = total_counts.get(key, 0)
+                    item["closed_tickets"] = item["total_tickets"] - item["open_tickets"]
+
                 data.append(item)
-                
-            return {
+
+            result_obj = {
                 "status": "success",
                 "data": data,
                 "type": type,
-                "count": len(data)
+                "count": len(data),
+                "skip": skip,
+                "limit": limit,
             }
+            if type in {"categories", "priorities", "statuses"}:
+                result_obj["total_count"] = locals().get("total_count", len(records))
+
+            return result_obj
     except Exception as e:
-        logger.error(f"Error in list_reference_data: {e}")
+        logger.error(f"Error in get_reference_data: {e}")
         return {"status": "error", "error": str(e)}
 
 
@@ -1029,224 +1084,6 @@ async def _count_total_tickets_by_field(
     return {row[0]: row[1] for row in result.all()}
 
 
-async def _list_sites_enhanced(
-    limit: int = 10,
-    skip: int = 0,
-    filters: Dict[str, Any] | None = None,
-    sort: list[str] | None = None,
-) -> Dict[str, Any]:
-    """List sites with ticket counts."""
-    try:
-        async with db.SessionLocal() as db_session:
-            mgr = ReferenceDataManager()
-            sites = await mgr.list_sites(
-                db_session,
-                skip=skip,
-                limit=limit,
-                filters=filters,
-                sort=sort,
-            )
-            
-            # Get ticket counts
-            ids = [s.ID for s in sites]
-            open_counts = await _count_open_tickets_by_field(db_session, "Site_ID", ids)
-            total_counts = await _count_total_tickets_by_field(db_session, "Site_ID", ids)
-            
-            # Build enhanced data
-            data = []
-            for s in sites:
-                item = s.__dict__.copy()
-                item.pop('_sa_instance_state', None)
-                item["open_tickets"] = open_counts.get(s.ID, 0)
-                item["total_tickets"] = total_counts.get(s.ID, 0)
-                item["closed_tickets"] = item["total_tickets"] - item["open_tickets"]
-                data.append(item)
-                
-            return {
-                "status": "success",
-                "data": data,
-                "count": len(data),
-                "skip": skip,
-                "limit": limit
-            }
-    except Exception as e:
-        logger.error(f"Error in list_sites_enhanced: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _list_assets_enhanced(
-    limit: int = 10,
-    skip: int = 0,
-    filters: Dict[str, Any] | None = None,
-    sort: list[str] | None = None,
-) -> Dict[str, Any]:
-    """List assets with ticket counts."""
-    try:
-        async with db.SessionLocal() as db_session:
-            mgr = ReferenceDataManager()
-            assets = await mgr.list_assets(
-                db_session,
-                skip=skip,
-                limit=limit,
-                filters=filters,
-                sort=sort,
-            )
-            
-            # Get ticket counts
-            ids = [a.ID for a in assets]
-            open_counts = await _count_open_tickets_by_field(db_session, "Asset_ID", ids)
-            total_counts = await _count_total_tickets_by_field(db_session, "Asset_ID", ids)
-            
-            # Build enhanced data
-            data = []
-            for a in assets:
-                item = a.__dict__.copy()
-                item.pop('_sa_instance_state', None)
-                item["open_tickets"] = open_counts.get(a.ID, 0)
-                item["total_tickets"] = total_counts.get(a.ID, 0)
-                item["closed_tickets"] = item["total_tickets"] - item["open_tickets"]
-                data.append(item)
-                
-            return {
-                "status": "success",
-                "data": data,
-                "count": len(data),
-                "skip": skip,
-                "limit": limit
-            }
-    except Exception as e:
-        logger.error(f"Error in list_assets_enhanced: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _list_vendors_enhanced(
-    limit: int = 10,
-    skip: int = 0,
-    filters: Dict[str, Any] | None = None,
-    sort: list[str] | None = None,
-) -> Dict[str, Any]:
-    """List vendors with ticket counts."""
-    try:
-        async with db.SessionLocal() as db_session:
-            mgr = ReferenceDataManager()
-            vendors = await mgr.list_vendors(
-                db_session,
-                skip=skip,
-                limit=limit,
-                filters=filters,
-                sort=sort,
-            )
-            
-            # Get ticket counts
-            ids = [v.ID for v in vendors]
-            open_counts = await _count_open_tickets_by_field(db_session, "Assigned_Vendor_ID", ids)
-            total_counts = await _count_total_tickets_by_field(db_session, "Assigned_Vendor_ID", ids)
-            
-            # Build enhanced data
-            data = []
-            for v in vendors:
-                item = v.__dict__.copy()
-                item.pop('_sa_instance_state', None)
-                item["open_tickets"] = open_counts.get(v.ID, 0)
-                item["total_tickets"] = total_counts.get(v.ID, 0)
-                item["closed_tickets"] = item["total_tickets"] - item["open_tickets"]
-                data.append(item)
-                
-            return {
-                "status": "success",
-                "data": data,
-                "count": len(data),
-                "skip": skip,
-                "limit": limit
-            }
-    except Exception as e:
-        logger.error(f"Error in list_vendors_enhanced: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _list_categories_enhanced(
-    limit: int = 10,
-    skip: int = 0,
-    filters: Dict[str, Any] | None = None,
-    sort: list[str] | None = None,
-) -> Dict[str, Any]:
-    """List categories with ticket counts."""
-    try:
-        async with db.SessionLocal() as db_session:
-            mgr = ReferenceDataManager()
-            cats = await mgr.list_categories(
-                db_session,
-                filters=filters,
-                sort=sort,
-            )
-            
-            # Apply pagination to categories
-            total_count = len(cats)
-            if skip:
-                cats = cats[skip:]
-            if limit:
-                cats = cats[:limit]
-            
-            # Get ticket counts
-            ids = [c.ID for c in cats]
-            open_counts = await _count_open_tickets_by_field(
-                db_session,
-                "Ticket_Category_ID",
-                ids,
-            )
-            total_counts = await _count_total_tickets_by_field(
-                db_session,
-                "Ticket_Category_ID",
-                ids,
-            )
-            
-            # Build enhanced data
-            data = []
-            for c in cats:
-                item = c.__dict__.copy()
-                item.pop('_sa_instance_state', None)
-                item["open_tickets"] = open_counts.get(c.ID, 0)
-                item["total_tickets"] = total_counts.get(c.ID, 0)
-                item["closed_tickets"] = item["total_tickets"] - item["open_tickets"]
-                data.append(item)
-                
-            return {
-                "status": "success",
-                "data": data,
-                "count": len(data),
-                "total_count": total_count,
-                "skip": skip,
-                "limit": limit
-            }
-    except Exception as e:
-        logger.error(f"Error in list_categories_enhanced: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _list_priorities() -> Dict[str, Any]:
-    """Return available priority levels ordered by ID."""
-    try:
-        async with db.SessionLocal() as db_session:
-            result = await db_session.execute(select(Priority).order_by(Priority.ID))
-            records = result.scalars().all()
-            
-            data = [
-                {
-                    "id": p.ID,
-                    "level": p.Level,
-                    "semantic_name": _PRIORITY_MAP.get(p.Level.lower(), p.Level) if p.Level else None
-                }
-                for p in records
-            ]
-            
-            return {
-                "status": "success",
-                "data": data,
-                "count": len(data)
-            }
-    except Exception as e:
-        logger.error(f"Error in list_priorities: {e}")
-        return {"status": "error", "error": str(e)}
 
 
 async def _ticket_full_context(ticket_id: int) -> Dict[str, Any]:
@@ -1661,37 +1498,36 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_get_sla_metrics,
     ),
     Tool(
-        name="list_reference_data",
-        description="List reference data (sites, assets, vendors, categories)",
+        name="get_reference_data",
+        description="Retrieve reference data with optional ticket counts",
         inputSchema={
             "type": "object",
             "properties": {
                 "type": {
                     "type": "string",
-                    "enum": ["sites", "assets", "vendors", "categories"],
-                    "description": "Type of reference data"
+                    "enum": [
+                        "sites",
+                        "assets",
+                        "vendors",
+                        "categories",
+                        "priorities",
+                        "statuses",
+                    ],
+                    "description": "Type of reference data",
                 },
                 "limit": {"type": "integer", "default": 10},
+                "skip": {"type": "integer", "default": 0},
                 "filters": {"type": "object"},
                 "sort": {"type": "array", "items": {"type": "string"}},
+                "include_counts": {"type": "boolean", "default": False},
             },
             "required": ["type"],
             "examples": [
-                {"type": "sites", "limit": 10},
-                {"type": "categories", "sort": ["Label"]}
+                {"type": "sites", "include_counts": True},
+                {"type": "priorities"},
             ],
         },
-        _implementation=_list_reference_data,
-    ),
-    Tool(
-        name="list_priorities",
-        description="List available priority levels",
-        inputSchema={
-            "type": "object",
-            "properties": {},
-            "examples": [{}],
-        },
-        _implementation=_list_priorities,
+        _implementation=_get_reference_data_unified,
     ),
     Tool(
         name="get_ticket_full_context",
@@ -1768,84 +1604,6 @@ ENHANCED_TOOLS: List[Tool] = [
     ),
 ]
 
-# Enhanced reference data tools with ticket counts
-ENHANCED_REFERENCE_TOOLS: List[Tool] = [
-    Tool(
-        name="list_sites_enhanced",
-        description="List sites with open/total ticket counts",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "limit": {"type": "integer", "default": 10},
-                "skip": {"type": "integer", "default": 0},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "examples": [
-                {"limit": 20},
-                {"limit": 10, "sort": ["Label"]}
-            ],
-        },
-        _implementation=_list_sites_enhanced,
-    ),
-    Tool(
-        name="list_assets_enhanced",
-        description="List assets with open/total ticket counts",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "limit": {"type": "integer", "default": 10},
-                "skip": {"type": "integer", "default": 0},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "examples": [
-                {"limit": 20},
-                {"limit": 10, "filters": {"Site_ID": 1}}
-            ],
-        },
-        _implementation=_list_assets_enhanced,
-    ),
-    Tool(
-        name="list_vendors_enhanced",
-        description="List vendors with open/total ticket counts",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "limit": {"type": "integer", "default": 10},
-                "skip": {"type": "integer", "default": 0},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "examples": [
-                {"limit": 20},
-                {"limit": 10, "sort": ["Label"]}
-            ],
-        },
-        _implementation=_list_vendors_enhanced,
-    ),
-    Tool(
-        name="list_categories_enhanced",
-        description="List categories with open/total ticket counts",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "limit": {"type": "integer", "default": 10},
-                "skip": {"type": "integer", "default": 0},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "examples": [
-                {"limit": 20},
-                {"limit": 10, "sort": ["Name"]}
-            ],
-        },
-        _implementation=_list_categories_enhanced,
-    ),
-]
-
-# Combine all tools
-ENHANCED_TOOLS.extend(ENHANCED_REFERENCE_TOOLS)
 
 
 # ---------------------------------------------------------------------------
