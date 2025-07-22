@@ -86,3 +86,57 @@ JSON body matching the tool's schema.
 - `POST /get_system_snapshot` – System snapshot. Example: `{}`
 
 Endpoints under `/mcp-tools` are also exposed as HTTP routes with the same names as the MCP tools. Refer to the OpenAPI schema or `/docs` endpoint when running the application for the full specification.
+
+## Ticket Schemas
+
+### TicketCreate
+
+Use this schema when creating a ticket. The server automatically populates `Created_Date` so it should be omitted from the payload. All other fields match the database columns and most are optional.
+
+Example:
+
+```json
+{
+  "Subject": "Printer not working",
+  "Ticket_Body": "The office printer is jammed and displays error code 34.",
+  "Ticket_Contact_Name": "Jane Doe",
+  "Ticket_Contact_Email": "jane@example.com",
+  "Asset_ID": 5,
+  "Site_ID": 2,
+  "Ticket_Category_ID": 1
+}
+```
+
+Another example showing assignment and severity:
+
+```json
+{
+  "Subject": "Website down",
+  "Ticket_Body": "The main website returns a 500 Internal Server Error.",
+  "Ticket_Contact_Name": "Alice Admin",
+  "Ticket_Contact_Email": "alice@example.com",
+  "Assigned_Name": "Bob Ops",
+  "Assigned_Email": "bob.ops@example.com",
+  "Ticket_Status_ID": 1,
+  "Site_ID": 3,
+  "Severity_ID": 3
+}
+```
+
+### TicketUpdate
+
+This schema is used to partially update an existing ticket. Provide only the fields you want to change; omitted fields remain unchanged. `Created_Date` cannot be updated.
+
+Example payloads:
+
+```json
+{"Subject": "Updated"}
+```
+
+```json
+{"Assigned_Name": "Agent", "Ticket_Status_ID": 2}
+```
+
+```json
+{"Ticket_Status_ID": 3}
+```
