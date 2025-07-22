@@ -76,11 +76,11 @@ async def test_analytics_open_by_site(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_analytics_sla_breaches(client: AsyncClient):
     old = datetime.now(UTC) - timedelta(days=3)
-    await _add_ticket(Created_Date=old)
+    old_ticket = await _add_ticket(Created_Date=old)
     await _add_ticket()
     resp = await client.get("/analytics/sla_breaches", params={"sla_days": 2})
     assert resp.status_code == 200
-    assert resp.json() == {"breaches": 1}
+    assert resp.json() == {"breaches": 1, "ticket_ids": [old_ticket.Ticket_ID]}
 
 @pytest.mark.asyncio
 async def test_analytics_open_by_user(client: AsyncClient):
@@ -110,7 +110,7 @@ async def test_analytics_waiting_on_user(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_sla_breaches_with_filters(client: AsyncClient):
     old = datetime.now(UTC) - timedelta(days=5)
-    await _add_ticket(
+    t1 = await _add_ticket(
         Created_Date=old,
         Assigned_Email="tech@example.com",
         Ticket_Status_ID=1,
@@ -120,21 +120,21 @@ async def test_sla_breaches_with_filters(client: AsyncClient):
         Assigned_Email="other@example.com",
         Ticket_Status_ID=1,
     )
-    await _add_ticket(Created_Date=old, Ticket_Status_ID=3)
+    t3 = await _add_ticket(Created_Date=old, Ticket_Status_ID=3)
 
     resp = await client.get(
         "/analytics/sla_breaches",
         params={"Assigned_Email": "tech@example.com", "sla_days": 2},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"breaches": 1}
+    assert resp.json() == {"breaches": 1, "ticket_ids": [t1.Ticket_ID]}
 
     resp = await client.get(
         "/analytics/sla_breaches",
         params={"status_id": [3], "sla_days": 2},
     )
     assert resp.status_code == 200
-    assert resp.json() == {"breaches": 1}
+    assert resp.json() == {"breaches": 1, "ticket_ids": [t3.Ticket_ID]}
 
 
 @pytest.mark.asyncio
@@ -142,18 +142,14 @@ async def test_sla_breaches_with_filters(client: AsyncClient):
 async def test_sla_breaches_excludes_non_open(client: AsyncClient):
     """Closed or waiting tickets should not count towards SLA breaches."""
     old = datetime.now(UTC) - timedelta(days=5)
-    await _add_ticket(Created_Date=old, Ticket_Status_ID=1)
+    open_ticket = await _add_ticket(Created_Date=old, Ticket_Status_ID=1)
     await _add_ticket(Created_Date=old, Ticket_Status_ID=4)
     await _add_ticket(Created_Date=old, Ticket_Status_ID=3)
 
     resp = await client.get("/analytics/sla_breaches", params={"sla_days": 2})
     assert resp.status_code == 200
     # Only the open ticket should be counted
-    assert resp.json() == {"breaches": 1}
-
-  
-    assert resp.status_code == 200
-    assert resp.json() == {"breaches": 1}
+    assert resp.json() == {"breaches": 1, "ticket_ids": [open_ticket.Ticket_ID]}
 
 
 @pytest.mark.asyncio

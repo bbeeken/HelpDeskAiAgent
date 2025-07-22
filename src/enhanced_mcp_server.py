@@ -187,7 +187,7 @@ ENHANCED_TOOLS: List[Tool] = [
     ),
     Tool(
         name="sla_breaches",
-        description="Count SLA breaches",
+        description="List ticket IDs breaching SLA and return their count",
         inputSchema={
             "type": "object",
             "properties": {

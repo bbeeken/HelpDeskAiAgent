@@ -32,3 +32,11 @@ class TrendCount(BaseModel):
 
     date: date
     count: int
+
+
+class SlaBreachesResult(BaseModel):
+    """Count of SLA breaches and affected ticket IDs."""
+
+    breaches: int
+    ticket_ids: list[int]
+
