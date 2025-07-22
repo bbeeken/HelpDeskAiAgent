@@ -327,7 +327,9 @@ server = create_enhanced_server()
 logger.info("Enhanced MCP server active with %d tools", len(TOOLS))
 
 
+
 EXCLUDED_TOOLS = {"get_open_tickets"}
+
 
 EXPOSED_TOOLS = [t for t in TOOLS if t.name not in EXCLUDED_TOOLS]
 

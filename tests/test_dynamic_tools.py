@@ -50,7 +50,7 @@ async def test_tools_list_route():
         tools = data["tools"] if isinstance(data, dict) else data
         names = {t["name"] for t in tools}
         assert "get_ticket" in names
-        assert "list_tickets" in names
+        assert "search_tickets" in names
 
 
 @pytest.mark.asyncio
