@@ -346,7 +346,9 @@ set of tool endpoints. The `/tools` route now returns an object with a `tools`
 key containing the available tools. The verification script fetches this route
 and compares the returned names against a predefined mapping. It exits with a
 non-zero status when any tools are missing or unexpected. The default mapping
-checks for the ``get_ticket`` and ``list_tickets`` endpoints.
+checks for the ``get_ticket`` and ``list_tickets`` endpoints. The route also
+lists new operations such as ``advanced_search``, ``escalate_ticket``,
+``sla_metrics`` and ``bulk_update_tickets``.
 
 ```bash
 python verify_tools.py http://localhost:8000
@@ -379,6 +381,28 @@ curl -X POST http://localhost:8000/tickets_by_timeframe \
 Request bodies are validated against each tool's `inputSchema` using the
 `jsonschema` library. Missing or incorrectly typed fields result in a `422`
 response.
+
+Additional tools are available:
+
+* `advanced_search` – run a detailed ticket search.
+  ```bash
+  curl -X POST http://localhost:8000/advanced_search \
+    -d '{"text_search": "printer", "limit": 10}'
+  ```
+* `escalate_ticket` – escalate a ticket for faster attention.
+  ```bash
+  curl -X POST http://localhost:8000/escalate_ticket \
+    -d '{"ticket_id": 123}'
+  ```
+* `sla_metrics` – retrieve SLA performance metrics.
+  ```bash
+  curl -X POST http://localhost:8000/sla_metrics -d '{}'
+  ```
+* `bulk_update_tickets` – apply updates to many tickets at once.
+  ```bash
+  curl -X POST http://localhost:8000/bulk_update_tickets \
+    -d '{"ticket_ids": [1,2,3], "updates": {"Assigned_Email": "tech@example.com"}}'
+  ```
 
 ## License
 
