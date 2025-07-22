@@ -329,7 +329,7 @@ logger.info("Enhanced MCP server active with %d tools", len(TOOLS))
 
 
 
-EXCLUDED_TOOLS = {"get_open_tickets"}
+EXCLUDED_TOOLS = set()
 
 
 EXPOSED_TOOLS = [t for t in TOOLS if t.name not in EXCLUDED_TOOLS]

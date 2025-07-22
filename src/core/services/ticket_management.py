@@ -172,7 +172,8 @@ class TicketManager:
         sanitized = self._sanitize_search_input(query)
         if not sanitized:
             return []
-        like = f"%{sanitized}%"
+        escaped = self._escape_like_pattern(sanitized)
+        like = f"%{escaped}%"
         stmt = select(VTicketMasterExpanded).filter(
             and_(
                 or_(
@@ -345,7 +346,7 @@ class TicketManager:
             Message=message,
             SenderUserCode='GilAI@heinzcorps.com',
             SenderUserName='Gil AI',
-            DateTimeStamp=datetime.now(),
+            DateTimeStamp=datetime.now(timezone.utc),
         )
         db.add(msg)
         try:

@@ -22,7 +22,15 @@ from src.infrastructure import database as db
 from src.core.services.ticket_management import TicketManager
 from src.core.services.reference_data import ReferenceDataManager
 from src.shared.schemas.ticket import TicketExpandedOut, TicketCreate
-from src.core.repositories.models import Priority, Ticket, TicketStatus, VTicketMasterExpanded
+from src.core.repositories.models import (
+    Priority,
+    Ticket,
+    TicketStatus,
+    VTicketMasterExpanded,
+    Asset,
+    Site,
+    Vendor,
+)
 from src.core.services.analytics_reporting import (
     open_tickets_by_site,
     open_tickets_by_user,
@@ -653,6 +661,10 @@ async def _bulk_update_tickets(
 ) -> Dict[str, Any]:
     """Apply the same updates to multiple tickets."""
     try:
+        if not ticket_ids:
+            return {"status": "error", "error": "No ticket IDs provided"}
+        if not updates:
+            return {"status": "error", "error": "No updates provided"}
         async with db.SessionLocal() as db_session:
             mgr = TicketManager()
             applied_updates = _apply_semantic_filters(updates)
@@ -894,7 +906,18 @@ async def _get_analytics_unified(
                 overdue = await mgr._get_overdue_tickets_summary()
             return {"status": "success", "data": overdue}
 
-        return {"status": "error", "error": f"Unknown analytics type: {type}"}
+        valid_types = [
+            "overview",
+            "ticket_counts",
+            "workload",
+            "sla_performance",
+            "trends",
+            "overdue_tickets",
+        ]
+        return {
+            "status": "error",
+            "error": f"Unknown analytics type: {type}. Valid types: {', '.join(valid_types)}",
+        }
     except Exception as e:
         logger.error(f"Error in get_analytics_unified: {e}")
         return {"status": "error", "error": str(e)}
@@ -976,14 +999,32 @@ async def _get_reference_data_unified(
                 records = await mgr.list_sites(db_session, skip=skip, limit=limit, filters=filters, sort=sort)
                 field = "Site_ID"
                 ids = [r.ID for r in records]
+                count_stmt = select(func.count(Site.ID))
+                if filters:
+                    for key, value in filters.items():
+                        if hasattr(Site, key):
+                            count_stmt = count_stmt.filter(getattr(Site, key) == value)
+                total_count = await db_session.scalar(count_stmt) or 0
             elif type == "assets":
                 records = await mgr.list_assets(db_session, skip=skip, limit=limit, filters=filters, sort=sort)
                 field = "Asset_ID"
                 ids = [r.ID for r in records]
+                count_stmt = select(func.count(Asset.ID))
+                if filters:
+                    for key, value in filters.items():
+                        if hasattr(Asset, key):
+                            count_stmt = count_stmt.filter(getattr(Asset, key) == value)
+                total_count = await db_session.scalar(count_stmt) or 0
             elif type == "vendors":
                 records = await mgr.list_vendors(db_session, skip=skip, limit=limit, filters=filters, sort=sort)
                 field = "Assigned_Vendor_ID"
                 ids = [r.ID for r in records]
+                count_stmt = select(func.count(Vendor.ID))
+                if filters:
+                    for key, value in filters.items():
+                        if hasattr(Vendor, key):
+                            count_stmt = count_stmt.filter(getattr(Vendor, key) == value)
+                total_count = await db_session.scalar(count_stmt) or 0
             elif type == "categories":
                 records = await mgr.list_categories(db_session, filters=filters, sort=sort)
                 total_count = len(records)
@@ -1051,9 +1092,8 @@ async def _get_reference_data_unified(
                 "count": len(data),
                 "skip": skip,
                 "limit": limit,
+                "total_count": total_count,
             }
-            if type in {"categories", "priorities", "statuses"}:
-                result_obj["total_count"] = locals().get("total_count", len(records))
 
             return result_obj
     except Exception as e:
@@ -1457,8 +1497,16 @@ ENHANCED_TOOLS: List[Tool] = [
             "type": "object",
             "properties": {
                 "text_search": {"type": "string", "description": "Text to search for"},
+                "search_fields": {"type": "array", "items": {"type": "string"}, "default": ["Subject", "Ticket_Body"]},
+                "created_after": {"type": "string", "format": "date-time"},
+                "created_before": {"type": "string", "format": "date-time"},
+                "status_filter": {"type": "array", "items": {"type": "string"}},
+                "priority_filter": {"type": "array", "items": {"type": "integer"}},
+                "assigned_to": {"type": "array", "items": {"type": "string"}},
+                "unassigned_only": {"type": "boolean", "default": False},
+                "site_filter": {"type": "array", "items": {"type": "integer"}},
                 "limit": {"type": "integer", "default": 100},
-                "offset": {"type": "integer", "default": 0},
+                "offset": {"type": "integer", "default": 0}
             },
             "examples": [
                 {"text_search": "printer issue", "limit": 10},
@@ -1515,95 +1563,8 @@ ENHANCED_TOOLS: List[Tool] = [
     ),
 ]
 
-
-# Enhanced reference data tools with ticket counts
-ENHANCED_REFERENCE_TOOLS: List[Tool] = [
-    Tool(
-        name="list_sites_enhanced",
-        description="List sites with open/total ticket counts",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "limit": {"type": "integer", "default": 10},
-                "skip": {"type": "integer", "default": 0},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "examples": [
-                {"limit": 20},
-                {"limit": 10, "sort": ["Label"]}
-            ],
-        },
-        _implementation=_list_sites_enhanced,
-    ),
-    Tool(
-        name="list_assets_enhanced",
-        description="List assets with open/total ticket counts",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "limit": {"type": "integer", "default": 10},
-                "skip": {"type": "integer", "default": 0},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "examples": [
-                {"limit": 20},
-                {"limit": 10, "filters": {"Site_ID": 1}}
-            ],
-        },
-        _implementation=_list_assets_enhanced,
-    ),
-    Tool(
-        name="list_vendors_enhanced",
-        description="List vendors with open/total ticket counts",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "limit": {"type": "integer", "default": 10},
-                "skip": {"type": "integer", "default": 0},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "examples": [
-                {"limit": 20},
-                {"limit": 10, "sort": ["Label"]}
-            ],
-        },
-        _implementation=_list_vendors_enhanced,
-    ),
-    Tool(
-        name="list_categories_enhanced",
-        description="List categories with open/total ticket counts",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "limit": {"type": "integer", "default": 10},
-                "skip": {"type": "integer", "default": 0},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "examples": [
-                {"limit": 20},
-                {"limit": 10, "sort": ["Name"]}
-            ],
-        },
-        _implementation=_list_categories_enhanced,
-    ),
-]
-
-# Combine all tools
-# Rebuild ENHANCED_TOOLS with all tool definitions while preserving order and
-# eliminating any duplicate tool names. This ensures ``list_tools`` exposes a
-# clean set regardless of how tools were defined above.
-_combined_tools: List[Tool] = []
-_seen_names = set()
-for _tool in ENHANCED_TOOLS + ENHANCED_REFERENCE_TOOLS:
-    if _tool.name not in _seen_names:
-        _combined_tools.append(_tool)
-        _seen_names.add(_tool.name)
-
-ENHANCED_TOOLS = _combined_tools
+# No additional reference tools
+ENHANCED_TOOLS = ENHANCED_TOOLS
 
 
 
