@@ -6,8 +6,6 @@ from src.core.services.ticket_management import TicketManager
 from src.enhanced_mcp_server import (
     _create_ticket,
     _update_ticket,
-    _close_ticket,
-    _assign_ticket,
 )
 
 
@@ -80,7 +78,7 @@ async def test_close_ticket_commits_once(monkeypatch):
 
     counter = [0]
     await _patched_session(monkeypatch, counter)
-    result = await _close_ticket(tid, "done")
+    result = await _update_ticket(tid, {"resolution": "done", "status": "closed"})
     assert result["status"] == "success"
     assert counter[0] == 1
 
@@ -100,6 +98,6 @@ async def test_assign_ticket_commits_once(monkeypatch):
 
     counter = [0]
     await _patched_session(monkeypatch, counter)
-    result = await _assign_ticket(tid, "tech@example.com")
+    result = await _update_ticket(tid, {"assignee_email": "tech@example.com"})
     assert result["status"] == "success"
     assert counter[0] == 1

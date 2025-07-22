@@ -50,4 +50,3 @@ def test_safe_datetime_diff_hours_unexpected(monkeypatch):
         EnhancedContextManager._safe_datetime_diff_hours(
             datetime.now(timezone.utc), datetime.now(timezone.utc)
         )
-

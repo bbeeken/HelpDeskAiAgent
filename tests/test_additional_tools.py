@@ -77,49 +77,79 @@ async def test_get_ticket_attachments_error(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_escalate_ticket_success(client: AsyncClient):
     tid = await _create_ticket(client)
-    payload = {"ticket_id": tid, "severity_id": 2, "assignee_email": "tech@example.com"}
+
+
+
+    payload = {
+        "ticket_id": tid,
+        "severity_id": 1,
+        "assignee_email": "tech@example.com",
+    }
     resp = await client.post("/escalate_ticket", json=payload)
+
+
     assert resp.status_code == 200
     assert resp.json().get("status") in {"success", "error"}
 
 
 @pytest.mark.asyncio
 async def test_escalate_ticket_error(client: AsyncClient):
-    resp = await client.post("/escalate_ticket", json={})
+
+    resp = await client.post("/update_ticket", json={})
+
     assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_list_priorities_success(client: AsyncClient):
+async def test_get_reference_data_priorities_success(client: AsyncClient):
     async with SessionLocal() as db:
         p1 = Priority(Level="Low")
         p2 = Priority(Level="High")
         db.add_all([p1, p2])
         await db.commit()
-    resp = await client.post("/list_priorities", json={})
+    resp = await client.post("/get_reference_data", json={"type": "priorities"})
     assert resp.status_code == 200
     assert resp.json().get("status") in {"success", "error"}
 
 
 @pytest.mark.asyncio
-async def test_list_priorities_error(client: AsyncClient):
-    resp = await client.post("/list_priorities", json={"limit": "bad"})
+async def test_get_reference_data_priorities_error(client: AsyncClient):
+    resp = await client.post(
+        "/get_reference_data",
+        json={"type": "priorities", "limit": "bad"},
+    )
     assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_search_tickets_unified_success(client: AsyncClient):
     await _create_ticket(client, subject="Adv foo")
-    query = {"text": "Adv"}
+
+
+    query = {"query": "Adv"}
+
+
     resp = await client.post("/search_tickets", json=query)
     assert resp.status_code == 200
     assert resp.json().get("status") in {"success", "error"}
 
 
 @pytest.mark.asyncio
+
 async def test_search_tickets_unified_error(client: AsyncClient):
     resp = await client.post("/search_tickets", json={"unexpected": 1})
     assert resp.status_code == 422
+
+
+async def test_search_tickets_advanced_error(client: AsyncClient):
+
+    resp = await client.post("/search_tickets_advanced", json={"limit": -1})
+    assert resp.status_code == 200
+
+    assert resp.json().get("status") == "error"
+
+
+
 
 
 @pytest.mark.asyncio
