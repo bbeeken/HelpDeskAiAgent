@@ -20,6 +20,7 @@ async def test_ticket_search_route_returns_results():
             Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(db, t)
+        await db.commit()
         tid = t.Ticket_ID
 
     transport = ASGITransport(app=app)
@@ -42,6 +43,7 @@ async def test_ticket_search_route_accepts_json():
             Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(db, t)
+        await db.commit()
         tid = t.Ticket_ID
 
     transport = ASGITransport(app=app)

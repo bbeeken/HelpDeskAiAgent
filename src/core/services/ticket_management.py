@@ -47,7 +47,7 @@ class TicketManager:
             ticket_obj = Ticket(**ticket_obj)
         db.add(ticket_obj)
         try:
-            await db.commit()
+            await db.flush()
             await db.refresh(ticket_obj)
             return OperationResult(success=True, data=ticket_obj)
         except SQLAlchemyError as e:
@@ -67,7 +67,7 @@ class TicketManager:
             if hasattr(ticket, key):
                 setattr(ticket, key, value)
         try:
-            await db.commit()
+            await db.flush()
             await db.refresh(ticket)
             logger.info("Updated ticket %s", ticket_id)
             return ticket

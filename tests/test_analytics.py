@@ -57,6 +57,7 @@ async def _add_ticket(**kwargs):
         )
 
         await TicketManager().create_ticket(db, ticket)
+        await db.commit()
 
         return ticket
 

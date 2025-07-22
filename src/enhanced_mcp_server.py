@@ -265,6 +265,7 @@ async def _create_ticket(
             result = await TicketManager().create_ticket(db_session, payload)
             if not result.success:
                 raise Exception(result.error or "create failed")
+            await db_session.commit()
             ticket = await TicketManager().get_ticket(
                 db_session, result.data.Ticket_ID
             )
@@ -282,6 +283,7 @@ async def _update_ticket(ticket_id: int, updates: _Dict[str, Any]) -> _Dict[str,
             updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
             if not updated:
                 return {"status": "error", "error": "Ticket not found"}
+            await db_session.commit()
             ticket = await TicketManager().get_ticket(db_session, ticket_id)
             data = TicketExpandedOut.model_validate(ticket).model_dump()
             return {"status": "success", "data": data}
@@ -306,6 +308,7 @@ async def _close_ticket(
             updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
             if not updated:
                 return {"status": "error", "error": "Ticket not found"}
+            await db_session.commit()
             ticket = await TicketManager().get_ticket(db_session, ticket_id)
             data = TicketExpandedOut.model_validate(ticket).model_dump()
             return {"status": "success", "data": data}
@@ -329,6 +332,7 @@ async def _assign_ticket(
             updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
             if not updated:
                 return {"status": "error", "error": "Ticket not found"}
+            await db_session.commit()
             ticket = await TicketManager().get_ticket(db_session, ticket_id)
             data = TicketExpandedOut.model_validate(ticket).model_dump()
             return {"status": "success", "data": data}
