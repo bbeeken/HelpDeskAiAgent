@@ -166,6 +166,8 @@ from src.core.services.analytics_reporting import (
     sla_breaches,
 )
 from src.core.services.enhanced_context import EnhancedContextManager
+from src.core.repositories.models import Ticket, TicketStatus
+from sqlalchemy import select, func, or_
 
 from src.core.repositories.models import Ticket, TicketStatus
 from sqlalchemy import select, func, or_
