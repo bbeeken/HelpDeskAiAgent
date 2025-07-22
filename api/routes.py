@@ -1,7 +1,7 @@
 import logging
 import json
 from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
@@ -59,7 +59,14 @@ from schemas.basic import (
     TicketAttachmentOut,
     TicketMessageOut,
 )
-from schemas.analytics import StatusCount, SiteOpenCount, UserOpenCount, WaitingOnUserCount, TrendCount
+from schemas.analytics import (
+    StatusCount,
+    SiteOpenCount,
+    UserOpenCount,
+    WaitingOnUserCount,
+    TrendCount,
+    SlaBreachesResult,
+)
 from schemas.oncall import OnCallShiftOut
 from schemas.paginated import PaginatedResponse
 
@@ -334,16 +341,16 @@ async def open_by_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[User
 async def waiting_on_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[WaitingOnUserCount]:
     return await tickets_waiting_on_user(db)
 
-@analytics_router.get("/sla_breaches")
+@analytics_router.get("/sla_breaches", response_model=SlaBreachesResult)
 async def sla_breaches_endpoint(
     request: Request,
     sla_days: int = Query(2, ge=0),
     status_id: List[int] = Query(default_factory=list),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, int]:
+) -> SlaBreachesResult:
     filters = extract_filters(request)
-    breaches = await sla_breaches(db, sla_days, filters=filters or None, status_ids=status_id or None)
-    return {"breaches": breaches}
+    result = await sla_breaches(db, sla_days, filters=filters or None, status_ids=status_id or None)
+    return result
 
 @analytics_router.get("/trend", response_model=List[TrendCount])
 async def ticket_trend_endpoint(days: int = Query(7, ge=1), db: AsyncSession = Depends(get_db)) -> List[TrendCount]:

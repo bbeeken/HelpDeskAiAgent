@@ -16,6 +16,7 @@ from schemas.analytics import (
     UserOpenCount,
     WaitingOnUserCount,
     TrendCount,
+    SlaBreachesResult,
 )
 
 
@@ -121,8 +122,8 @@ async def sla_breaches(
     sla_days: int = 2,
     filters: Optional[Dict[str, Any]] = None,
     status_ids: Optional[List[int] | int] = None,
-) -> int:
-    """Count tickets older than `sla_days` with optional filtering."""
+) -> SlaBreachesResult:
+    """Return IDs and count of tickets older than `sla_days`."""
     logger.info(
         "Counting SLA breaches older than %s days with filters=%s statuses=%s",
         sla_days,
@@ -130,19 +131,15 @@ async def sla_breaches(
         status_ids,
     )
     cutoff = datetime.now(timezone.utc) - timedelta(days=sla_days)
-    query = select(func.count(Ticket.Ticket_ID)).filter(Ticket.Created_Date < cutoff)
+    query = select(Ticket.Ticket_ID).filter(Ticket.Created_Date < cutoff)
 
     if status_ids is not None:
         if isinstance(status_ids, int):
             status_ids = [status_ids]
         query = query.filter(Ticket.Ticket_Status_ID.in_(status_ids))
     else:
-<<<<<<< HEAD
-        query = query.filter(Ticket.Ticket_Status_ID != 3,7)
-=======
         # Default to counting only open or in-progress tickets
         query = query.filter(Ticket.Ticket_Status_ID.in_([1, 2]))
->>>>>>> 4482d4edf44a12cca9d42188f38f7bc3e7ab8d93
 
     if filters:
         for key, value in filters.items():
@@ -150,7 +147,8 @@ async def sla_breaches(
                 query = query.filter(getattr(Ticket, key) == value)
 
     result = await db.execute(query)
-    return result.scalar_one()
+    ticket_ids = [row[0] for row in result.all()]
+    return SlaBreachesResult(breaches=len(ticket_ids), ticket_ids=ticket_ids)
 
 
 async def open_tickets_by_user(db: AsyncSession) -> List[UserOpenCount]:
