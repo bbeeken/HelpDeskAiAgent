@@ -153,15 +153,7 @@ from mcp import types
 
 from src.infrastructure import database as db
 from src.core.services.ticket_management import TicketManager
-from src.core.services.reference_data import ReferenceDataManager
 from src.shared.schemas.ticket import TicketExpandedOut, TicketCreate
-from src.core.services.analytics_reporting import (
-    open_tickets_by_site,
-    open_tickets_by_user,
-    tickets_by_status,
-    ticket_trend,
-    sla_breaches,
-)
 from src.core.services.enhanced_context import EnhancedContextManager
 
 
@@ -362,127 +354,6 @@ async def _add_ticket_message(
         return {"status": "error", "error": str(e)}
 
 
-async def _get_open_tickets(
-    days: int = 3650,
-    limit: int = 10,
-    skip: int = 0,
-    filters: _Dict[str, Any] | None = None,
-    sort: list[str] | None = None,
-) -> _Dict[str, Any]:
-    """Return open tickets with optional filters and sorting."""
-    try:
-        async with db.SessionLocal() as db_session:
-            tickets = await TicketManager().get_tickets_by_timeframe(
-                db_session,
-                status="open",
-                days=days,
-                limit=limit + skip if limit else None,
-            )
-
-            if filters:
-                filtered = []
-                for t in tickets:
-                    match = True
-                    for k, v in filters.items():
-                        if hasattr(t, k) and getattr(t, k) != v:
-                            match = False
-                            break
-                    if match:
-                        filtered.append(t)
-                tickets = filtered
-
-            if sort:
-                for key in reversed(sort):
-                    direction = "asc"
-                    column = key
-                    if key.startswith("-"):
-                        column = key[1:]
-                        direction = "desc"
-                    elif " " in key:
-                        column, dir_part = key.rsplit(" ", 1)
-                        if dir_part.lower() in {"asc", "desc"}:
-                            direction = dir_part.lower()
-                    if tickets and hasattr(tickets[0], column):
-                        tickets.sort(
-                            key=lambda t: getattr(t, column),
-                            reverse=direction == "desc",
-                        )
-
-            if skip:
-                tickets = tickets[skip:]
-            if limit:
-                tickets = tickets[:limit]
-
-            data = [TicketExpandedOut.model_validate(t).model_dump() for t in tickets]
-            return {"status": "success", "data": data}
-    except Exception as e:
-        logger.error(f"Error in get_open_tickets: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _get_analytics(type: str, params: _Dict[str, Any] | None = None) -> _Dict[str, Any]:
-    """Return analytics data based on requested type."""
-    try:
-        async with db.SessionLocal() as db_session:
-            if type == "status_counts":
-                result = await tickets_by_status(db_session)
-                data = result.data if getattr(result, "success", True) else []
-            elif type == "site_counts":
-                data = await open_tickets_by_site(db_session)
-            elif type == "technician_workload":
-                data = await open_tickets_by_user(db_session, params or None)
-            elif type == "sla_breaches":
-                days = params.get("sla_days", 2) if params else 2
-                status_ids = params.get("status_ids") if params else None
-                data = {
-                    "breaches": await sla_breaches(
-                        db_session, sla_days=days, status_ids=status_ids, filters=params
-                    )
-                }
-            elif type == "trends":
-                days = params.get("days", 7) if params else 7
-                data = await ticket_trend(db_session, days)
-            else:
-                raise ValueError("unknown analytics type")
-            return {"status": "success", "data": data}
-    except Exception as e:
-        logger.error(f"Error in get_analytics: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _list_reference_data(
-    type: str,
-    limit: int = 10,
-    filters: _Dict[str, Any] | None = None,
-    sort: list[str] | None = None,
-) -> _Dict[str, Any]:
-    """Return reference data such as sites or assets."""
-    try:
-        async with db.SessionLocal() as db_session:
-            mgr = ReferenceDataManager()
-            if type == "sites":
-                records = await mgr.list_sites(
-                    db_session, limit=limit, filters=filters or None, sort=sort
-                )
-            elif type == "assets":
-                records = await mgr.list_assets(
-                    db_session, limit=limit, filters=filters or None, sort=sort
-                )
-            elif type == "vendors":
-                records = await mgr.list_vendors(
-                    db_session, limit=limit, filters=filters or None, sort=sort
-                )
-            elif type == "categories":
-                records = await mgr.list_categories(
-                    db_session, filters=filters or None, sort=sort
-                )
-            else:
-                raise ValueError("unknown reference data type")
-            data = [r.__dict__ for r in records]
-            return {"status": "success", "data": data}
-    except Exception as e:
-        logger.error(f"Error in list_reference_data: {e}")
-        return {"status": "error", "error": str(e)}
 
 
 async def _ticket_full_context(ticket_id: int) -> _Dict[str, Any]:
@@ -624,49 +495,6 @@ ENHANCED_TOOLS: List[Tool] = [
             "required": ["identifier"],
         },
         _implementation=_get_tickets_by_user,
-    ),
-    Tool(
-        name="get_open_tickets",
-        description="List open tickets with optional filters",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "days": {"type": "integer", "default": 3650},
-                "limit": {"type": "integer", "default": 10},
-                "skip": {"type": "integer", "default": 0},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-        },
-        _implementation=_get_open_tickets,
-    ),
-    Tool(
-        name="get_analytics",
-        description="Retrieve analytics information",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "type": {"type": "string"},
-                "params": {"type": "object"},
-            },
-            "required": ["type"],
-        },
-        _implementation=_get_analytics,
-    ),
-    Tool(
-        name="list_reference_data",
-        description="List reference data like sites or assets",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "type": {"type": "string"},
-                "limit": {"type": "integer", "default": 10},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
-            },
-            "required": ["type"],
-        },
-        _implementation=_list_reference_data,
     ),
     Tool(
         name="get_ticket_full_context",
