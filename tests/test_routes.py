@@ -97,6 +97,22 @@ async def test_update_ticket(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_update_ticket_multiple_fields(client: AsyncClient):
+    resp = await _create_ticket(client)
+    assert resp.status_code == 201
+    ticket = resp.json()
+    tid = ticket["Ticket_ID"]
+
+    payload = {"Assigned_Name": "Agent Smith", "Ticket_Status_ID": 2, "Severity_ID": 3}
+    resp = await client.put(f"/ticket/{tid}", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["Assigned_Name"] == "Agent Smith"
+    assert data["Ticket_Status_ID"] == 2
+    assert data["Severity_ID"] == 3
+
+
+@pytest.mark.asyncio
 async def test_update_ticket_invalid_field(client: AsyncClient):
     resp = await _create_ticket(client)
     assert resp.status_code == 201
