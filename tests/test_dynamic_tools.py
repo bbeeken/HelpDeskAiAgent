@@ -83,6 +83,11 @@ async def test_removed_tools_return_404():
             "list_vendors",
             "list_categories",
             "by_user",
+            "get_system_snapshot",
+            "get_ticket_stats",
+            "get_workload_analytics",
+            "get_sla_metrics",
+            "sla_metrics",
         ]
         for name in missing:
             resp = await client.post(f"/{name}", json={})
@@ -93,7 +98,7 @@ async def test_removed_tools_return_404():
 async def test_new_tool_endpoints():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        resp = await client.post("/get_analytics", json={"type": "status_counts"})
+        resp = await client.post("/get_analytics", json={"type": "overview"})
         assert resp.status_code == 200
         assert resp.json().get("status") in {"success", "error"}
 

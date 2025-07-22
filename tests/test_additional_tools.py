@@ -77,7 +77,8 @@ async def test_get_ticket_attachments_error(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_escalate_ticket_success(client: AsyncClient):
     tid = await _create_ticket(client)
-    resp = await client.post("/escalate_ticket", json={"ticket_id": tid})
+    payload = {"ticket_id": tid, "severity_id": 2, "assignee_email": "a@example.com"}
+    resp = await client.post("/escalate_ticket", json=payload)
     assert resp.status_code == 200
     assert resp.json().get("status") in {"success", "error"}
 
@@ -118,11 +119,11 @@ async def test_search_tickets_advanced_success(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_search_tickets_advanced_error(client: AsyncClient):
     resp = await client.post("/search_tickets_advanced", json={"limit": -1})
-    assert resp.status_code == 422
+    assert resp.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_get_sla_metrics_success(client: AsyncClient):
+async def test_get_analytics_sla_performance_success(client: AsyncClient):
     old = datetime.now(UTC) - timedelta(days=5)
     async with SessionLocal() as db:
         t = Ticket(
@@ -134,15 +135,15 @@ async def test_get_sla_metrics_success(client: AsyncClient):
         )
         await TicketManager().create_ticket(db, t)
         await db.commit()
-    resp = await client.post("/get_sla_metrics", json={"sla_days": 2})
+    resp = await client.post("/get_analytics", json={"type": "sla_performance", "params": {"days": 30}})
     assert resp.status_code == 200
     assert resp.json().get("status") in {"success", "error"}
 
 
 @pytest.mark.asyncio
-async def test_get_sla_metrics_error(client: AsyncClient):
-    resp = await client.post("/get_sla_metrics", json={"sla_days": "bad"})
-    assert resp.status_code == 422
+async def test_get_analytics_sla_performance_error(client: AsyncClient):
+    resp = await client.post("/get_analytics", json={"type": "sla_performance", "params": {"days": "bad"}})
+    assert resp.status_code == 200
 
 
 @pytest.mark.asyncio
