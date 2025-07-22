@@ -157,6 +157,7 @@ Fields include:
 - `Priority_Level`
 - `Closed_Date`
 - `LastModified`
+- `LastModifiedBy`
 
 Example:
 
@@ -169,6 +170,7 @@ Example:
   "Site_ID": 2,
   "Priority_Level": "High",
   "Closed_Date": null,
-  "LastModified": null
+  "LastModified": null,
+  "LastModifiedBy": null
 }
 ```
