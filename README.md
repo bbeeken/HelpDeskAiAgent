@@ -358,23 +358,24 @@ Include this check in deployment pipelines to catch configuration issues early.
 
 ### Tool Reference
 
-The MCP server exposes several JSON-RPC tools. `tickets_by_user` returns
+The MCP server exposes several JSON-RPC tools. `get_tickets_by_user` returns
 expanded ticket records for a user. It accepts an `identifier`, optional
-`status` and arbitrary `filters`.
+`status` and arbitrary `filters`. Detailed descriptions for every tool are
+available in [docs/MCP_TOOLS_GUIDE.md](docs/MCP_TOOLS_GUIDE.md).
 
 ```bash
-curl "http://localhost:8000/tickets/by_user?identifier=user@example.com&status=open"
+curl "http://localhost:8000/get_tickets_by_user?identifier=user@example.com&status=open"
 ```
 
 Tool endpoints validate request bodies against each tool's `inputSchema` using
 JSON Schema. Payloads missing required fields or with incorrect types return a
 `422 Unprocessable Entity` response.
 
-`tickets_by_timeframe` lists tickets filtered by status and age. Provide a
+`get_open_tickets` lists tickets filtered by status and age. Provide a
 number of `days` and optional `status` such as `open` or `closed`.
 
 ```bash
-curl -X POST http://localhost:8000/tickets_by_timeframe \
+curl -X POST http://localhost:8000/get_open_tickets \
   -d '{"status": "open", "days": 7, "limit": 5}'
 ```
 
