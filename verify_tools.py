@@ -5,7 +5,7 @@ from typing import Set
 # Expected tool names exposed by the server
 EXPECTED_TOOLS: Set[str] = {
     "get_ticket",
-    "list_tickets",
+    "search_tickets",
 }
 
 

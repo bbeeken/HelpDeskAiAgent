@@ -7,7 +7,7 @@ import os
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
 import anyio
@@ -293,14 +293,36 @@ def _apply_semantic_filters(filters: dict[str, Any]) -> dict[str, Any]:
 # MCP Server Tool Implementations
 # ---------------------------------------------------------------------------
 
-async def _get_ticket(ticket_id: int) -> Dict[str, Any]:
-    """Retrieve a ticket by ID and return full details."""
+async def _get_ticket(ticket_id: int, include_full_context: bool = False) -> Dict[str, Any]:
+    """Retrieve a ticket by ID and return full details.
+
+    If ``include_full_context`` is true, the response also contains the last few
+    messages, attachments and a short user ticket history for additional
+    context.
+    """
     try:
         async with db.SessionLocal() as db_session:
             ticket = await TicketManager().get_ticket(db_session, ticket_id)
             if not ticket:
                 return {"status": "error", "error": f"Ticket {ticket_id} not found"}
             data = _format_ticket_by_level(ticket)
+
+            if include_full_context:
+                mgr = EnhancedContextManager(db_session)
+                messages = await mgr._get_ticket_messages(ticket_id)
+                attachments = await mgr._get_ticket_attachments(ticket_id)
+                history = await mgr._get_user_ticket_history(
+                    ticket.Ticket_Contact_Email,
+                    limit=5,
+                )
+                return {
+                    "status": "success",
+                    "data": data,
+                    "messages": messages[-5:],
+                    "attachments": attachments[-5:],
+                    "user_history": history,
+                }
+
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in get_ticket: {e}")
@@ -409,6 +431,112 @@ async def _search_tickets(query: str, limit: int = 10) -> Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
+async def _search_tickets_unified(
+    text: str | None = None,
+    user: str | None = None,
+    days: int | None = None,
+    limit: int = 10,
+    skip: int = 0,
+    filters: Dict[str, Any] | None = None,
+    sort: list[str] | None = None,
+) -> Dict[str, Any]:
+    """Unified ticket search supporting text, user and timeframe filters."""
+    try:
+        async with db.SessionLocal() as db_session:
+            base_stmt = select(VTicketMasterExpanded)
+
+            if text:
+                sanitized = html.escape(text)
+                pattern = f"%{sanitized}%"
+                base_stmt = base_stmt.filter(
+                    or_(
+                        VTicketMasterExpanded.Subject.ilike(pattern),
+                        VTicketMasterExpanded.Ticket_Body.ilike(pattern),
+                    )
+                )
+
+            if user:
+                ident = user.lower()
+                base_stmt = base_stmt.filter(
+                    or_(
+                        func.lower(VTicketMasterExpanded.Ticket_Contact_Name) == ident,
+                        func.lower(VTicketMasterExpanded.Ticket_Contact_Email) == ident,
+                        func.lower(VTicketMasterExpanded.Assigned_Name) == ident,
+                        func.lower(VTicketMasterExpanded.Assigned_Email) == ident,
+                    )
+                )
+
+            if days is not None and days >= 0:
+                cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+                base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date >= cutoff)
+
+            if filters:
+                applied = _apply_semantic_filters(filters)
+                for key, value in applied.items():
+                    if hasattr(VTicketMasterExpanded, key):
+                        col = getattr(VTicketMasterExpanded, key)
+                        if isinstance(value, list):
+                            base_stmt = base_stmt.filter(col.in_(value))
+                        else:
+                            base_stmt = base_stmt.filter(col == value)
+
+            # Sorting
+            order_stmt = base_stmt
+            if sort:
+                for key in reversed(sort):
+                    direction = "asc"
+                    column = key
+                    if key.startswith("-"):
+                        column = key[1:]
+                        direction = "desc"
+                    elif " " in key:
+                        column, dir_part = key.rsplit(" ", 1)
+                        if dir_part.lower() in {"asc", "desc"}:
+                            direction = dir_part.lower()
+                    if hasattr(VTicketMasterExpanded, column):
+                        attr = getattr(VTicketMasterExpanded, column)
+                        order_stmt = order_stmt.order_by(
+                            attr.desc() if direction == "desc" else attr.asc()
+                        )
+            else:
+                order_stmt = order_stmt.order_by(VTicketMasterExpanded.Created_Date.desc())
+
+            count_stmt = select(func.count()).select_from(order_stmt.subquery())
+            total_count = await db_session.scalar(count_stmt) or 0
+
+            if skip:
+                order_stmt = order_stmt.offset(skip)
+            if limit:
+                order_stmt = order_stmt.limit(limit)
+
+            result = await db_session.execute(order_stmt)
+            records = result.scalars().all()
+
+            data = []
+            for r in records:
+                item = _format_ticket_by_level(r)
+                if text:
+                    score = _calculate_search_relevance(item, text)
+                    item["relevance"] = round(score, 2)
+                    item["highlights"] = _generate_search_highlights(item, text)
+                data.append(item)
+
+            if text:
+                data.sort(key=lambda d: d.get("relevance", 0), reverse=True)
+
+            return {
+                "status": "success",
+                "data": data,
+                "count": len(data),
+                "total_count": total_count,
+                "skip": skip,
+                "limit": limit,
+            }
+    except Exception as e:
+        logger.error(f"Error in search_tickets_unified: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 async def _search_tickets_advanced(**criteria: Any) -> Dict[str, Any]:
     """Perform advanced ticket search with metadata."""
     try:
@@ -481,18 +609,37 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
         async with db.SessionLocal() as db_session:
             # Apply semantic filters to updates
             applied_updates = _apply_semantic_filters(updates)
+            message = applied_updates.pop("message", None)
+
+            # Closing logic
+            if applied_updates.get("Ticket_Status_ID") == 4 and "Closed_Date" not in applied_updates:
+                applied_updates["Closed_Date"] = datetime.now(timezone.utc)
+
+            # Assignment defaults
+            if "Assigned_Email" in applied_updates and "Assigned_Name" not in applied_updates:
+                applied_updates["Assigned_Name"] = applied_updates.get("Assigned_Email")
+
             applied_updates["LastModified"] = datetime.now(timezone.utc)
-            
+
             updated = await TicketManager().update_ticket(db_session, ticket_id, applied_updates)
             if not updated:
                 await db_session.rollback()
                 return {"status": "error", "error": f"Ticket {ticket_id} not found"}
-                
+
+            if message:
+                await TicketManager().post_message(
+                    db_session,
+                    ticket_id,
+                    message,
+                    applied_updates.get("Assigned_Email", "system"),
+                    applied_updates.get("Assigned_Name", applied_updates.get("Assigned_Email", "system")),
+                )
+
             await db_session.commit()
-            
+
             ticket = await TicketManager().get_ticket(db_session, ticket_id)
             data = _format_ticket_by_level(ticket)
-            
+
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in update_ticket: {e}")
@@ -544,67 +691,6 @@ async def _bulk_update_tickets(
         return {"status": "error", "error": str(e)}
 
 
-async def _close_ticket(
-    ticket_id: int,
-    resolution: str,
-    status_id: int = 4,
-) -> Dict[str, Any]:
-    """Close a ticket with a resolution."""
-    try:
-        async with db.SessionLocal() as db_session:
-            updates = {
-                "Ticket_Status_ID": status_id,
-                "Resolution": resolution,
-                "Closed_Date": datetime.now(timezone.utc),
-                "LastModified": datetime.now(timezone.utc)
-            }
-            
-            updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
-            if not updated:
-                await db_session.rollback()
-                return {"status": "error", "error": f"Ticket {ticket_id} not found"}
-                
-            await db_session.commit()
-            
-            ticket = await TicketManager().get_ticket(db_session, ticket_id)
-            data = _format_ticket_by_level(ticket)
-            
-            return {"status": "success", "data": data}
-    except Exception as e:
-        logger.error(f"Error in close_ticket: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _assign_ticket(
-    ticket_id: int,
-    assignee_email: str,
-    assignee_name: str | None = None,
-) -> Dict[str, Any]:
-    """Assign a ticket to a technician."""
-    try:
-        async with db.SessionLocal() as db_session:
-            updates = {
-                "Assigned_Email": assignee_email,
-                "Assigned_Name": assignee_name or assignee_email,
-                "LastModified": datetime.now(timezone.utc)
-            }
-            
-            updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
-            if not updated:
-                await db_session.rollback()
-                return {"status": "error", "error": f"Ticket {ticket_id} not found"}
-                
-            await db_session.commit()
-            
-            ticket = await TicketManager().get_ticket(db_session, ticket_id)
-            data = _format_ticket_by_level(ticket)
-            
-            return {"status": "success", "data": data}
-    except Exception as e:
-        logger.error(f"Error in assign_ticket: {e}")
-        return {"status": "error", "error": str(e)}
-
-
 async def _add_ticket_message(
     ticket_id: int,
     message: str,
@@ -639,52 +725,6 @@ async def _add_ticket_message(
         return {"status": "error", "error": str(e)}
 
 
-async def _escalate_ticket(
-    ticket_id: int,
-    severity_id: int,
-    assignee_email: str,
-    assignee_name: str | None = None,
-    message: str | None = None,
-) -> Dict[str, Any]:
-    """Escalate a ticket by updating severity and assignee."""
-    try:
-        async with db.SessionLocal() as db_session:
-            updates = {
-                "Severity_ID": severity_id,
-                "Assigned_Email": assignee_email,
-                "Assigned_Name": assignee_name or assignee_email,
-                "LastModified": datetime.now(timezone.utc)
-            }
-            
-            updated = await TicketManager().update_ticket(db_session, ticket_id, updates)
-            if not updated:
-                await db_session.rollback()
-                return {"status": "error", "error": f"Ticket {ticket_id} not found"}
-            
-            await db_session.commit()
-            
-            # Add escalation note
-            if message:
-                note = message
-            else:
-                note = f"Ticket escalated to severity {severity_id} and assigned to {assignee_name or assignee_email}"
-                
-            await TicketManager().post_message(
-                db_session,
-                ticket_id,
-                note,
-                assignee_email,
-                assignee_name or assignee_email,
-            )
-            await db_session.commit()
-
-            ticket = await TicketManager().get_ticket(db_session, ticket_id)
-            data = _format_ticket_by_level(ticket)
-            
-            return {"status": "success", "data": data}
-    except Exception as e:
-        logger.error(f"Error in escalate_ticket: {e}")
-        return {"status": "error", "error": str(e)}
 
 
 async def _get_ticket_messages(ticket_id: int) -> Dict[str, Any]:
@@ -917,52 +957,107 @@ async def _get_sla_metrics(
         return {"status": "error", "error": str(e)}
 
 
-async def _list_reference_data(
+async def _get_reference_data_unified(
     type: str,
     limit: int = 10,
+    skip: int = 0,
     filters: Dict[str, Any] | None = None,
     sort: list[str] | None = None,
+    include_counts: bool = False,
 ) -> Dict[str, Any]:
-    """Return reference data such as sites, assets, vendors, or categories."""
+    """Return reference data records with optional ticket counts."""
     try:
         async with db.SessionLocal() as db_session:
             mgr = ReferenceDataManager()
-            
+
+            records: list[Any]
+            field = None
             if type == "sites":
-                records = await mgr.list_sites(
-                    db_session, limit=limit, filters=filters, sort=sort
-                )
+                records = await mgr.list_sites(db_session, skip=skip, limit=limit, filters=filters, sort=sort)
+                field = "Site_ID"
+                ids = [r.ID for r in records]
             elif type == "assets":
-                records = await mgr.list_assets(
-                    db_session, limit=limit, filters=filters, sort=sort
-                )
+                records = await mgr.list_assets(db_session, skip=skip, limit=limit, filters=filters, sort=sort)
+                field = "Asset_ID"
+                ids = [r.ID for r in records]
             elif type == "vendors":
-                records = await mgr.list_vendors(
-                    db_session, limit=limit, filters=filters, sort=sort
-                )
+                records = await mgr.list_vendors(db_session, skip=skip, limit=limit, filters=filters, sort=sort)
+                field = "Assigned_Vendor_ID"
+                ids = [r.ID for r in records]
             elif type == "categories":
-                records = await mgr.list_categories(
-                    db_session, filters=filters, sort=sort
-                )
+                records = await mgr.list_categories(db_session, filters=filters, sort=sort)
+                total_count = len(records)
+                if skip:
+                    records = records[skip:]
+                if limit:
+                    records = records[:limit]
+                field = "Ticket_Category_ID"
+                ids = [r.ID for r in records]
+            elif type == "priorities":
+                result = await db_session.execute(select(Priority).order_by(Priority.ID))
+                records = result.scalars().all()
+                total_count = len(records)
+                if skip:
+                    records = records[skip:]
+                if limit:
+                    records = records[:limit]
+                field = "Priority_Level"
+                ids = [r.Level for r in records]
+            elif type == "statuses":
+                result = await db_session.execute(select(TicketStatus).order_by(TicketStatus.ID))
+                records = result.scalars().all()
+                total_count = len(records)
+                if skip:
+                    records = records[skip:]
+                if limit:
+                    records = records[:limit]
+                field = "Ticket_Status_ID"
+                ids = [r.ID for r in records]
             else:
                 return {"status": "error", "error": f"Unknown reference data type: {type}"}
-                
-            # Convert to dictionaries and clean up
+
+            if include_counts and field:
+                open_counts = await _count_open_tickets_by_field(db_session, field, ids)
+                total_counts = await _count_total_tickets_by_field(db_session, field, ids)
+            else:
+                open_counts = {}
+                total_counts = {}
+
             data = []
             for r in records:
                 item = r.__dict__.copy()
-                # Remove SQLAlchemy internal attributes
-                item.pop('_sa_instance_state', None)
+                item.pop("_sa_instance_state", None)
+                if type == "priorities":
+                    item = {
+                        "id": r.ID,
+                        "level": r.Level,
+                        "semantic_name": _PRIORITY_MAP.get(r.Level.lower(), r.Level) if r.Level else None,
+                    }
+                    key = r.Level
+                else:
+                    key = r.ID
+
+                if include_counts:
+                    item["open_tickets"] = open_counts.get(key, 0)
+                    item["total_tickets"] = total_counts.get(key, 0)
+                    item["closed_tickets"] = item["total_tickets"] - item["open_tickets"]
+
                 data.append(item)
-                
-            return {
+
+            result_obj = {
                 "status": "success",
                 "data": data,
                 "type": type,
-                "count": len(data)
+                "count": len(data),
+                "skip": skip,
+                "limit": limit,
             }
+            if type in {"categories", "priorities", "statuses"}:
+                result_obj["total_count"] = locals().get("total_count", len(records))
+
+            return result_obj
     except Exception as e:
-        logger.error(f"Error in list_reference_data: {e}")
+        logger.error(f"Error in get_reference_data: {e}")
         return {"status": "error", "error": str(e)}
 
 
@@ -1021,224 +1116,6 @@ async def _count_total_tickets_by_field(
     return {row[0]: row[1] for row in result.all()}
 
 
-async def _list_sites_enhanced(
-    limit: int = 10,
-    skip: int = 0,
-    filters: Dict[str, Any] | None = None,
-    sort: list[str] | None = None,
-) -> Dict[str, Any]:
-    """List sites with ticket counts."""
-    try:
-        async with db.SessionLocal() as db_session:
-            mgr = ReferenceDataManager()
-            sites = await mgr.list_sites(
-                db_session,
-                skip=skip,
-                limit=limit,
-                filters=filters,
-                sort=sort,
-            )
-            
-            # Get ticket counts
-            ids = [s.ID for s in sites]
-            open_counts = await _count_open_tickets_by_field(db_session, "Site_ID", ids)
-            total_counts = await _count_total_tickets_by_field(db_session, "Site_ID", ids)
-            
-            # Build enhanced data
-            data = []
-            for s in sites:
-                item = s.__dict__.copy()
-                item.pop('_sa_instance_state', None)
-                item["open_tickets"] = open_counts.get(s.ID, 0)
-                item["total_tickets"] = total_counts.get(s.ID, 0)
-                item["closed_tickets"] = item["total_tickets"] - item["open_tickets"]
-                data.append(item)
-                
-            return {
-                "status": "success",
-                "data": data,
-                "count": len(data),
-                "skip": skip,
-                "limit": limit
-            }
-    except Exception as e:
-        logger.error(f"Error in list_sites_enhanced: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _list_assets_enhanced(
-    limit: int = 10,
-    skip: int = 0,
-    filters: Dict[str, Any] | None = None,
-    sort: list[str] | None = None,
-) -> Dict[str, Any]:
-    """List assets with ticket counts."""
-    try:
-        async with db.SessionLocal() as db_session:
-            mgr = ReferenceDataManager()
-            assets = await mgr.list_assets(
-                db_session,
-                skip=skip,
-                limit=limit,
-                filters=filters,
-                sort=sort,
-            )
-            
-            # Get ticket counts
-            ids = [a.ID for a in assets]
-            open_counts = await _count_open_tickets_by_field(db_session, "Asset_ID", ids)
-            total_counts = await _count_total_tickets_by_field(db_session, "Asset_ID", ids)
-            
-            # Build enhanced data
-            data = []
-            for a in assets:
-                item = a.__dict__.copy()
-                item.pop('_sa_instance_state', None)
-                item["open_tickets"] = open_counts.get(a.ID, 0)
-                item["total_tickets"] = total_counts.get(a.ID, 0)
-                item["closed_tickets"] = item["total_tickets"] - item["open_tickets"]
-                data.append(item)
-                
-            return {
-                "status": "success",
-                "data": data,
-                "count": len(data),
-                "skip": skip,
-                "limit": limit
-            }
-    except Exception as e:
-        logger.error(f"Error in list_assets_enhanced: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _list_vendors_enhanced(
-    limit: int = 10,
-    skip: int = 0,
-    filters: Dict[str, Any] | None = None,
-    sort: list[str] | None = None,
-) -> Dict[str, Any]:
-    """List vendors with ticket counts."""
-    try:
-        async with db.SessionLocal() as db_session:
-            mgr = ReferenceDataManager()
-            vendors = await mgr.list_vendors(
-                db_session,
-                skip=skip,
-                limit=limit,
-                filters=filters,
-                sort=sort,
-            )
-            
-            # Get ticket counts
-            ids = [v.ID for v in vendors]
-            open_counts = await _count_open_tickets_by_field(db_session, "Assigned_Vendor_ID", ids)
-            total_counts = await _count_total_tickets_by_field(db_session, "Assigned_Vendor_ID", ids)
-            
-            # Build enhanced data
-            data = []
-            for v in vendors:
-                item = v.__dict__.copy()
-                item.pop('_sa_instance_state', None)
-                item["open_tickets"] = open_counts.get(v.ID, 0)
-                item["total_tickets"] = total_counts.get(v.ID, 0)
-                item["closed_tickets"] = item["total_tickets"] - item["open_tickets"]
-                data.append(item)
-                
-            return {
-                "status": "success",
-                "data": data,
-                "count": len(data),
-                "skip": skip,
-                "limit": limit
-            }
-    except Exception as e:
-        logger.error(f"Error in list_vendors_enhanced: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _list_categories_enhanced(
-    limit: int = 10,
-    skip: int = 0,
-    filters: Dict[str, Any] | None = None,
-    sort: list[str] | None = None,
-) -> Dict[str, Any]:
-    """List categories with ticket counts."""
-    try:
-        async with db.SessionLocal() as db_session:
-            mgr = ReferenceDataManager()
-            cats = await mgr.list_categories(
-                db_session,
-                filters=filters,
-                sort=sort,
-            )
-            
-            # Apply pagination to categories
-            total_count = len(cats)
-            if skip:
-                cats = cats[skip:]
-            if limit:
-                cats = cats[:limit]
-            
-            # Get ticket counts
-            ids = [c.ID for c in cats]
-            open_counts = await _count_open_tickets_by_field(
-                db_session,
-                "Ticket_Category_ID",
-                ids,
-            )
-            total_counts = await _count_total_tickets_by_field(
-                db_session,
-                "Ticket_Category_ID",
-                ids,
-            )
-            
-            # Build enhanced data
-            data = []
-            for c in cats:
-                item = c.__dict__.copy()
-                item.pop('_sa_instance_state', None)
-                item["open_tickets"] = open_counts.get(c.ID, 0)
-                item["total_tickets"] = total_counts.get(c.ID, 0)
-                item["closed_tickets"] = item["total_tickets"] - item["open_tickets"]
-                data.append(item)
-                
-            return {
-                "status": "success",
-                "data": data,
-                "count": len(data),
-                "total_count": total_count,
-                "skip": skip,
-                "limit": limit
-            }
-    except Exception as e:
-        logger.error(f"Error in list_categories_enhanced: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _list_priorities() -> Dict[str, Any]:
-    """Return available priority levels ordered by ID."""
-    try:
-        async with db.SessionLocal() as db_session:
-            result = await db_session.execute(select(Priority).order_by(Priority.ID))
-            records = result.scalars().all()
-            
-            data = [
-                {
-                    "id": p.ID,
-                    "level": p.Level,
-                    "semantic_name": _PRIORITY_MAP.get(p.Level.lower(), p.Level) if p.Level else None
-                }
-                for p in records
-            ]
-            
-            return {
-                "status": "success",
-                "data": data,
-                "count": len(data)
-            }
-    except Exception as e:
-        logger.error(f"Error in list_priorities: {e}")
-        return {"status": "error", "error": str(e)}
 
 
 async def _ticket_full_context(ticket_id: int) -> Dict[str, Any]:
@@ -1385,32 +1262,33 @@ async def _sla_metrics(days: int = 30) -> Dict[str, Any]:
 ENHANCED_TOOLS: List[Tool] = [
     Tool(
         name="get_ticket",
+
         description="Get a ticket by ID with full details",
         inputSchema={
             "type": "object",
             "properties": {"ticket_id": {"type": "integer", "description": "The ticket ID"}},
             "required": ["ticket_id"],
             "examples": [{"ticket_id": 123}],
-        },
-        _implementation=_get_ticket,
-    ),
-    Tool(
-        name="list_tickets",
-        description="List tickets with optional semantic filters (e.g., status='open', priority='high')",
+
+        description="Get a ticket by ID with optional context",
         inputSchema={
             "type": "object",
             "properties": {
-                "limit": {"type": "integer", "default": 10, "description": "Maximum number of tickets to return"},
-                "skip": {"type": "integer", "default": 0, "description": "Number of tickets to skip"},
-                "filters": {"type": "object", "description": "Filter criteria (supports semantic values like status='open')"},
-                "sort": {"type": "array", "items": {"type": "string"}, "description": "Sort fields (prefix with - for descending)"},
+                "ticket_id": {"type": "integer", "description": "The ticket ID"},
+                "include_full_context": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Include recent messages and history",
+                },
             },
+            "required": ["ticket_id"],
             "examples": [
-                {"limit": 5, "filters": {"status": "open"}},
-                {"limit": 10, "filters": {"priority": "high"}, "sort": ["-Created_Date"]}
+                {"ticket_id": 123},
+                {"ticket_id": 123, "include_full_context": True},
             ],
+
         },
-        _implementation=_list_tickets,
+        _implementation=_get_ticket,
     ),
     Tool(
         name="create_ticket",
@@ -1454,64 +1332,6 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_bulk_update_tickets,
     ),
     Tool(
-        name="close_ticket",
-        description="Close a ticket with resolution",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "ticket_id": {"type": "integer", "description": "The ticket ID to close"},
-                "resolution": {"type": "string", "description": "Resolution description"},
-                "status_id": {"type": "integer", "default": 4, "description": "Closed status ID"},
-            },
-            "required": ["ticket_id", "resolution"],
-            "examples": [
-                {"ticket_id": 1, "resolution": "Issue resolved by restarting service"}
-            ],
-        },
-        _implementation=_close_ticket,
-    ),
-    Tool(
-        name="assign_ticket",
-        description="Assign a ticket to a technician",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "ticket_id": {"type": "integer", "description": "The ticket ID"},
-                "assignee_email": {"type": "string", "description": "Assignee's email address"},
-                "assignee_name": {"type": "string", "description": "Assignee's display name"},
-            },
-            "required": ["ticket_id", "assignee_email"],
-            "examples": [
-                {"ticket_id": 1, "assignee_email": "tech@example.com", "assignee_name": "John Doe"}
-            ],
-        },
-        _implementation=_assign_ticket,
-    ),
-    Tool(
-        name="escalate_ticket",
-        description="Escalate a ticket by updating severity and assignment",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "ticket_id": {"type": "integer", "description": "The ticket ID"},
-                "severity_id": {"type": "integer", "description": "New severity level (1=Critical, 2=High, 3=Medium, 4=Low)"},
-                "assignee_email": {"type": "string", "description": "Email of escalation assignee"},
-                "assignee_name": {"type": "string", "description": "Name of escalation assignee"},
-                "message": {"type": "string", "description": "Escalation note"},
-            },
-            "required": ["ticket_id", "severity_id", "assignee_email"],
-            "examples": [
-                {
-                    "ticket_id": 123,
-                    "severity_id": 1,
-                    "assignee_email": "senior@example.com",
-                    "message": "Escalating due to production impact"
-                }
-            ],
-        },
-        _implementation=_escalate_ticket,
-    ),
-    Tool(
         name="add_ticket_message",
         description="Add a message/comment to a ticket",
         inputSchema={
@@ -1553,65 +1373,25 @@ ENHANCED_TOOLS: List[Tool] = [
     ),
     Tool(
         name="search_tickets",
-        description="Search tickets by text with relevance scoring",
+        description="Unified ticket search with text, user, timeframe and filters",
         inputSchema={
             "type": "object",
             "properties": {
-                "query": {"type": "string", "description": "Search query text"},
-                "limit": {"type": "integer", "default": 10, "description": "Maximum results"},
-            },
-            "required": ["query"],
-            "examples": [
-                {"query": "printer", "limit": 5},
-                {"query": "network connectivity"}
-            ],
-        },
-        _implementation=_search_tickets,
-    ),
-    Tool(
-        name="search_tickets_advanced",
-        description="Advanced ticket search with multiple criteria",
-        inputSchema=AdvancedQuery.model_json_schema(),
-        _implementation=_search_tickets_advanced,
-    ),
-    Tool(
-        name="get_tickets_by_user",
-        description="Retrieve tickets associated with a user",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "identifier": {"type": "string", "description": "User email or identifier"},
-                "skip": {"type": "integer", "default": 0},
-                "limit": {"type": "integer", "default": 100},
-                "status": {"type": "string", "description": "Filter by status"},
-                "filters": {"type": "object", "description": "Additional filters"},
-            },
-            "required": ["identifier"],
-            "examples": [
-                {"identifier": "user@example.com", "status": "open"},
-                {"identifier": "john.doe@company.com", "limit": 20}
-            ],
-        },
-        _implementation=_get_tickets_by_user,
-    ),
-    Tool(
-        name="get_open_tickets",
-        description="List open tickets with timeframe and filtering",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "days": {"type": "integer", "default": 3650, "description": "Tickets from last N days"},
+                "text": {"type": "string", "description": "Search query text"},
+                "user": {"type": "string", "description": "User email or name"},
+                "days": {"type": "integer", "description": "Tickets from last N days", "default": 30},
                 "limit": {"type": "integer", "default": 10},
                 "skip": {"type": "integer", "default": 0},
                 "filters": {"type": "object"},
                 "sort": {"type": "array", "items": {"type": "string"}},
             },
             "examples": [
-                {"days": 30, "limit": 20},
-                {"days": 7, "filters": {"priority": "high"}, "sort": ["-Created_Date"]}
+                {"text": "printer error", "days": 7},
+                {"user": "tech@example.com", "filters": {"status": "open"}},
+                {"text": "network", "user": "alice@example.com", "days": 30}
             ],
         },
-        _implementation=_get_open_tickets,
+        _implementation=_search_tickets_unified,
     ),
     Tool(
         name="get_analytics",
@@ -1636,37 +1416,36 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_get_analytics_unified,
     ),
     Tool(
-        name="list_reference_data",
-        description="List reference data (sites, assets, vendors, categories)",
+        name="get_reference_data",
+        description="Retrieve reference data with optional ticket counts",
         inputSchema={
             "type": "object",
             "properties": {
                 "type": {
                     "type": "string",
-                    "enum": ["sites", "assets", "vendors", "categories"],
-                    "description": "Type of reference data"
+                    "enum": [
+                        "sites",
+                        "assets",
+                        "vendors",
+                        "categories",
+                        "priorities",
+                        "statuses",
+                    ],
+                    "description": "Type of reference data",
                 },
                 "limit": {"type": "integer", "default": 10},
+                "skip": {"type": "integer", "default": 0},
                 "filters": {"type": "object"},
                 "sort": {"type": "array", "items": {"type": "string"}},
+                "include_counts": {"type": "boolean", "default": False},
             },
             "required": ["type"],
             "examples": [
-                {"type": "sites", "limit": 10},
-                {"type": "categories", "sort": ["Label"]}
+                {"type": "sites", "include_counts": True},
+                {"type": "priorities"},
             ],
         },
-        _implementation=_list_reference_data,
-    ),
-    Tool(
-        name="list_priorities",
-        description="List available priority levels",
-        inputSchema={
-            "type": "object",
-            "properties": {},
-            "examples": [{}],
-        },
-        _implementation=_list_priorities,
+        _implementation=_get_reference_data_unified,
     ),
     Tool(
         name="get_ticket_full_context",
@@ -1680,6 +1459,7 @@ ENHANCED_TOOLS: List[Tool] = [
         _implementation=_ticket_full_context,
     ),
     Tool(
+
         name="advanced_search",
         description="Run a detailed ticket search with advanced options",
         inputSchema={
@@ -1695,8 +1475,54 @@ ENHANCED_TOOLS: List[Tool] = [
             ],
         },
         _implementation=_advanced_search,
+
+        name="get_system_snapshot",
+        description="Get current system overview and statistics",
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "examples": [{}],
+        },
+        _implementation=_system_snapshot,
+    ),
+    Tool(
+        name="get_ticket_stats",
+        description="Get ticket statistics grouped by status, priority, site, and category",
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "examples": [{}],
+        },
+        _implementation=_get_ticket_stats,
+    ),
+    Tool(
+        name="get_workload_analytics",
+        description="Get workload analytics for technicians and ticket queues",
+        inputSchema={
+            "type": "object",
+            "properties": {},
+            "examples": [{}],
+        },
+        _implementation=_get_workload_analytics,
+    ),
+    Tool(
+        name="sla_metrics",
+        description="Retrieve comprehensive SLA performance metrics dashboard",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "days": {"type": "integer", "default": 30, "description": "Time range in days"}
+            },
+            "examples": [
+                {"days": 30},
+                {"days": 7}
+            ],
+        },
+        _implementation=_sla_metrics,
+
     ),
 ]
+
 
 # Enhanced reference data tools with ticket counts
 ENHANCED_REFERENCE_TOOLS: List[Tool] = [
@@ -1775,7 +1601,18 @@ ENHANCED_REFERENCE_TOOLS: List[Tool] = [
 ]
 
 # Combine all tools
-ENHANCED_TOOLS.extend(ENHANCED_REFERENCE_TOOLS)
+# Rebuild ENHANCED_TOOLS with all tool definitions while preserving order and
+# eliminating any duplicate tool names. This ensures ``list_tools`` exposes a
+# clean set regardless of how tools were defined above.
+_combined_tools: List[Tool] = []
+_seen_names = set()
+for _tool in ENHANCED_TOOLS + ENHANCED_REFERENCE_TOOLS:
+    if _tool.name not in _seen_names:
+        _combined_tools.append(_tool)
+        _seen_names.add(_tool.name)
+
+ENHANCED_TOOLS = _combined_tools
+
 
 
 # ---------------------------------------------------------------------------
