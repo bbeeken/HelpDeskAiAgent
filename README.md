@@ -414,14 +414,12 @@ Additional tools are available:
     -d '{"ticket_ids": [1,2,3], "updates": {"Assigned_Email": "tech@example.com"}}'
   ```
 
-The server exposes eleven core JSON-RPC tools. Each expects a JSON body matching its schema.
+The server exposes nine core JSON-RPC tools. Each expects a JSON body matching its schema.
 
 - `get_ticket` – `{"ticket_id": 123}`
 - `list_tickets` – `{"limit": 5}`
 - `create_ticket` – see `TicketCreate` schema
 - `update_ticket` – `{"ticket_id": 1, "updates": {}}`
-- `close_ticket` – `{"ticket_id": 1, "resolution": "Fixed"}`
-- `assign_ticket` – `{"ticket_id": 1, "assignee_email": "tech@example.com"}`
 - `add_ticket_message` – `{"ticket_id": 1, "message": "Checking", "sender_name": "Agent"}`
 - `search_tickets` – `{"query": "printer"}`
 - `get_tickets_by_user` – `{"identifier": "user@example.com"}`
