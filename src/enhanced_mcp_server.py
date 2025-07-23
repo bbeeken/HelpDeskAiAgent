@@ -186,6 +186,10 @@ _STATUS_MAP = {
     "pending": 3,
 }
 
+# IDs that represent an "open" style status in the database. When filtering on
+# ``status=open`` these should all be matched.
+_OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
+
 _PRIORITY_MAP = {
     "critical": "Critical",
     "high": "High",
@@ -270,7 +274,21 @@ def _apply_semantic_filters(filters: dict[str, Any]) -> dict[str, Any]:
         
         if k in {"status", "ticket_status"}:
             if isinstance(value, str):
-                translated["Ticket_Status_ID"] = _STATUS_MAP.get(value.lower(), value)
+                v = value.lower()
+                if v == "open":
+                    translated["Ticket_Status_ID"] = _OPEN_STATE_IDS
+                else:
+                    translated["Ticket_Status_ID"] = _STATUS_MAP.get(v, value)
+            elif isinstance(value, list):
+                ids: list[Any] = []
+                for item in value:
+                    if isinstance(item, str) and item.lower() == "open":
+                        ids.extend(_OPEN_STATE_IDS)
+                    elif isinstance(item, str):
+                        ids.append(_STATUS_MAP.get(item.lower(), item))
+                    else:
+                        ids.append(item)
+                translated["Ticket_Status_ID"] = ids
             else:
                 translated["Ticket_Status_ID"] = value
                 
