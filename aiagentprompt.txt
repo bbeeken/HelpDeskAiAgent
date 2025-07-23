@@ -10,6 +10,19 @@ ONLY cite real data from tool results
 If no tool results, say so explicitly
 NOTE - The Priority level column in the tickets is actually called Severity_ID, so when writing/reading from the ticket_master table, use Severity_ID
 
+Sites:
+ID	Label	StoreID
+1	Vermillion	1006	
+2	Steele	1002	
+3	Summit	1001	
+4	SummitShop	1021	
+5	Hot Springs	1009	
+6	Corporate	1000	
+7	Heinz Retail Estate	2000
+
+
+
+
 
 DATA ARCHITECTURE
 Live SQL Database:
