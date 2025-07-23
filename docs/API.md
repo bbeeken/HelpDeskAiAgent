@@ -4,6 +4,9 @@ This document lists the available HTTP endpoints provided by the HelpDesk servic
 
 ## Ticket Endpoints
 
+All ticket operations are prefixed with `/ticket` (singular). The old `/tickets`
+paths remain for backwards compatibility but are no longer documented here.
+
 - `GET /ticket/search` – search for tickets using query parameters.
 - `POST /ticket/search` – search using a JSON payload.
 - `GET /ticket/{ticket_id}` – retrieve a single ticket.
