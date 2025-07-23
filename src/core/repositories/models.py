@@ -24,7 +24,7 @@ class Ticket(Base):
     Assigned_Vendor_ID = Column(Integer)
     Closed_Date = Column(DateTime(timezone=False))
     LastModified = Column(DateTime(timezone=False))
-    LastModfiedBy = Column(String)
+    LastModifiedBy = Column(String)
     Resolution = Column(Text)
 
 
@@ -130,7 +130,7 @@ class VTicketMasterExpanded(ViewBase):
     Assigned_Vendor_ID = Column(Integer)
     Closed_Date = Column(DateTime(timezone=False))
     LastModified = Column(DateTime(timezone=False))
-    LastModfiedBy = Column(String)
+    LastModifiedBy = Column(String)
 
     Assigned_Vendor_Name = Column(String)
     Resolution = Column(Text)
