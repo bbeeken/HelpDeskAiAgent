@@ -57,6 +57,7 @@ async def create_ticket(db: AsyncSession, obj: Dict) -> Any:
     "/search",
     response_model=List[TicketSearchOut],
     operation_id="search_tickets",
+    response_model_by_alias=False,
 )
 async def search_tickets(
     q: str = Query(..., min_length=1),
@@ -96,6 +97,7 @@ async def search_tickets_json(
     "",
     response_model=PaginatedResponse[TicketExpandedOut],
     operation_id="list_tickets",
+    response_model_by_alias=False,
 )
 async def list_tickets(
     request: Request,
@@ -136,6 +138,7 @@ async def list_tickets(
     "/expanded",
     response_model=PaginatedResponse[TicketExpandedOut],
     operation_id="list_expanded_tickets",
+    response_model_by_alias=False,
 )
 async def list_tickets_expanded_alias(
     request: Request,
@@ -150,6 +153,7 @@ async def list_tickets_expanded_alias(
     "/by_user",
     response_model=PaginatedResponse[TicketExpandedOut],
     operation_id="tickets_by_user",
+    response_model_by_alias=False,
 )
 async def tickets_by_user_endpoint(
     request: Request,
@@ -188,6 +192,7 @@ async def tickets_by_user_endpoint(
     "/{ticket_id}",
     response_model=TicketExpandedOut,
     operation_id="get_ticket",
+    response_model_by_alias=False,
 )
 async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketExpandedOut:
     ticket = await TicketManager().get_ticket(db, ticket_id)
@@ -278,6 +283,7 @@ async def update_ticket_json(
     "/{ticket_id}/messages",
     response_model=List[TicketMessageOut],
     operation_id="list_ticket_messages",
+    response_model_by_alias=False,
 )
 async def list_ticket_messages(
     ticket_id: int, db: AsyncSession = Depends(get_db)
@@ -309,6 +315,7 @@ async def add_ticket_message(
     "/search",
     response_model=List[TicketSearchOut],
     operation_id="search_tickets_legacy",
+    response_model_by_alias=False,
 )
 async def search_tickets_legacy(
     q: str = Query(..., min_length=1),
@@ -335,6 +342,7 @@ async def search_tickets_json_legacy(
     "/expanded",
     response_model=PaginatedResponse[TicketExpandedOut],
     operation_id="list_expanded_tickets_legacy",
+    response_model_by_alias=False,
 )
 async def list_tickets_expanded_legacy(
     request: Request,
@@ -349,6 +357,7 @@ async def list_tickets_expanded_legacy(
     "/by_user",
     response_model=PaginatedResponse[TicketExpandedOut],
     operation_id="tickets_by_user_legacy",
+    response_model_by_alias=False,
 )
 async def tickets_by_user_legacy(
     request: Request,
