@@ -168,6 +168,18 @@ async def timeout_middleware(request: Request, call_next):
         )
 
 
+# MCP tool configuration
+EXCLUDED_TOOLS = set()
+
+EXPOSED_TOOLS = [t for t in TOOLS if t.name not in EXCLUDED_TOOLS]
+
+# Paths that require the MCP server to be initialized
+MCP_ENDPOINTS = (
+    [f"/{tool.name}" for tool in EXPOSED_TOOLS]
+    + ["/tools", "/health/mcp", "/mcp", "/mcp/messages/"]
+)
+
+
 @app.middleware("http")
 async def verify_mcp_initialized(request: Request, call_next):
     """Ensure MCP server is ready before handling MCP requests."""
@@ -329,11 +341,6 @@ logger.info("Enhanced MCP server active with %d tools", len(TOOLS))
 
 
 
-EXCLUDED_TOOLS = set()
-
-
-EXPOSED_TOOLS = [t for t in TOOLS if t.name not in EXCLUDED_TOOLS]
-
 for tool in EXPOSED_TOOLS:
     schema = tool.inputSchema if isinstance(tool.inputSchema, dict) else {}
     endpoint_func = build_mcp_endpoint(tool, schema)
@@ -352,12 +359,6 @@ for tool in EXPOSED_TOOLS:
     )(endpoint_func)
 
 logger.info("Registered %d MCP tools as HTTP endpoints", len(EXPOSED_TOOLS))
-
-# Paths that require the MCP server to be initialized
-MCP_ENDPOINTS = (
-    [f"/{tool.name}" for tool in EXPOSED_TOOLS]
-    + ["/tools", "/health/mcp", "/mcp", "/mcp/messages/"]
-)
 
 
 # Standard API routes
