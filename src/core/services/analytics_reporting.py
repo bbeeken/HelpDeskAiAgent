@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime, timedelta, timezone, date as date_cls
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 import os
 import time
 import threading
@@ -140,7 +140,7 @@ async def sla_breaches(
     db: AsyncSession,
     sla_days: int = 2,
     filters: Optional[Dict[str, Any]] = None,
-    status_ids: Optional[List[int] | int] = None,
+    status_ids: Optional[Union[List[int], int]] = None,
 ) -> int:
     """Count tickets older than `sla_days` with optional filtering."""
     logger.info(
