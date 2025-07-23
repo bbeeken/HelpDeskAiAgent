@@ -47,7 +47,10 @@ class EnhancedContextManager:
 
     @staticmethod
     def _safe_datetime_diff_hours(end_dt: Optional[datetime], start_dt: Optional[datetime]) -> Optional[float]:
-        """Safely calculate hours between two datetimes, handling timezone issues."""
+        """Safely calculate hours between two datetimes, handling timezone issues.
+
+        Unexpected exceptions are propagated to the caller.
+        """
         if end_dt is None or start_dt is None:
             return None
 
