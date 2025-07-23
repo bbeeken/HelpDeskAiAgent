@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from typing import Annotated
 from typing import Optional
 from datetime import datetime
@@ -18,6 +18,12 @@ class TicketBase(BaseModel):
     Severity_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[Annotated[str, Field()]] = None
+
+    @field_validator("Assigned_Email", mode="before")
+    def _clean_assigned_email(cls, v):
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
     model_config = ConfigDict(str_max_length=None)
 
@@ -86,7 +92,7 @@ class TicketUpdate(BaseModel):
     )
 
 
-class TicketIn(BaseModel):
+class TicketIn(TicketBase):
     Subject: Optional[Annotated[str, Field(max_length=255)]] = None
     Ticket_Body: Optional[Annotated[str, Field()]] = None
     Ticket_Status_ID: Optional[int] = None
