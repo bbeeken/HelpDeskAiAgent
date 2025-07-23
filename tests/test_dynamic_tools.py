@@ -70,7 +70,7 @@ async def test_dynamic_create_ticket():
         assert data.get("status") == "success"
         assert data["data"]["Ticket_Status_ID"] == 2
         assert data["data"]["LastModified"] is not None
-        assert data["data"]["LastModifiedBy"] == "Gil AI"
+        assert data["data"]["LastModfiedBy"] == "Gil AI"
 
 
 @pytest.mark.asyncio
