@@ -47,28 +47,23 @@ curl -X POST http://localhost:8000/update_ticket \
 ```
 
 
-## close_ticket
-Close a ticket with a resolution.
+`updates` can include semantic fields such as `status`, `priority`,
+`assignee_email`, `assignee_name`, `severity_id` or `resolution` to
+close, assign or escalate a ticket in a single call. The former
+`close_ticket` and `assign_ticket` tools have been removed; use these
+fields with `update_ticket` instead.
 
-Parameters:
-- `ticket_id` – integer ticket ID.
-- `resolution` – resolution text.
-- `status_id` – optional status (defaults to 4).
+Example – assign a technician:
+```bash
+curl -X POST http://localhost:8000/update_ticket \
+  -d '{"ticket_id": 5, "updates": {"Assigned_Email": "tech@example.com"}}'
+```
 
-
-Example:
+Example – close a ticket:
 ```bash
 curl -X POST http://localhost:8000/update_ticket \
   -d '{"ticket_id": 5, "updates": {"Ticket_Status_ID": 4, "Resolution": "Replaced toner"}}'
 ```
-
-## assign_ticket (removed)
-Use `update_ticket` with `Assigned_Email` and `Assigned_Name`.
-
-Example:
-```bash
-curl -X POST http://localhost:8000/update_ticket \
-  -d '{"ticket_id": 5, "updates": {"Assigned_Email": "tech@example.com"}}'
 
 
 ## add_ticket_message
