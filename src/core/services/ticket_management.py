@@ -68,7 +68,7 @@ class TicketManager:
                 setattr(ticket, key, value)
         # Record when the ticket was last modified
         ticket.LastModified = datetime.now(timezone.utc)
-        ticket.LastModifiedBy = "Gil AI"
+        ticket.LastModfiedBy = "Gil AI"
         try:
             await db.flush()
             await db.refresh(ticket)

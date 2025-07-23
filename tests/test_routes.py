@@ -95,7 +95,7 @@ async def test_update_ticket(client: AsyncClient):
     get_resp = await client.get(f"/ticket/{tid}")
     assert get_resp.status_code == 200
     assert get_resp.json()["LastModified"] is None
-    assert get_resp.json()["LastModifiedBy"] is None
+    assert get_resp.json()["LastModfiedBy"] is None
 
     resp = await client.put(f"/ticket/{tid}", json={"Subject": "Updated"})
     assert resp.status_code == 200
@@ -104,7 +104,7 @@ async def test_update_ticket(client: AsyncClient):
     get_resp = await client.get(f"/ticket/{tid}")
     assert get_resp.status_code == 200
     assert get_resp.json()["LastModified"] is not None
-    assert get_resp.json()["LastModifiedBy"] == "Gil AI"
+    assert get_resp.json()["LastModfiedBy"] == "Gil AI"
 
 
 @pytest.mark.asyncio
