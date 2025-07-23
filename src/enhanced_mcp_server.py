@@ -659,7 +659,7 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
                 applied_updates["Assigned_Name"] = applied_updates.get("Assigned_Email")
 
             applied_updates["LastModified"] = datetime.now(timezone.utc)
-            applied_updates["LastModifiedBy"] = "Gil AI"
+            applied_updates["LastModfiedBy"] = "Gil AI"
 
             updated = await TicketManager().update_ticket(db_session, ticket_id, applied_updates)
             if not updated:
@@ -701,7 +701,7 @@ async def _bulk_update_tickets(
             mgr = TicketManager()
             applied_updates = _apply_semantic_filters(updates)
             applied_updates["LastModified"] = datetime.now(timezone.utc)
-            applied_updates["LastModifiedBy"] = "Gil AI"
+            applied_updates["LastModfiedBy"] = "Gil AI"
             
             updated: list[Dict[str, Any]] = []
             failed: list[Dict[str, Any]] = []
