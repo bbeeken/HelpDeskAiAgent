@@ -197,6 +197,10 @@ _PRIORITY_MAP = {
     "low": "Low",
 }
 
+# Map priority level names to their numeric severity ID. The ID values are
+# consistent across the test database and production schema.
+_PRIORITY_LEVEL_TO_ID = {"Critical": 1, "High": 2, "Medium": 3, "Low": 4}
+
 
 def _format_ticket_by_level(ticket: Any) -> dict:
     """Return a dict representation of a ticket with consistent priority labeling."""
@@ -293,14 +297,23 @@ def _apply_semantic_filters(filters: dict[str, Any]) -> dict[str, Any]:
                 translated["Ticket_Status_ID"] = value
                 
         elif k in {"priority", "priority_level"}:
-            if isinstance(value, str):
-                mapped_priority = _PRIORITY_MAP.get(value.lower())
-                if mapped_priority:
-                    translated["Priority_Level"] = mapped_priority
-                else:
-                    translated["Priority_Level"] = value
+            if isinstance(value, list):
+                ids: list[Any] = []
+                for item in value:
+                    if isinstance(item, str):
+                        canonical = _PRIORITY_MAP.get(item.lower(), item)
+                        ids.append(_PRIORITY_LEVEL_TO_ID.get(canonical, item))
+                    else:
+                        ids.append(item)
+                translated["Severity_ID"] = ids
             else:
-                translated["Severity_ID"] = value
+                if isinstance(value, str):
+                    canonical = _PRIORITY_MAP.get(value.lower(), value)
+                    translated["Severity_ID"] = _PRIORITY_LEVEL_TO_ID.get(
+                        canonical, value
+                    )
+                else:
+                    translated["Severity_ID"] = value
                 
         elif k == "assignee":
             translated["Assigned_Email"] = value
