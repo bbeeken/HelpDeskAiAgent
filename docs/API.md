@@ -157,7 +157,7 @@ Fields include:
 - `Priority_Level`
 - `Closed_Date`
 - `LastModified`
-- `LastModifiedBy`
+- `LastModfiedBy`
 
 Example:
 
@@ -171,6 +171,6 @@ Example:
   "Priority_Level": "High",
   "Closed_Date": null,
   "LastModified": null,
-  "LastModifiedBy": null
+  "LastModfiedBy": null
 }
 ```

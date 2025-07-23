@@ -93,19 +93,6 @@ async def search_tickets_json(
 
 
 @ticket_router.get(
-    "/{ticket_id}",
-    response_model=TicketExpandedOut,
-    operation_id="get_ticket",
-)
-async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketExpandedOut:
-    ticket = await TicketManager().get_ticket(db, ticket_id)
-    if not ticket:
-        logger.warning("Ticket %s not found", ticket_id)
-        raise HTTPException(status_code=404, detail="Ticket not found")
-    return TicketExpandedOut.model_validate(ticket)
-
-
-@ticket_router.get(
     "",
     response_model=PaginatedResponse[TicketExpandedOut],
     operation_id="list_tickets",
@@ -139,6 +126,10 @@ async def list_tickets(
             logger.error("Invalid ticket %s: %s", getattr(t, "Ticket_ID", "?"), exc)
 
     return PaginatedResponse(items=validated, total=total, skip=skip, limit=limit)
+
+
+
+
 
 
 @ticket_router.get(
@@ -191,6 +182,19 @@ async def tickets_by_user_endpoint(
     )
     validated: List[TicketExpandedOut] = [TicketExpandedOut.model_validate(t) for t in items]
     return PaginatedResponse(items=validated, total=total, skip=skip, limit=limit)
+
+
+@ticket_router.get(
+    "/{ticket_id}",
+    response_model=TicketExpandedOut,
+    operation_id="get_ticket",
+)
+async def get_ticket(ticket_id: int, db: AsyncSession = Depends(get_db)) -> TicketExpandedOut:
+    ticket = await TicketManager().get_ticket(db, ticket_id)
+    if not ticket:
+        logger.warning("Ticket %s not found", ticket_id)
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return TicketExpandedOut.model_validate(ticket)
 
 
 @ticket_router.post(

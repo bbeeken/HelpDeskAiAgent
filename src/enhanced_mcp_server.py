@@ -179,7 +179,7 @@ def set_config(config: MCPServerConfig) -> None:
 
 _STATUS_MAP = {
     "open": 1,
-    "closed": 4,
+    "closed": 3,
     "resolved": 4,
     "in_progress": 2,
     "progress": 2,

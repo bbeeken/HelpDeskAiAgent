@@ -20,7 +20,7 @@ SELECT t.Ticket_ID,
        t.Assigned_Vendor_ID,
        t.Closed_Date,
        t.LastModified,
-       t.LastModifiedBy,
+       t.LastModfiedBy,
        v.Name AS Assigned_Vendor_Name,
        t.Resolution,
        p.Level AS Priority_Level
