@@ -62,6 +62,7 @@ def test_create_ticket_validation_error():
     }
     resp = client.post("/ticket", json=bad_payload)
     assert resp.status_code == 422
+    assert "path" in resp.json()
 
 
 def test_create_ticket_db_failure(monkeypatch):
