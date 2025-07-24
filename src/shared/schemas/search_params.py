@@ -31,6 +31,9 @@ class TicketSearchParams(BaseModel):
     Resolution: Optional[str] = None
     Priority_Level: Optional[str] = None
 
+    created_after: Optional[datetime] = None
+    created_before: Optional[datetime] = None
+
     sort: Optional[str] = Field(
         default=None,
         description="Order by Created_Date",

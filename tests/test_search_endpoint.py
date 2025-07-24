@@ -108,3 +108,46 @@ async def test_search_accepts_json():
         assert resp.status_code == 200
         ids = [item["Ticket_ID"] for item in resp.json()]
         assert tid in ids
+
+
+@pytest.mark.asyncio
+async def test_search_created_date_filters_endpoint():
+    async with SessionLocal() as db:
+        old = Ticket(
+            Subject="DateFilter",
+            Ticket_Body="old",
+            Created_Date=datetime(2023, 1, 1, tzinfo=UTC),
+            Ticket_Status_ID=1,
+        )
+        new = Ticket(
+            Subject="DateFilter",
+            Ticket_Body="new",
+            Created_Date=datetime(2023, 1, 10, tzinfo=UTC),
+            Ticket_Status_ID=1,
+        )
+        await TicketManager().create_ticket(db, old)
+        await TicketManager().create_ticket(db, new)
+        await db.commit()
+        old_id = old.Ticket_ID
+        new_id = new.Ticket_ID
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get(
+            "/tickets/search",
+            params={"q": "DateFilter", "created_after": "2023-01-05T00:00:00+00:00"},
+        )
+        assert resp.status_code == 200
+        ids = {item["Ticket_ID"] for item in resp.json()}
+        assert ids == {new_id}
+
+        resp = await ac.post(
+            "/tickets/search",
+            json={
+                "q": "DateFilter",
+                "params": {"created_before": "2023-01-05T00:00:00+00:00"},
+            },
+        )
+        assert resp.status_code == 200
+        ids = {item["Ticket_ID"] for item in resp.json()}
+        assert ids == {old_id}
