@@ -24,9 +24,11 @@ async def test_dynamic_tool_routes():
 
         resp = await client.post("/get_ticket", json={})
         assert resp.status_code == 422
+        assert "path" in resp.json()
 
         resp = await client.post("/get_ticket", json={"ticket_id": "one"})
         assert resp.status_code == 422
+        assert "path" in resp.json()
 
 
 @pytest.mark.asyncio
@@ -35,9 +37,11 @@ async def test_dynamic_tool_validation():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post("/get_ticket", json={"ticket_id": "bad"})
         assert resp.status_code == 422
+        assert "path" in resp.json()
 
         resp = await client.post("/get_ticket", json={})
         assert resp.status_code == 422
+        assert "path" in resp.json()
 
 
 @pytest.mark.asyncio
