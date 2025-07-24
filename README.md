@@ -39,6 +39,9 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
   update the values for your environment. `config.py` automatically loads `.env` and then looks for
   `config_env.py` to provide Python-level overrides when needed.
 
+  Unknown environment variables are ignored. They can be present in `.env` or the shell without
+  causing validation errors.
+
 3. **Ticket text length**
 
    Ticket bodies and resolutions may exceed 2000 characters. These fields are
