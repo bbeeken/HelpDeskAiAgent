@@ -60,6 +60,7 @@ class Settings(BaseSettings):
         case_sensitive=False,
         env_file=".env",
         validate_assignment=True,
+        extra="ignore",
     )
 
 
