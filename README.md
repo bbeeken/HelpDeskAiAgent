@@ -376,8 +376,13 @@ curl "http://localhost:8000/get_tickets_by_user?identifier=user@example.com&stat
 
 Tool endpoints validate request bodies against each tool's `inputSchema` using
 JSON Schema. Payloads missing required fields or with incorrect types return a
+
+`422 Unprocessable Entity` response. The error payload also includes a
+`path` field that pinpoints which property failed validation.
+
 `422 Unprocessable Entity` response. The response also includes a `path`
 field indicating which property failed validation.
+
 
 `get_open_tickets` lists tickets filtered by status and age. Provide a
 number of `days` and optional `status` such as `open` or `closed`.
@@ -389,8 +394,12 @@ curl -X POST http://localhost:8000/get_open_tickets \
 
 Request bodies are validated against each tool's `inputSchema` using the
 `jsonschema` library. Missing or incorrectly typed fields result in a `422`
+
+response. The `path` key in the JSON body indicates which field failed.
+
 response. The error body includes a `path` key that pinpoints which property
 failed validation.
+
 
 Additional tools are available:
 
