@@ -98,3 +98,33 @@ async def test_search_filters_escape_special_chars():
         params = TicketSearchParams(Subject="under_score_test")
         res = await TicketManager().search_tickets(db, "", params=params)
         assert any(r["Ticket_ID"] == t3.Ticket_ID for r in res)
+
+
+@pytest.mark.asyncio
+async def test_search_created_date_filters():
+    async with SessionLocal() as db:
+        old = Ticket(
+            Subject="DateFilter",
+            Ticket_Body="old",
+            Created_Date=datetime(2023, 1, 1, tzinfo=UTC),
+            Ticket_Status_ID=1,
+        )
+        new = Ticket(
+            Subject="DateFilter",
+            Ticket_Body="new",
+            Created_Date=datetime(2023, 1, 10, tzinfo=UTC),
+            Ticket_Status_ID=1,
+        )
+        await TicketManager().create_ticket(db, old)
+        await TicketManager().create_ticket(db, new)
+        await db.commit()
+
+        params = TicketSearchParams(created_after=datetime(2023, 1, 5, tzinfo=UTC))
+        res = await TicketManager().search_tickets(db, "DateFilter", params=params)
+        ids = {r["Ticket_ID"] for r in res}
+        assert ids == {new.Ticket_ID}
+
+        params = TicketSearchParams(created_before=datetime(2023, 1, 5, tzinfo=UTC))
+        res = await TicketManager().search_tickets(db, "DateFilter", params=params)
+        ids = {r["Ticket_ID"] for r in res}
+        assert ids == {old.Ticket_ID}

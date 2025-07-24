@@ -186,6 +186,8 @@ class TicketManager:
         )
         filters = params.model_dump(exclude_none=True) if params else {}
         sort_value = filters.pop("sort", None)
+        created_after = filters.pop("created_after", None)
+        created_before = filters.pop("created_before", None)
         for key, value in filters.items():
             if hasattr(VTicketMasterExpanded, key):
                 col = getattr(VTicketMasterExpanded, key)
@@ -194,6 +196,10 @@ class TicketManager:
                     stmt = stmt.filter(col.ilike(f"%{escaped_value}%"))
                 else:
                     stmt = stmt.filter(col == value)
+        if created_after:
+            stmt = stmt.filter(VTicketMasterExpanded.Created_Date >= created_after)
+        if created_before:
+            stmt = stmt.filter(VTicketMasterExpanded.Created_Date <= created_before)
         if sort_value == "oldest":
             stmt = stmt.order_by(VTicketMasterExpanded.Created_Date.asc())
         else:

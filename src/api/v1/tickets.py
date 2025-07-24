@@ -45,7 +45,10 @@ class SearchBody(BaseModel):
 
     q: str = Field(..., min_length=1)
     limit: int = Field(10, ge=1, le=100)
-    params: TicketSearchParams = Field(default_factory=TicketSearchParams)
+    params: TicketSearchParams = Field(
+        default_factory=TicketSearchParams,
+        description="Optional search filters including created_after/before",
+    )
 
 
 async def create_ticket(db: AsyncSession, obj: Dict) -> Any:
@@ -65,6 +68,7 @@ async def search_tickets(
     limit: int = Query(10, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ) -> List[TicketSearchOut]:
+    """Search tickets with optional date filtering."""
     logger.info("Searching tickets for '%s' (limit=%d)", q, limit)
     results = await TicketManager().search_tickets(db, q, limit=limit, params=params)
     validated: List[TicketSearchOut] = []
@@ -85,6 +89,7 @@ async def search_tickets_json(
     payload: TicketSearchRequest,
     db: AsyncSession = Depends(get_db),
 ) -> List[TicketSearchOut]:
+    """POST variant of search_tickets supporting JSON body."""
     return await search_tickets(
         q=payload.q,
         params=payload.params or TicketSearchParams(),

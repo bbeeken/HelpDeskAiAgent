@@ -47,6 +47,7 @@ User mentioned? → search_tickets(user_identifier="email@example.com")
 General issue? → search_tickets(query="search terms")
 Status-specific? → search_tickets(status="open", days_back=7)
 Priority issues? → search_tickets(priority="high", unassigned_only=true)
+Filter by creation date? → search_tickets(created_after="2024-01-01", created_before="2024-01-31")
 
 Step 2: Get Full Context
 For detailed investigation:
@@ -80,6 +81,8 @@ pythonsearch_tickets(
     assigned_to="tech@email.com",     # Assigned to specific tech
     unassigned_only=true,             # Only unassigned tickets
     limit=10,                         # Max results
+    created_after="2023-01-01T00:00:00Z",  # Earliest creation date
+    created_before="2023-01-31T00:00:00Z", # Latest creation date
     include_messages=true             # Include last 3 messages
 )
 2. get_ticket - Get specific ticket details
