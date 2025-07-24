@@ -316,7 +316,10 @@ def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
         except JsonSchemaError as exc:
             return JSONResponse(
                 status_code=422,
-                content={"detail": f"Schema validation error: {exc.message}"}
+                content={
+                    "detail": f"Schema validation error: {exc.message}",
+                    "path": list(exc.path),
+                }
             )
 
         # Filter to only allowed parameters
