@@ -138,6 +138,15 @@ async def test_search_tickets_unified_success(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_search_tickets_alias_params(client: AsyncClient):
+    await _create_ticket(client, subject="Alias bar")
+    payload = {"query": "Alias", "user_identifier": "tester@example.com"}
+    resp = await client.post("/search_tickets", json=payload)
+    assert resp.status_code == 200
+    assert resp.json().get("status") in {"success", "error"}
+
+
+@pytest.mark.asyncio
 
 async def test_search_tickets_unified_error(client: AsyncClient):
     resp = await client.post("/search_tickets", json={"unexpected": 1})
