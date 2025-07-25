@@ -341,9 +341,6 @@ def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
 server = create_enhanced_server()
 logger.info("Enhanced MCP server active with %d tools", len(TOOLS))
 
-
-
-
 for tool in EXPOSED_TOOLS:
     schema = tool.inputSchema if isinstance(tool.inputSchema, dict) else {}
     endpoint_func = build_mcp_endpoint(tool, schema)

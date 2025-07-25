@@ -85,7 +85,9 @@ curl -X POST http://localhost:8000/add_ticket_message \
 Keyword search across tickets.
 
 Parameters:
-- `query` – text query.
+
+- `text` – text query.
+
 - `limit` – optional result limit (default 10).
 - `created_after` – only tickets created on or after this ISO date.
 - `created_before` – only tickets created on or before this ISO date.
@@ -93,7 +95,7 @@ Parameters:
 Example:
 ```bash
 curl -X POST http://localhost:8000/search_tickets \
-  -d '{"query": "printer", "created_after": "2024-01-01"}'
+  -d '{"text": "printer", "created_after": "2024-01-01"}'
 ```
 
 ## get_tickets_by_user
@@ -190,13 +192,14 @@ curl -X POST http://localhost:8000/get_system_snapshot -d '{}'
 ```
 
 
-## advanced_search (removed)
-Use `search_tickets` with a query string.
+
+Use `search_tickets` with a text string.
+
 
 Example:
 ```bash
 curl -X POST http://localhost:8000/search_tickets \
-  -d '{"query": "printer", "limit": 10}'
+  -d '{"text": "printer", "limit": 10}'
 ```
 
 ## escalate_ticket (removed)
