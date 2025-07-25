@@ -473,6 +473,8 @@ async def _search_tickets(query: str, limit: int = 10) -> Dict[str, Any]:
 async def _search_tickets_unified(
     text: str | None = None,
     user: str | None = None,
+    query: str | None = None,
+    user_identifier: str | None = None,
     days: int | None = None,
     limit: int = 10,
     skip: int = 0,
@@ -481,6 +483,12 @@ async def _search_tickets_unified(
 ) -> Dict[str, Any]:
     """Unified ticket search supporting text, user and timeframe filters."""
     try:
+
+        if text is None and query is not None:
+            text = query
+        if user is None and user_identifier is not None:
+            user = user_identifier
+
         async with db.SessionLocal() as db_session:
             base_stmt = select(VTicketMasterExpanded)
 
@@ -1446,7 +1454,18 @@ ENHANCED_TOOLS: List[Tool] = [
             "type": "object",
             "properties": {
                 "text": {"type": "string", "description": "Search query text"},
+                "query": {"type": "string", "description": "Alias for 'text'"},
                 "user": {"type": "string", "description": "User email or name"},
+
+                "query": {
+                    "type": "string",
+                    "description": "Alias for 'text' search query",
+                },
+                "user_identifier": {
+                    "type": "string",
+                    "description": "Alias for 'user' identifier",
+
+                },
                 "days": {"type": "integer", "description": "Tickets from last N days", "default": 30},
                 "limit": {"type": "integer", "default": 10},
                 "skip": {"type": "integer", "default": 0},
@@ -1455,8 +1474,13 @@ ENHANCED_TOOLS: List[Tool] = [
             },
             "examples": [
                 {"text": "printer error", "days": 7},
+                {"query": "printer error", "days": 7},
                 {"user": "tech@example.com", "filters": {"status": "open"}},
-                {"text": "network", "user": "alice@example.com", "days": 30}
+                {"text": "network", "user": "alice@example.com", "days": 30},
+                {"query": "wifi", "user_identifier": "bob@example.com"}
+                {"user_identifier": "tech@example.com", "filters": {"status": "open"}},
+                
+
             ],
         },
         _implementation=_search_tickets_unified,
