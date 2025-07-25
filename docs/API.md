@@ -73,7 +73,7 @@ JSON body matching the tool's schema. See
 - `POST /create_ticket` – Create a ticket. Example: see `TicketCreate` schema
 - `POST /update_ticket` – Update a ticket. Example: `{"ticket_id": 1, "updates": {}}`
 - `POST /add_ticket_message` – Add a message to a ticket.
-- `POST /search_tickets` – Search tickets. Example: `{"query": "printer", "created_after": "2024-01-01"}`
+- `POST /search_tickets` – Search tickets. Example: `{"text": "printer", "created_after": "2024-01-01"}`
 - `POST /update_ticket` – Update a ticket or close/assign by modifying fields.
 - `POST /get_tickets_by_user` – Tickets for a user. Example: `{"identifier": "user@example.com"}`
 

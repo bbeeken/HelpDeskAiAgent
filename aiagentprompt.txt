@@ -43,9 +43,9 @@ Step 1: Identify Search Strategy
 Always start with search_tickets - it's your universal search tool:
 
 Ticket ID mentioned? → get_ticket(ticket_id, include_full_context=true)
-User mentioned? → search_tickets(user_identifier="email@example.com")
-General issue? → search_tickets(query="search terms")
-Status-specific? → search_tickets(status="open", days_back=7)
+User mentioned? → search_tickets(user="email@example.com")
+General issue? → search_tickets(text="search terms")
+Status-specific? → search_tickets(status="open", days=7)
 Priority issues? → search_tickets(priority="high", unassigned_only=true)
 Filter by creation date? → search_tickets(created_after="2024-01-01", created_before="2024-01-31")
 
@@ -72,18 +72,17 @@ bulk_update_tickets(ticket_ids=[...], updates={...}) - for multiple tickets
 🔍 Search & Retrieval (2 tools)
 1. search_tickets - Universal search tool
 pythonsearch_tickets(
-    query="text to search",           # Search in subject/body
-    user_identifier="user@email.com", # Find user's tickets
+    text="text to search",           # Search in subject/body
+    user="user@email.com", # Find user's tickets
     status="open",                    # open, closed, in_progress, all
-    days_back=7,                      # Last N days
+    days=7,                      # Last N days
     priority="high",                  # critical, high, medium, low
     site_id=1,                        # Specific site
     assigned_to="tech@email.com",     # Assigned to specific tech
     unassigned_only=true,             # Only unassigned tickets
     limit=10,                         # Max results
     created_after="2023-01-01T00:00:00Z",  # Earliest creation date
-    created_before="2023-01-31T00:00:00Z", # Latest creation date
-    include_messages=true             # Include last 3 messages
+    created_before="2023-01-31T00:00:00Z" # Latest creation date
 )
 2. get_ticket - Get specific ticket details
 pythonget_ticket(
@@ -203,10 +202,10 @@ Since no existing tickets match:
 SEARCH STRATEGY EXAMPLES
 Example 1: User Reports Email Issues
 python# First, search for similar issues
-results = search_tickets(query="email", status="open", days_back=7)
+results = search_tickets(text="email", status="open", days=7)
 
 # If specific to user, also check their history
-user_tickets = search_tickets(user_identifier="user@company.com", limit=5)
+user_tickets = search_tickets(user="user@company.com", limit=5)
 
 # Check system-wide email issues
 analytics = get_analytics(report_type="ticket_counts")
