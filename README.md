@@ -435,7 +435,9 @@ The server exposes nine core JSON-RPC tools. Each expects a JSON body matching i
 - `create_ticket` – see `TicketCreate` schema
 - `update_ticket` – `{"ticket_id": 1, "updates": {}}`
 - `add_ticket_message` – `{"ticket_id": 1, "message": "Checking", "sender_name": "Agent"}`
- - `search_tickets` – `{"text": "printer", "created_before": "2024-01-31"}`
+
+- `search_tickets` – `{"text": "printer", "created_before": "2024-01-31"}`
+
 - `get_tickets_by_user` – `{"identifier": "user@example.com"}`
 - `get_ticket_full_context` – `{"ticket_id": 123}` (no user history or nested related tickets)
 - `get_system_snapshot` – `{}`
