@@ -193,6 +193,31 @@ curl -X POST http://localhost:8000/get_system_snapshot -d '{}'
 
 
 
+
+## advanced_search
+Run a detailed ticket search with advanced options.
+
+Parameters:
+- `text_search` – optional text to search for.
+- `search_fields` – list of fields to scan (default `["Subject", "Ticket_Body"]`).
+- `created_after` – only tickets created on or after this timestamp.
+- `created_before` – only tickets created on or before this timestamp.
+- `status_filter` – list of statuses to include.
+- `priority_filter` – list of priority IDs.
+- `assigned_to` – restrict to these assignee emails or names.
+- `unassigned_only` – set to `true` to return only unassigned tickets.
+- `site_filter` – list of site IDs.
+- `limit` – maximum results to return (default 100).
+- `offset` – result offset (default 0).
+
+Example:
+```bash
+curl -X POST http://localhost:8000/advanced_search \
+  -d '{"text_search": "printer", "limit": 10}'
+
+## advanced_search (removed)
+
+
 Use `search_tickets` with a text string.
 
 
@@ -200,6 +225,7 @@ Example:
 ```bash
 curl -X POST http://localhost:8000/search_tickets \
   -d '{"text": "printer", "limit": 10}'
+
 ```
 
 ## escalate_ticket (removed)
