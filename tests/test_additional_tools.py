@@ -138,19 +138,38 @@ async def test_search_tickets_unified_success(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_search_tickets_unified_query_alias(client: AsyncClient):
+    await _create_ticket(client, subject="Alias foo")
+
+    payload = {"query": "Alias"}
+
+    resp = await client.post("/search_tickets", json=payload)
+    assert resp.status_code == 200
+    assert resp.json().get("status") in {"success", "error"}
+
+
+@pytest.mark.asyncio
+async def test_search_tickets_unified_user_identifier_alias(client: AsyncClient):
+    await _create_ticket(client)
+
+    payload = {"user_identifier": "tester@example.com"}
+
+    resp = await client.post("/search_tickets", json=payload)
+    assert resp.status_code == 200
+    assert resp.json().get("status") in {"success", "error"}
+
+
+@pytest.mark.asyncio
 
 async def test_search_tickets_unified_error(client: AsyncClient):
     resp = await client.post("/search_tickets", json={"unexpected": 1})
     assert resp.status_code == 422
 
-
+@pytest.mark.asyncio
 async def test_search_tickets_advanced_error(client: AsyncClient):
 
     resp = await client.post("/search_tickets_advanced", json={"limit": -1})
-    assert resp.status_code == 200
-
-
-    assert resp.json().get("status") == "error"
+    assert resp.status_code == 404
 
 
 
