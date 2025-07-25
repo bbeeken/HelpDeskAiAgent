@@ -483,7 +483,7 @@ async def _search_tickets_unified(
 ) -> Dict[str, Any]:
     """Unified ticket search supporting text, user and timeframe filters."""
     try:
-        # Allow legacy parameter names
+
         if text is None and query is not None:
             text = query
         if user is None and user_identifier is not None:
@@ -1456,9 +1456,15 @@ ENHANCED_TOOLS: List[Tool] = [
                 "text": {"type": "string", "description": "Search query text"},
                 "query": {"type": "string", "description": "Alias for 'text'"},
                 "user": {"type": "string", "description": "User email or name"},
+
+                "query": {
+                    "type": "string",
+                    "description": "Alias for 'text' search query",
+                },
                 "user_identifier": {
                     "type": "string",
-                    "description": "Alias for 'user'",
+                    "description": "Alias for 'user' identifier",
+
                 },
                 "days": {"type": "integer", "description": "Tickets from last N days", "default": 30},
                 "limit": {"type": "integer", "default": 10},
@@ -1470,8 +1476,11 @@ ENHANCED_TOOLS: List[Tool] = [
                 {"text": "printer error", "days": 7},
                 {"query": "printer error", "days": 7},
                 {"user": "tech@example.com", "filters": {"status": "open"}},
+                {"text": "network", "user": "alice@example.com", "days": 30},
+                {"query": "wifi", "user_identifier": "bob@example.com"}
                 {"user_identifier": "tech@example.com", "filters": {"status": "open"}},
-                {"text": "network", "user": "alice@example.com", "days": 30}
+                
+
             ],
         },
         _implementation=_search_tickets_unified,

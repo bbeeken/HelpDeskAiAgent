@@ -138,10 +138,12 @@ async def test_search_tickets_unified_success(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_search_tickets_unified_query_alias(client: AsyncClient):
-    await _create_ticket(client, subject="Alias foo")
 
-    payload = {"query": "Alias"}
+async def test_search_tickets_alias_params(client: AsyncClient):
+    await _create_ticket(client, subject="Alias bar")
+    payload = {"query": "Alias", "user_identifier": "tester@example.com"}
+
+ 
 
     resp = await client.post("/search_tickets", json=payload)
     assert resp.status_code == 200
@@ -153,6 +155,7 @@ async def test_search_tickets_unified_user_identifier_alias(client: AsyncClient)
     await _create_ticket(client)
 
     payload = {"user_identifier": "tester@example.com"}
+
 
     resp = await client.post("/search_tickets", json=payload)
     assert resp.status_code == 200
