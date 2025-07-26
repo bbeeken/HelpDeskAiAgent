@@ -1447,44 +1447,95 @@ ENHANCED_TOOLS: List[Tool] = [
         },
         _implementation=_get_ticket_attachments,
     ),
-    Tool(
-        name="search_tickets",
-        description="Unified ticket search with text, user, timeframe and filters",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "text": {"type": "string", "description": "Search query text"},
-                "query": {"type": "string", "description": "Alias for 'text'"},
-                "user": {"type": "string", "description": "User email or name"},
-
-                "query": {
-                    "type": "string",
-                    "description": "Alias for 'text' search query",
-                },
-                "user_identifier": {
-                    "type": "string",
-                    "description": "Alias for 'user' identifier",
-
-                },
-                "days": {"type": "integer", "description": "Tickets from last N days", "default": 30},
-                "limit": {"type": "integer", "default": 10},
-                "skip": {"type": "integer", "default": 0},
-                "filters": {"type": "object"},
-                "sort": {"type": "array", "items": {"type": "string"}},
+   Tool(
+    name="search_tickets",
+    description="Comprehensive ticket search supporting text queries, user filtering, date ranges, and advanced filters. Can search by content, user involvement, or combine multiple criteria.",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "text": {
+                "type": "string", 
+                "description": "Text to search for in ticket subject and body"
             },
-            "examples": [
-                {"text": "printer error", "days": 7},
-                {"query": "printer error", "days": 7},
-                {"user": "tech@example.com", "filters": {"status": "open"}},
-                {"text": "network", "user": "alice@example.com", "days": 30},
-                {"query": "wifi", "user_identifier": "bob@example.com"}
-                {"user_identifier": "tech@example.com", "filters": {"status": "open"}},
-                
-
-            ],
+            "user": {
+                "type": "string", 
+                "description": "Filter by user email/name (as contact, assignee, or message sender)"
+            },
+            "days": {
+                "type": "integer", 
+                "description": "Limit to tickets created in the last N days",
+                "default": 30,
+                "minimum": 0
+            },
+            "limit": {
+                "type": "integer", 
+                "description": "Maximum number of results to return",
+                "default": 10,
+                "minimum": 1,
+                "maximum": 100
+            },
+            "skip": {
+                "type": "integer", 
+                "description": "Number of results to skip (for pagination)",
+                "default": 0,
+                "minimum": 0
+            },
+            "filters": {
+                "type": "object",
+                "description": "Additional filters as key-value pairs",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": ["open", "closed", "in_progress", "resolved"],
+                        "description": "Filter by ticket status (semantic values supported)"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["critical", "high", "medium", "low"],
+                        "description": "Filter by priority level"
+                    },
+                    "site_id": {"type": "integer", "description": "Filter by site ID"},
+                    "assigned_to": {"type": "string", "description": "Filter by assignee email"},
+                    "created_after": {"type": "string", "format": "date-time"},
+                    "created_before": {"type": "string", "format": "date-time"}
+                }
+            },
+            "sort": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Sort fields (prefix with '-' for descending)",
+                "examples": [["Created_Date"], ["-Priority_Level", "Created_Date"]]
+            }
         },
-        _implementation=_search_tickets_unified,
-    ),
+        "examples": [
+            {
+                "text": "printer error",
+                "days": 7,
+                "limit": 5
+            },
+            {
+                "user": "tech@example.com",
+                "filters": {"status": "open"},
+                "sort": ["-Created_Date"]
+            },
+            {
+                "text": "network issues",
+                "user": "alice@example.com",
+                "days": 30,
+                "filters": {"priority": "high"}
+            },
+            {
+                "filters": {
+                    "status": "open",
+                    "assigned_to": null
+                },
+                "sort": ["-Priority_Level"],
+                "limit": 20
+            }
+        ]
+    },
+    _implementation=_search_tickets_unified,
+),
     Tool(
         name="get_analytics",
         description="Retrieve analytics reports",
