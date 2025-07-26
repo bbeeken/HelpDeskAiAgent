@@ -112,6 +112,21 @@ Comprehensive ticket search with AI-optimized features and semantic filtering. S
 - `include_relevance_score` – Include relevance scoring for text searches (default: true)
 - `include_highlights` – Include search term highlighting (default: true)
 
+### Response Fields
+
+When a text query is used the response includes extra context:
+
+- `relevance_score` – numeric ranking based on how well the query matches the
+  ticket subject, body and category.
+- `highlights` – object with `subject` and `body` snippets where matched terms
+  are wrapped in `<em>` tags. Only returned when `include_highlights` is true.
+- `metadata` – additional ticket info:
+  - `age_days` – age of the ticket in days.
+  - `is_overdue` – `true` if the ticket has been open for more than 24 hours.
+  - `complexity_estimate` – `"high"` when the body exceeds 500 characters or the
+    subject exceeds 100 characters, `"medium"` for bodies over 200 characters or
+    subjects over 50 characters, otherwise `"low"`.
+
 ### Examples
 
 #### Basic Text Search
