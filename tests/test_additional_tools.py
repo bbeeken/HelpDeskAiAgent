@@ -125,16 +125,21 @@ async def test_get_reference_data_priorities_error(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_search_tickets_unified_success(client: AsyncClient):
-    await _create_ticket(client, subject="Adv foo")
+async def test_search_tickets_enhanced_success(client: AsyncClient):
+    await _create_ticket(client, subject="Enhanced Test")
 
-
-    query = {"text": "Adv"}
-
-
-    resp = await client.post("/search_tickets", json=query)
+    resp = await client.post(
+        "/search_tickets",
+        json={"text": "Enhanced", "status": "open", "include_relevance_score": True},
+    )
     assert resp.status_code == 200
-    assert resp.json().get("status") in {"success", "error"}
+    data = resp.json()
+    assert data.get("status") == "success"
+    assert "search_summary" in data
+    assert "execution_metadata" in data
+    if data["data"]:
+        assert "relevance_score" in data["data"][0]
+        assert "metadata" in data["data"][0]
 
 
 @pytest.mark.asyncio

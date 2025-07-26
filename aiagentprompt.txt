@@ -46,7 +46,7 @@ Ticket ID mentioned? → get_ticket(ticket_id, include_full_context=true)
 User mentioned? → search_tickets(user="email@example.com")
 General issue? → search_tickets(text="search terms")
 
-Status-specific? → search_tickets(status="open", days_back=7)
+Status-specific? → search_tickets(status="open", days=7)
 
 Priority issues? → search_tickets(priority="high", unassigned_only=true)
 Filter by creation date? → search_tickets(created_after="2024-01-01", created_before="2024-01-31")
@@ -74,18 +74,107 @@ bulk_update_tickets(ticket_ids=[...], updates={...}) - for multiple tickets
 🔍 Search & Retrieval (2 tools)
 1. search_tickets - Universal search tool
 pythonsearch_tickets(
-    text="text to search",           # Search in subject/body
-    user="user@email.com", # Find user's tickets
-    status="open",                    # open, closed, in_progress, all
-    days=7,                      # Last N days
+    # Text search
+    text="search terms",              # Search in subject/body
+    query="search terms",             # Alias for text
+
+    # User filtering
+    user="user@email.com",            # Find user's tickets
+    user_identifier="user@email.com", # Alias for user
+
+    # Time filtering
+    days=7,                           # Last N days (0 = all time)
+    created_after="2024-01-01T00:00:00Z",  # Earliest creation date
+    created_before="2024-01-31T23:59:59Z", # Latest creation date
+
+    # Direct semantic filters
+    status="open",                    # open, closed, in_progress, resolved, waiting
     priority="high",                  # critical, high, medium, low
-    site_id=1,                        # Specific site
+    site_id=1,                         # Specific site
     assigned_to="tech@email.com",     # Assigned to specific tech
-    unassigned_only=true,             # Only unassigned tickets
-    limit=10,                         # Max results
-    created_after="2023-01-01T00:00:00Z",  # Earliest creation date
-    created_before="2023-01-31T00:00:00Z" # Latest creation date
+    unassigned_only=True,              # Only unassigned tickets
+
+    # Advanced filters
+    filters={
+        "Asset_ID": 42,
+        "Ticket_Category_ID": 3,
+        "Assigned_Vendor_ID": 1
+    },
+
+    # Result control
+    limit=10,
+    skip=0,
+    sort=["-Created_Date"],
+
+    # AI enhancements
+    include_relevance_score=True,
+include_highlights=True
 )
+
+## Search Strategy Examples
+
+### Quick Issue Lookup
+```python
+# Recent printer problems
+search_tickets(
+    text="printer error",
+    status="open",
+    days=7,
+    limit=5
+)
+```
+
+### User Support
+```python
+# All tickets for a user
+search_tickets(
+    user="alice@heinzcorps.com",
+    limit=20,
+    sort=["-Created_Date"]
+)
+```
+
+### Workload Management
+```python
+# Unassigned high-priority tickets
+search_tickets(
+    status="open",
+    priority="high",
+    unassigned_only=True,
+    sort=["-Priority_Level", "-Created_Date"]
+)
+```
+
+### Site-Specific Issues
+```python
+# Problems at Vermillion location
+search_tickets(
+    site_id=1,
+    status="open",
+    days=30
+)
+```
+
+Site Reference
+1: Vermillion (Store 1006)
+2: Steele (Store 1002)
+3: Summit (Store 1001)
+4: SummitShop (Store 1021)
+5: Hot Springs (Store 1009)
+6: Corporate (Store 1000)
+7: Heinz Retail Estate (Store 2000)
+
+Status Mapping
+"open" → includes Open, In Progress, Waiting states [1,2,4,5,6,8]
+"closed" → Closed/Resolved states [3]
+"in_progress" → Currently being worked [2]
+"waiting" → Waiting on user response [4]
+
+Priority Mapping
+"critical" → Severity_ID 1 (4 hour SLA)
+"high" → Severity_ID 2 (24 hour SLA)
+"medium" → Severity_ID 3 (3 day SLA)
+"low" → Severity_ID 4 (1 week SLA)
 2. get_ticket - Get specific ticket details
 pythonget_ticket(
     ticket_id=123,
