@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import anyio
 import html
+from fastapi.responses import JSONResponse
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp import types
@@ -44,6 +45,11 @@ from src.core.services.advanced_query import AdvancedQueryManager
 from src.shared.schemas.agent_data import AdvancedQuery
 
 logger = logging.getLogger(__name__)
+
+# ISO 8601 datetime with optional fractional seconds and timezone
+_ISO_DT_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
+)
 
 # ---------------------------------------------------------------------------
 # Configuration Classes
@@ -529,18 +535,22 @@ async def _search_tickets_enhanced(
             # Time-based filtering (created_after/before override days)
             if created_after or created_before:
                 if created_after:
-                    try:
-                        after_dt = datetime.fromisoformat(created_after.replace('Z', '+00:00'))
-                        base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date >= after_dt)
-                    except ValueError:
-                        logger.warning(f"Invalid created_after date format: {created_after}")
-                
+                    if not _ISO_DT_PATTERN.match(created_after):
+                        return JSONResponse(
+                            status_code=422,
+                            content={"detail": f"Invalid created_after: {created_after}"},
+                        )
+                    after_dt = datetime.fromisoformat(created_after.replace("Z", "+00:00"))
+                    base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date >= after_dt)
+
                 if created_before:
-                    try:
-                        before_dt = datetime.fromisoformat(created_before.replace('Z', '+00:00'))
-                        base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date <= before_dt)
-                    except ValueError:
-                        logger.warning(f"Invalid created_before date format: {created_before}")
+                    if not _ISO_DT_PATTERN.match(created_before):
+                        return JSONResponse(
+                            status_code=422,
+                            content={"detail": f"Invalid created_before: {created_before}"},
+                        )
+                    before_dt = datetime.fromisoformat(created_before.replace("Z", "+00:00"))
+                    base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date <= before_dt)
             
             elif days is not None and days >= 0:
                 cutoff = datetime.now(timezone.utc) - timedelta(days=days)

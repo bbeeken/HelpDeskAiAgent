@@ -163,3 +163,13 @@ async def test_enhanced_search_date_filtering():
         ids = [t["Ticket_ID"] for t in data["data"]]
         assert old_ticket.Ticket_ID in ids
         assert new_ticket.Ticket_ID not in ids
+
+
+@pytest.mark.asyncio
+async def test_enhanced_search_invalid_dates():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post("/search_tickets", json={"created_after": "bad"})
+        assert resp.status_code == 422
+        resp = await client.post("/search_tickets", json={"created_before": "bad"})
+        assert resp.status_code == 422
