@@ -82,21 +82,99 @@ curl -X POST http://localhost:8000/add_ticket_message \
 ```
 
 ## search_tickets
-Keyword search across tickets.
+Comprehensive ticket search with AI-optimized features and semantic filtering. Supports text queries, user filtering, date ranges, and intelligent result ranking.
 
-Parameters:
+### Parameters
 
-- `text` – text query.
+#### Core Search
+- `text` – Text to search for in ticket subject and body (supports partial matching)
+- `query` – Alias for `text` parameter (backward compatibility)
+- `user` – Filter by user email/name (searches contact, assignee, or message sender)
+- `user_identifier` – Alias for `user` parameter (backward compatibility)
 
-- `limit` – optional result limit (default 10).
-- `created_after` – only tickets created on or after this ISO date.
-- `created_before` – only tickets created on or before this ISO date.
+#### Time Filtering
+- `days` – Limit to tickets created in the last N days (default: 30, 0 = all time)
+- `created_after` – Only tickets created on or after this ISO datetime
+- `created_before` – Only tickets created on or before this ISO datetime
 
-Example:
+#### Semantic Filters (AI-Friendly)
+- `status` – Ticket status: `"open"`, `"closed"`, `"in_progress"`, `"resolved"`, `"waiting"`
+- `priority` – Priority level: `"critical"`, `"high"`, `"medium"`, `"low"`
+- `site_id` – Filter by site ID (1=Vermillion, 2=Steele, 3=Summit, etc.)
+- `assigned_to` – Filter by assignee email address
+- `unassigned_only` – If true, only return unassigned tickets (default: false)
+
+#### Advanced Options
+- `filters` – Additional filters object for complex scenarios
+- `limit` – Maximum results to return (default: 10, max: 100)
+- `skip` – Number of results to skip for pagination (default: 0)
+- `sort` – Array of sort fields, prefix with "-" for descending (default: ["-Created_Date"])
+- `include_relevance_score` – Include relevance scoring for text searches (default: true)
+- `include_highlights` – Include search term highlighting (default: true)
+
+### Examples
+
+#### Basic Text Search
 ```bash
 curl -X POST http://localhost:8000/search_tickets \
-  -d '{"text": "printer", "created_after": "2024-01-01"}'
+  -d '{"text": "printer error", "status": "open", "limit": 5}'
 ```
+
+#### User-Specific Search
+```bash
+curl -X POST http://localhost:8000/search_tickets \
+  -d '{"user": "alice@heinzcorps.com", "status": "open"}'
+```
+
+#### Site and Priority Filtering
+```bash
+curl -X POST http://localhost:8000/search_tickets \
+  -d '{"site_id": 1, "priority": "high", "days": 7}'
+```
+
+#### Unassigned Ticket Triage
+```bash
+curl -X POST http://localhost:8000/search_tickets \
+  -d '{"status": "open", "unassigned_only": true, "sort": ["-Priority_Level"]}'
+```
+
+#### Date Range Search
+```bash
+curl -X POST http://localhost:8000/search_tickets \
+  -d '{
+    "text": "network outage",
+    "created_after": "2024-01-01T00:00:00Z",
+    "created_before": "2024-12-31T23:59:59Z"
+  }'
+```
+
+### Semantic Filter Mapping
+
+Status Values
+
+"open" → Maps to status IDs [1,2,4,5,6,8] (Open, In Progress, Waiting, etc.)
+"closed" → Maps to status ID [3] (Closed/Resolved)
+"in_progress" → Maps to status ID [2] (In Progress)
+"waiting" → Maps to status ID [4] (Waiting on User)
+
+Priority Values
+
+"critical" → Severity_ID 1 (4-hour SLA)
+"high" → Severity_ID 2 (24-hour SLA)
+"medium" → Severity_ID 3 (3-day SLA)
+"low" → Severity_ID 4 (1-week SLA)
+
+Site Reference
+
+| Site ID | Location        | Store ID |
+| ------- | --------------- | -------- |
+| 1       | Vermillion      | 1006     |
+| 2       | Steele          | 1002     |
+| 3       | Summit          | 1001     |
+| 4       | SummitShop      | 1021     |
+| 5       | Hot Springs     | 1009     |
+| 6       | Corporate       | 1000     |
+| 7       | Heinz Retail Estate | 2000 |
 
 ## get_tickets_by_user
 Retrieve tickets associated with a user.
