@@ -1591,31 +1591,36 @@ ENHANCED_TOOLS: List[Tool] = [
             # Time-based filtering
             "days": {
                 "type": "integer", 
-                "description": "Limit to tickets created in the last N days (0 = all time)",
+                "description": "Limit to tickets created in the last N days (0 = all tickets). Ignored when 'created_after' or 'created_before' are provided",
                 "default": 30,
                 "minimum": 0
             },
             "created_after": {
                 "type": "string", 
                 "format": "date-time",
+                "pattern": "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$",
                 "description": "Only tickets created on or after this ISO date (overrides 'days')"
             },
             "created_before": {
-                "type": "string", 
-                "format": "date-time", 
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$",
                 "description": "Only tickets created on or before this ISO date"
             },
-            
             # Direct semantic filters (commonly used)
             "status": {
-                "type": "string",
-                "enum": ["open", "closed", "in_progress", "resolved", "waiting"],
-                "description": "Ticket status - 'open' includes multiple open states (Open, In Progress, Waiting, etc.)"
+                "oneOf": [
+                    {"type": "string", "enum": ["open", "closed", "in_progress", "resolved", "waiting"]},
+                    {"type": "integer"}
+                ],
+                "description": "Ticket status (friendly name or numeric ID). 'open' includes multiple open states"
             },
             "priority": {
-                "type": "string",
-                "enum": ["critical", "high", "medium", "low"],
-                "description": "Priority level (maps to Severity_ID: critical=1, high=2, medium=3, low=4)"
+                "oneOf": [
+                    {"type": "string", "enum": ["critical", "high", "medium", "low"]},
+                    {"type": "integer"}
+                ],
+                "description": "Priority level (friendly name or Severity_ID)"
             },
             "site_id": {
                 "type": "integer",

@@ -93,13 +93,13 @@ Comprehensive ticket search with AI-optimized features and semantic filtering. S
 - `user_identifier` – Alias for `user` parameter (backward compatibility)
 
 #### Time Filtering
-- `days` – Limit to tickets created in the last N days (default: 30, 0 = all time)
-- `created_after` – Only tickets created on or after this ISO datetime
-- `created_before` – Only tickets created on or before this ISO datetime
+- `days` – Limit to tickets created in the last N days (default: 30, `0` returns all tickets). Ignored if `created_after` or `created_before` are provided
+- `created_after` – Only tickets created on or after this ISO datetime (ISO-8601)
+- `created_before` – Only tickets created on or before this ISO datetime (ISO-8601)
 
 #### Semantic Filters (AI-Friendly)
-- `status` – Ticket status: `"open"`, `"closed"`, `"in_progress"`, `"resolved"`, `"waiting"`
-- `priority` – Priority level: `"critical"`, `"high"`, `"medium"`, `"low"`
+- `status` – Ticket status (friendly name or numeric ID). Friendly names include: `"open"`, `"closed"`, `"in_progress"`, `"resolved"`, `"waiting"`
+- `priority` – Priority level (friendly name or ID). Names include: `"critical"`, `"high"`, `"medium"`, `"low"`
 - `site_id` – Filter by site ID (1=Vermillion, 2=Steele, 3=Summit, etc.)
 - `assigned_to` – Filter by assignee email address
 - `unassigned_only` – If true, only return unassigned tickets (default: false)
@@ -117,7 +117,7 @@ Comprehensive ticket search with AI-optimized features and semantic filtering. S
 #### Basic Text Search
 ```bash
 curl -X POST http://localhost:8000/search_tickets \
-  -d '{"text": "printer error", "status": "open", "limit": 5}'
+  -d '{"text": "printer error", "status": 1, "limit": 5}'
 ```
 
 #### User-Specific Search
@@ -129,7 +129,7 @@ curl -X POST http://localhost:8000/search_tickets \
 #### Site and Priority Filtering
 ```bash
 curl -X POST http://localhost:8000/search_tickets \
-  -d '{"site_id": 1, "priority": "high", "days": 7}'
+  -d '{"site_id": 1, "priority": 2, "days": 7}'
 ```
 
 #### Unassigned Ticket Triage
@@ -143,6 +143,7 @@ curl -X POST http://localhost:8000/search_tickets \
 curl -X POST http://localhost:8000/search_tickets \
   -d '{
     "text": "network outage",
+    "days": 0,
     "created_after": "2024-01-01T00:00:00Z",
     "created_before": "2024-12-31T23:59:59Z"
   }'
