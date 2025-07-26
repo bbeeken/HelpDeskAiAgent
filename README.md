@@ -412,6 +412,15 @@ Additional tools are available:
     -d '{"text": "printer", "created_after": "2024-01-01T00:00:00Z"}'
   ```
 
+  The response may include a `relevance_score` and a `highlights` object when a
+  text query is provided. `highlights` contains the subject and body with
+  matching terms wrapped in `<em>` tags. Each ticket also includes a `metadata`
+  object with fields like `age_days`, `is_overdue`, and `complexity_estimate`.
+  A ticket is considered overdue once it has been open for more than 24 hours.
+  Complexity is estimated as `"high"` if the body exceeds 500 characters or the
+  subject exceeds 100 characters, `"medium"` for bodies over 200 characters or
+  subjects over 50 characters, otherwise `"low"`.
+
 * `update_ticket` – modify an existing ticket, including escalation.
   ```bash
   curl -X POST http://localhost:8000/update_ticket \
