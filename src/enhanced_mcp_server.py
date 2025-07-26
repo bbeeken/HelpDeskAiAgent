@@ -470,20 +470,29 @@ async def _search_tickets(query: str, limit: int = 10) -> Dict[str, Any]:
         return {"status": "error", "error": str(e)}
 
 
-async def _search_tickets_unified(
+async def _search_tickets_enhanced(
     text: str | None = None,
+    query: str | None = None,  # Backward compatibility alias
     user: str | None = None,
-    query: str | None = None,
-    user_identifier: str | None = None,
+    user_identifier: str | None = None,  # Backward compatibility alias
     days: int | None = None,
+    created_after: str | None = None,
+    created_before: str | None = None,
+    status: str | None = None,
+    priority: str | None = None,
+    site_id: int | None = None,
+    assigned_to: str | None = None,
+    unassigned_only: bool = False,
+    filters: Dict[str, Any] | None = None,
     limit: int = 10,
     skip: int = 0,
-    filters: Dict[str, Any] | None = None,
     sort: list[str] | None = None,
+    include_relevance_score: bool = True,
+    include_highlights: bool = True,
 ) -> Dict[str, Any]:
-    """Unified ticket search supporting text, user and timeframe filters."""
+    """Enhanced unified ticket search with AI-friendly features and semantic filtering."""
     try:
-
+        # Handle backward compatibility aliases
         if text is None and query is not None:
             text = query
         if user is None and user_identifier is not None:
@@ -491,19 +500,23 @@ async def _search_tickets_unified(
 
         async with db.SessionLocal() as db_session:
             base_stmt = select(VTicketMasterExpanded)
+            applied_filters = {}
 
+            # Text search with XSS protection
             if text:
-                sanitized = html.escape(text)
-                pattern = f"%{sanitized}%"
-                base_stmt = base_stmt.filter(
-                    or_(
-                        VTicketMasterExpanded.Subject.ilike(pattern),
-                        VTicketMasterExpanded.Ticket_Body.ilike(pattern),
+                sanitized = html.escape(text.strip())
+                if sanitized:
+                    pattern = f"%{sanitized}%"
+                    base_stmt = base_stmt.filter(
+                        or_(
+                            VTicketMasterExpanded.Subject.ilike(pattern),
+                            VTicketMasterExpanded.Ticket_Body.ilike(pattern),
+                        )
                     )
-                )
 
+            # User-based filtering (contact, assignee, or message sender)
             if user:
-                ident = user.lower()
+                ident = user.lower().strip()
                 base_stmt = base_stmt.filter(
                     or_(
                         func.lower(VTicketMasterExpanded.Ticket_Contact_Name) == ident,
@@ -513,21 +526,61 @@ async def _search_tickets_unified(
                     )
                 )
 
-            if days is not None and days >= 0:
+            # Time-based filtering (created_after/before override days)
+            if created_after or created_before:
+                if created_after:
+                    try:
+                        after_dt = datetime.fromisoformat(created_after.replace('Z', '+00:00'))
+                        base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date >= after_dt)
+                    except ValueError:
+                        logger.warning(f"Invalid created_after date format: {created_after}")
+                
+                if created_before:
+                    try:
+                        before_dt = datetime.fromisoformat(created_before.replace('Z', '+00:00'))
+                        base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date <= before_dt)
+                    except ValueError:
+                        logger.warning(f"Invalid created_before date format: {created_before}")
+            
+            elif days is not None and days >= 0:
                 cutoff = datetime.now(timezone.utc) - timedelta(days=days)
                 base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date >= cutoff)
 
-            if filters:
-                applied = _apply_semantic_filters(filters)
-                for key, value in applied.items():
-                    if hasattr(VTicketMasterExpanded, key):
-                        col = getattr(VTicketMasterExpanded, key)
-                        if isinstance(value, list):
-                            base_stmt = base_stmt.filter(col.in_(value))
-                        else:
-                            base_stmt = base_stmt.filter(col == value)
+            # Direct semantic filters (most commonly used by AI agents)
+            if status:
+                status_filters = {"status": status}
+                semantic_status = _apply_semantic_filters(status_filters)
+                applied_filters.update(semantic_status)
 
-            # Sorting
+            if priority:
+                priority_filters = {"priority": priority}
+                semantic_priority = _apply_semantic_filters(priority_filters)
+                applied_filters.update(semantic_priority)
+
+            if site_id is not None:
+                applied_filters["Site_ID"] = site_id
+
+            if assigned_to:
+                applied_filters["Assigned_Email"] = assigned_to
+
+            if unassigned_only:
+                base_stmt = base_stmt.filter(VTicketMasterExpanded.Assigned_Email.is_(None))
+
+            # Advanced filters from filters object
+            if filters:
+                additional_semantic = _apply_semantic_filters(filters)
+                applied_filters.update(additional_semantic)
+
+            # Apply all accumulated filters
+            for key, value in applied_filters.items():
+                if hasattr(VTicketMasterExpanded, key):
+                    col = getattr(VTicketMasterExpanded, key)
+                    if isinstance(value, list):
+                        base_stmt = base_stmt.filter(col.in_(value))
+                    else:
+                        base_stmt = base_stmt.filter(col == value)
+
+            # Sorting with intelligent defaults
             order_stmt = base_stmt
             if sort:
                 for key in reversed(sort):
@@ -546,30 +599,68 @@ async def _search_tickets_unified(
                             attr.desc() if direction == "desc" else attr.asc()
                         )
             else:
-                order_stmt = order_stmt.order_by(VTicketMasterExpanded.Created_Date.desc())
+                # Default: most recent first, then by priority for AI relevance
+                order_stmt = order_stmt.order_by(
+                    VTicketMasterExpanded.Created_Date.desc(),
+                    VTicketMasterExpanded.Severity_ID.asc()  # Lower ID = higher priority
+                )
 
+            # Get total count for pagination metadata
             count_stmt = select(func.count()).select_from(order_stmt.subquery())
             total_count = await db_session.scalar(count_stmt) or 0
 
+            # Apply pagination
             if skip:
                 order_stmt = order_stmt.offset(skip)
             if limit:
                 order_stmt = order_stmt.limit(limit)
 
+            # Execute query
             result = await db_session.execute(order_stmt)
             records = result.scalars().all()
 
+            # Process results with AI-friendly enhancements
             data = []
             for r in records:
                 item = _format_ticket_by_level(r)
-                if text:
+                
+                # Add AI-friendly metadata
+                item["metadata"] = {
+                    "age_days": (datetime.now(timezone.utc) - (r.Created_Date or datetime.now(timezone.utc))).days,
+                    "is_overdue": _is_ticket_overdue(r),
+                    "complexity_estimate": _estimate_complexity(r),
+                }
+
+                # Add relevance scoring for text searches
+                if text and include_relevance_score:
                     score = _calculate_search_relevance(item, text)
-                    item["relevance"] = round(score, 2)
+                    item["relevance_score"] = round(score, 2)
+
+                # Add search highlighting for better AI context
+                if text and include_highlights:
                     item["highlights"] = _generate_search_highlights(item, text)
+
                 data.append(item)
 
+            # Sort by relevance if text search was performed
+            if text and include_relevance_score:
+                data.sort(key=lambda d: d.get("relevance_score", 0), reverse=True)
+
+            # Generate search summary for AI context
+            search_summary = {
+                "query_type": [],
+                "filters_applied": list(applied_filters.keys()),
+                "search_scope": "all_tickets"
+            }
+            
             if text:
-                data.sort(key=lambda d: d.get("relevance", 0), reverse=True)
+                search_summary["query_type"].append("text_search")
+            if user:
+                search_summary["query_type"].append("user_filter")
+            if status or priority or site_id or assigned_to:
+                search_summary["query_type"].append("semantic_filter")
+            if unassigned_only:
+                search_summary["query_type"].append("unassigned_only")
 
             return {
                 "status": "success",
@@ -578,11 +669,25 @@ async def _search_tickets_unified(
                 "total_count": total_count,
                 "skip": skip,
                 "limit": limit,
+                "search_summary": search_summary,
+                "execution_metadata": {
+                    "text_query": text,
+                    "user_filter": user,
+                    "time_range_days": days,
+                    "semantic_filters_applied": bool(status or priority),
+                    "relevance_scoring": include_relevance_score and bool(text),
+                    "query_complexity": "simple" if len(search_summary["query_type"]) <= 1 else "complex"
+                }
             }
-    except Exception as e:
-        logger.error(f"Error in search_tickets_unified: {e}")
-        return {"status": "error", "error": str(e)}
 
+    except Exception as e:
+        logger.error(f"Error in enhanced search_tickets: {e}")
+        return {
+            "status": "error", 
+            "error": str(e),
+            "error_type": "search_execution_error",
+            "suggested_action": "Check parameters and try again with simpler filters"
+        }
 
 async def _search_tickets_advanced(**criteria: Any) -> Dict[str, Any]:
     """Perform advanced ticket search with metadata."""
@@ -1447,26 +1552,88 @@ ENHANCED_TOOLS: List[Tool] = [
         },
         _implementation=_get_ticket_attachments,
     ),
-   Tool(
+  Tool(
     name="search_tickets",
-    description="Comprehensive ticket search supporting text queries, user filtering, date ranges, and advanced filters. Can search by content, user involvement, or combine multiple criteria.",
+    description="Universal ticket search tool supporting text queries, user filtering, date ranges, and advanced filters. Automatically handles semantic filtering (e.g. 'open' status includes multiple states). Designed for AI agents to find tickets efficiently.",
     inputSchema={
         "type": "object",
         "properties": {
+            # Primary search parameters
             "text": {
                 "type": "string", 
-                "description": "Text to search for in ticket subject and body"
+                "description": "Text to search for in ticket subject and body. Supports partial matches."
             },
+            "query": {
+                "type": "string",
+                "description": "Alias for 'text' parameter for backward compatibility"
+            },
+            
+            # User-based filtering
             "user": {
                 "type": "string", 
-                "description": "Filter by user email/name (as contact, assignee, or message sender)"
+                "description": "Filter by user email/name (searches contact, assignee, or message sender)"
             },
+            "user_identifier": {
+                "type": "string",
+                "description": "Alias for 'user' parameter for backward compatibility"
+            },
+            
+            # Time-based filtering
             "days": {
                 "type": "integer", 
-                "description": "Limit to tickets created in the last N days",
+                "description": "Limit to tickets created in the last N days (0 = all time)",
                 "default": 30,
                 "minimum": 0
             },
+            "created_after": {
+                "type": "string", 
+                "format": "date-time",
+                "description": "Only tickets created on or after this ISO date (overrides 'days')"
+            },
+            "created_before": {
+                "type": "string", 
+                "format": "date-time", 
+                "description": "Only tickets created on or before this ISO date"
+            },
+            
+            # Direct semantic filters (commonly used)
+            "status": {
+                "type": "string",
+                "enum": ["open", "closed", "in_progress", "resolved", "waiting"],
+                "description": "Ticket status - 'open' includes multiple open states (Open, In Progress, Waiting, etc.)"
+            },
+            "priority": {
+                "type": "string",
+                "enum": ["critical", "high", "medium", "low"],
+                "description": "Priority level (maps to Severity_ID: critical=1, high=2, medium=3, low=4)"
+            },
+            "site_id": {
+                "type": "integer",
+                "description": "Filter by specific site ID (1=Vermillion, 2=Steele, 3=Summit, etc.)"
+            },
+            "assigned_to": {
+                "type": "string",
+                "description": "Filter by assignee email address"
+            },
+            "unassigned_only": {
+                "type": "boolean",
+                "default": False,
+                "description": "If true, only return unassigned tickets (Assigned_Email is null)"
+            },
+            
+            # Advanced filters object (for complex scenarios)
+            "filters": {
+                "type": "object",
+                "description": "Additional filters as key-value pairs (advanced use)",
+                "properties": {
+                    "Asset_ID": {"type": "integer", "description": "Filter by asset ID"},
+                    "Ticket_Category_ID": {"type": "integer", "description": "Filter by category ID"}, 
+                    "Assigned_Vendor_ID": {"type": "integer", "description": "Filter by vendor ID"},
+                    "Severity_ID": {"type": "integer", "description": "Direct severity ID filter (1-4)"}
+                }
+            },
+            
+            # Result control
             "limit": {
                 "type": "integer", 
                 "description": "Maximum number of results to return",
@@ -1480,61 +1647,62 @@ ENHANCED_TOOLS: List[Tool] = [
                 "default": 0,
                 "minimum": 0
             },
-            "filters": {
-                "type": "object",
-                "description": "Additional filters as key-value pairs",
-                "properties": {
-                    "status": {
-                        "type": "string",
-                        "enum": ["open", "closed", "in_progress", "resolved"],
-                        "description": "Filter by ticket status (semantic values supported)"
-                    },
-                    "priority": {
-                        "type": "string",
-                        "enum": ["critical", "high", "medium", "low"],
-                        "description": "Filter by priority level"
-                    },
-                    "site_id": {"type": "integer", "description": "Filter by site ID"},
-                    "assigned_to": {"type": "string", "description": "Filter by assignee email"},
-                    "created_after": {"type": "string", "format": "date-time"},
-                    "created_before": {"type": "string", "format": "date-time"}
-                }
-            },
             "sort": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Sort fields (prefix with '-' for descending)",
-                "examples": [["Created_Date"], ["-Priority_Level", "Created_Date"]]
+                "description": "Sort fields (prefix with '-' for descending). Examples: ['Created_Date'], ['-Priority_Level', 'Created_Date']",
+                "default": ["-Created_Date"]
+            },
+            
+            # AI-specific enhancements
+            "include_relevance_score": {
+                "type": "boolean",
+                "default": True,
+                "description": "Include relevance scores for text searches (recommended for AI agents)"
+            },
+            "include_highlights": {
+                "type": "boolean", 
+                "default": True,
+                "description": "Include search term highlighting in results"
             }
         },
         "examples": [
             {
                 "text": "printer error",
+                "status": "open",
                 "days": 7,
                 "limit": 5
             },
             {
                 "user": "tech@example.com",
-                "filters": {"status": "open"},
+                "status": "open",
                 "sort": ["-Created_Date"]
             },
             {
                 "text": "network issues",
-                "user": "alice@example.com",
-                "days": 30,
-                "filters": {"priority": "high"}
+                "user": "alice@example.com", 
+                "priority": "high",
+                "days": 30
             },
             {
-                "filters": {
-                    "status": "open",
-                    "assigned_to": null
-                },
+                "status": "open",
+                "unassigned_only": True,
                 "sort": ["-Priority_Level"],
                 "limit": 20
+            },
+            {
+                "site_id": 1,
+                "status": "open",
+                "assigned_to": "tech@heinzcorps.com"
+            },
+            {
+                "text": "email",
+                "created_after": "2024-01-01T00:00:00Z",
+                "created_before": "2024-12-31T23:59:59Z"
             }
         ]
     },
-    _implementation=_search_tickets_unified,
+    _implementation=_search_tickets_enhanced,
 ),
     Tool(
         name="get_analytics",
