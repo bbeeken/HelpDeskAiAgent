@@ -321,11 +321,75 @@ def _apply_semantic_filters(filters: dict[str, Any]) -> dict[str, Any]:
         elif k == "category":
             translated["Ticket_Category_ID"] = value
             
-        else:
-            # Pass through other filters unchanged
-            translated[key] = value
-            
+    else:
+        # Pass through other filters unchanged
+        translated[key] = value
+
     return translated
+
+
+def _is_ticket_overdue(ticket: Any) -> bool:
+    """Return True if ticket age exceeds SLA threshold while still open."""
+    try:
+        created = getattr(ticket, "Created_Date", None)
+        if not created:
+            return False
+
+        if getattr(ticket, "Closed_Date", None):
+            return False
+
+        status_id = getattr(ticket, "Ticket_Status_ID", None)
+        if status_id is not None and status_id not in _OPEN_STATE_IDS:
+            return False
+
+        severity_id = getattr(ticket, "Severity_ID", 3)
+        sla_hours = {
+            1: 4,    # Critical
+            2: 24,   # High
+            3: 72,   # Medium
+            4: 168,  # Low
+        }.get(severity_id, 72)
+
+        age_hours = (datetime.now(timezone.utc) - created).total_seconds() / 3600
+        return age_hours > sla_hours
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning(f"Failed to evaluate SLA for ticket: {exc}")
+        return False
+
+
+def _estimate_complexity(ticket: Any) -> str:
+    """Estimate ticket complexity using length, message count and attachments."""
+    try:
+        subject_len = len(getattr(ticket, "Subject", "") or "")
+        body_len = len(getattr(ticket, "Ticket_Body", "") or "")
+        message_count = getattr(ticket, "message_count", 0) or 0
+        attachment_count = getattr(ticket, "attachment_count", 0) or 0
+
+        score = 0.0
+        text_len = subject_len + body_len
+        if text_len > 800:
+            score += 2
+        elif text_len > 400:
+            score += 1
+
+        if message_count > 10:
+            score += 2
+        elif message_count > 3:
+            score += 1
+
+        if attachment_count > 5:
+            score += 1
+        elif attachment_count > 0:
+            score += 0.5
+
+        if score >= 4:
+            return "high"
+        if score >= 2:
+            return "medium"
+        return "low"
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning(f"Failed to estimate complexity: {exc}")
+        return "medium"
 
 
 # ---------------------------------------------------------------------------
