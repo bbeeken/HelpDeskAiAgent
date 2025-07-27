@@ -31,13 +31,21 @@ def fake_server(data):
         thread.join()
 
 
-def test_verify_tools_success():
+def test_verify_tools_success(capsys):
     data = {"tools": [{"name": "get_ticket"}, {"name": "search_tickets"}]}
     with fake_server(data) as url:
         assert verify_tools.verify(url)
+    out = capsys.readouterr().out
+    assert out.strip() == "All expected tools present."
 
 
-def test_verify_tools_missing():
+def test_verify_tools_missing(capsys):
     data = {"tools": [{"name": "get_ticket"}]}
     with fake_server(data) as url:
         assert not verify_tools.verify(url)
+    out = capsys.readouterr().out
+    assert "Missing tools: search_tickets" in out
+    assert "Server tool list:" in out
+    start = out.index("[")
+    tools_json = out[start:]
+    assert json.loads(tools_json) == [{"name": "get_ticket"}]
