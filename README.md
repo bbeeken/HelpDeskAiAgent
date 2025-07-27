@@ -373,6 +373,7 @@ curl "http://localhost:8000/get_tickets_by_user?identifier=user@example.com&stat
 ```
 
 Tool endpoints validate request bodies against each tool's `inputSchema` using
+
 JSON Schema. Invalid requests yield a `422 Unprocessable Entity` response. The
 response body includes a `path` key showing which property failed validation and
 now echoes back the submitted `payload`. When possible a `value` field contains
