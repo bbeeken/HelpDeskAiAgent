@@ -93,9 +93,11 @@ Comprehensive ticket search with AI-optimized features and semantic filtering. S
 - `user_identifier` – Alias for `user` parameter (backward compatibility)
 
 #### Time Filtering
+
 - `days` – Limit to tickets created in the last N days (default: 30, `0` returns all tickets). Ignored if `created_after` or `created_before` are provided
 - `created_after` – Only tickets created on or after this ISO-8601 datetime with timezone
 - `created_before` – Only tickets created on or before this ISO-8601 datetime with timezone
+
 
 #### Semantic Filters (AI-Friendly)
 - `status` – Ticket status filter. Allowed values: `"open"`, `"in_progress"`, `"resolved"`, `"closed"`

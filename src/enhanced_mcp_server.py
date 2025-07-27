@@ -400,6 +400,8 @@ async def _search_tickets_enhanced(
             text = query
         if user is None and user_identifier is not None:
             user = user_identifier
+        if days is None and created_after is None and created_before is None:
+            days = 30
 
         if created_after and not _ISO_DT_PATTERN.match(created_after):
             raise HTTPException(
