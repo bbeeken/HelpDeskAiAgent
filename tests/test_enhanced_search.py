@@ -91,7 +91,7 @@ async def test_enhanced_search_ai_features():
         data = resp.json()
         ticket = data["data"][0]
         assert "relevance_score" in ticket
-        assert ticket["relevance_score"] > 0
+        assert 0 < ticket["relevance_score"] <= 1
         assert "highlights" in ticket
         assert "<em>" in ticket["highlights"]["subject"]
         assert "metadata" in ticket

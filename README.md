@@ -415,7 +415,8 @@ Additional tools are available:
   ```
 
   The response may include a `relevance_score` and a `highlights` object when a
-  text query is provided. `highlights` contains the subject and body with
+  text query is provided. `relevance_score` uses TF‑IDF cosine similarity to rank
+  results. `highlights` contains the subject and body with
   matching terms wrapped in `<em>` tags. Each ticket also includes a `metadata`
   object with fields like `age_days`, `is_overdue`, and `complexity_estimate`.
   A ticket is considered overdue once it has been open for more than 24 hours.
