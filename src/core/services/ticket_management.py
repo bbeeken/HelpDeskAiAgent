@@ -33,16 +33,31 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Semantic Filtering helpers (moved from enhanced_mcp_server)
 # ---------------------------------------------------------------------------
+# Mapping of friendly status terms to their corresponding Ticket_Status_ID values
+# These mappings allow semantic filtering when searching or updating tickets.
+
+_CLOSED_STATE_IDS = [3, 7]
+
 _STATUS_MAP = {
-    "open": 1,
-    "closed": 3,
-    "resolved": 4,
-    "in_progress": 2,
-    "progress": 2,
-    "pending": 3,
+    # Closed and resolved tickets share the same state identifiers
+    "closed": _CLOSED_STATE_IDS,
+    "resolved": _CLOSED_STATE_IDS,
+
+    # Tickets actively being worked may fall under multiple progress states
+    "in_progress": [2, 5],
+    "progress": [2, 5],
+
+    # Waiting on user response
+    "waiting": 4,
+
+    # Pending/queued tickets
+    "pending": 6,
 }
 
 _OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
+
+# Closed states currently map to the single "Closed" status
+_CLOSED_STATE_IDS = [3]
 
 _PRIORITY_MAP = {
     "critical": "Critical",
@@ -69,15 +84,24 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
                 v = value.lower()
                 if v == "open":
                     translated["Ticket_Status_ID"] = _OPEN_STATE_IDS
+                elif v == "closed":
+                    translated["Ticket_Status_ID"] = _CLOSED_STATE_IDS
                 else:
-                    translated["Ticket_Status_ID"] = _STATUS_MAP.get(v, value)
+                    mapped = _STATUS_MAP.get(v, value)
+                    translated["Ticket_Status_ID"] = mapped
             elif isinstance(value, list):
                 ids: list[Any] = []
                 for item in value:
                     if isinstance(item, str) and item.lower() == "open":
                         ids.extend(_OPEN_STATE_IDS)
+                    elif isinstance(item, str) and item.lower() == "closed":
+                        ids.extend(_CLOSED_STATE_IDS)
                     elif isinstance(item, str):
-                        ids.append(_STATUS_MAP.get(item.lower(), item))
+                        mapped = _STATUS_MAP.get(item.lower(), item)
+                        if isinstance(mapped, list):
+                            ids.extend(mapped)
+                        else:
+                            ids.append(mapped)
                     else:
                         ids.append(item)
                 translated["Ticket_Status_ID"] = ids
@@ -113,6 +137,11 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
             translated[key] = value
 
     return translated
+
+
+def _apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
+    """Backward-compatible wrapper for :func:`apply_semantic_filters`."""
+    return apply_semantic_filters(filters)
 
 
 class TicketManager:
@@ -414,28 +443,19 @@ class TicketManager:
         )  # noqa: E501
         query = query.order_by(VTicketMasterExpanded.Ticket_ID)
         if status:
-            query = query.join(
-                TicketStatusModel,
-                VTicketMasterExpanded.Ticket_Status_ID == TicketStatusModel.ID,
-                isouter=True,
-            )
             s = status.lower()
             if s == "open":
                 query = query.filter(
-                    or_(
-                        TicketStatusModel.Label.ilike("%open%"),
-                        TicketStatusModel.Label.ilike("%progress%"),
-                    )
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([1, 2, 4, 5, 6, 8])
                 )
             elif s == "closed":
                 query = query.filter(
-                    or_(
-                        TicketStatusModel.Label.ilike("%closed%"),
-                        TicketStatusModel.Label.ilike("%resolved%"),
-                    )
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7])
                 )
-            elif s == "progress":
-                query = query.filter(TicketStatusModel.Label.ilike("%progress%"))
+            elif s in {"in_progress", "progress"}:
+                query = query.filter(
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([2, 4, 5, 6, 8])
+                )
         if filters:
             conditions = []
             for key, value in filters.items():
@@ -459,26 +479,20 @@ class TicketManager:
         days: int = 7,
         limit: int = 10,
     ) -> List[VTicketMasterExpanded]:
-        query = select(VTicketMasterExpanded).join(
-            TicketStatusModel,
-            VTicketMasterExpanded.Ticket_Status_ID == TicketStatusModel.ID,
-            isouter=True,
-        )
+        query = select(VTicketMasterExpanded)
         if status:
             s = status.lower()
             if s == "open":
                 query = query.filter(
-                    or_(
-                        TicketStatusModel.Label.ilike("%open%"),
-                        TicketStatusModel.Label.ilike("%progress%"),
-                    )
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([1, 2, 4, 5, 6, 8])
                 )
             elif s == "closed":
                 query = query.filter(
-                    or_(
-                        TicketStatusModel.Label.ilike("%closed%"),
-                        TicketStatusModel.Label.ilike("%resolved%"),
-                    )
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7])
+                )
+            elif s in {"in_progress", "progress"}:
+                query = query.filter(
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([2, 4, 5, 6, 8])
                 )
         if days is not None and days > 0:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)

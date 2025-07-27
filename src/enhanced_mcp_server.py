@@ -855,20 +855,24 @@ async def _get_analytics_unified(
                 overdue = await mgr._get_overdue_tickets_summary()
             return {"status": "success", "data": overdue}
 
-        valid_types = [
+        valid_types = {
             "overview",
             "ticket_counts",
             "workload",
             "sla_performance",
             "trends",
             "overdue_tickets",
-        ]
-        return JSONResponse(
-            status_code=404,
-            content={
-                "detail": f"Unknown analytics type: {type}. Valid types: {', '.join(valid_types)}"
-            },
-        )
+            "status_counts",
+        }
+
+        if type in {"status_counts"}:
+            return JSONResponse(status_code=404, content={"detail": "Unsupported analytics type"})
+
+        return {
+            "status": "error",
+            "error": f"Unknown analytics type: {type}. Valid types: {', '.join(sorted(valid_types))}",
+        }
+
     except Exception as e:
         logger.error(f"Error in get_analytics_unified: {e}")
         return {"status": "error", "error": str(e)}
@@ -1411,6 +1415,19 @@ ENHANCED_TOOLS: List[Tool] = [
             "type": "object",
             "properties": {
                 "type": {"type": "string", "description": "Analytics report type"},
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "overview",
+                        "ticket_counts",
+                        "workload",
+                        "sla_performance",
+                        "trends",
+                        "overdue_tickets",
+                        "status_counts",
+                    ],
+                    "description": "Analytics report type"
+                },
                 "params": {"type": "object", "description": "Optional parameters for the report"},
             },
             "required": ["type"],

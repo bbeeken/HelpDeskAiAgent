@@ -13,6 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .system_utilities import OperationResult
 from sqlalchemy import func, select, or_
 from src.core.repositories.models import Ticket, TicketStatus, Site
+from src.core.services.ticket_management import _OPEN_STATE_IDS
+
+_CLOSED_STATE_IDS = [3]
 from src.shared.schemas.analytics import (
     StatusCount,
     SiteOpenCount,
@@ -118,13 +121,7 @@ async def open_tickets_by_site(
             func.count(Ticket.Ticket_ID),
         )
         .join(Site, Ticket.Site_ID == Site.ID, isouter=True)
-        .join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
-        .filter(
-            or_(
-                TicketStatus.Label.ilike("%open%"),
-                TicketStatus.Label.ilike("%progress%"),
-            )
-        )
+        .filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
         .group_by(
             Ticket.Site_ID,
             Site.Label,
@@ -152,22 +149,18 @@ async def sla_breaches(
     cutoff = datetime.now(timezone.utc) - timedelta(days=sla_days)
     query = (
         select(func.count(Ticket.Ticket_ID))
-        .join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
         .filter(Ticket.Created_Date < cutoff)
     )
 
     if status_ids is not None:
         if isinstance(status_ids, int):
             status_ids = [status_ids]
-        query = query.filter(TicketStatus.ID.in_(status_ids))
+        query = query.filter(Ticket.Ticket_Status_ID.in_(status_ids))
     else:
 
         # Default to counting only open or in-progress tickets
         query = query.filter(
-            or_(
-                TicketStatus.Label.ilike("%open%"),
-                TicketStatus.Label.ilike("%progress%"),
-            )
+            Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS)
         )
 
     if filters:
@@ -192,18 +185,7 @@ async def open_tickets_by_user(
             Ticket.Assigned_Name,
             func.count(Ticket.Ticket_ID),
         )
-
-        .join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
-        .filter(
-            or_(
-                TicketStatus.Label.ilike("%open%"),
-                TicketStatus.Label.ilike("%progress%"),
-            )
-        )
-        .group_by(
-            Ticket.Assigned_Email
-
-        )
+        .filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
     )
 
     if filters:
@@ -280,24 +262,8 @@ async def get_staff_ticket_report(
     if end_date:
         base_query = base_query.filter(Ticket.Created_Date <= end_date)
 
-    open_q = (
-        base_query.join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
-        .filter(
-            or_(
-                TicketStatus.Label.ilike("%open%"),
-                TicketStatus.Label.ilike("%progress%"),
-            )
-        )
-    )
-    closed_q = (
-        base_query.join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
-        .filter(
-            or_(
-                TicketStatus.Label.ilike("%closed%"),
-                TicketStatus.Label.ilike("%resolved%"),
-            )
-        )
-    )
+    open_q = base_query.filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
+    closed_q = base_query.filter(Ticket.Ticket_Status_ID.in_(_CLOSED_STATE_IDS))
 
     open_count = await db.scalar(select(func.count()).select_from(open_q.subquery())) or 0
     closed_count = await db.scalar(select(func.count()).select_from(closed_q.subquery())) or 0
@@ -360,24 +326,14 @@ class AnalyticsManager:
 
         active = await self.db.scalar(
             select(func.count(Ticket.Ticket_ID))
-            .join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
-            .filter(
-                or_(
-                    TicketStatus.Label.ilike("%open%"),
-                    TicketStatus.Label.ilike("%progress%"),
-                )
-            )
+            .filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
         ) or 0
 
         resolved = await self.db.scalar(
             select(func.count(Ticket.Ticket_ID))
-            .join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
             .filter(
                 Ticket.Created_Date.between(start, end),
-                or_(
-                    TicketStatus.Label.ilike("%closed%"),
-                    TicketStatus.Label.ilike("%resolved%"),
-                )
+                Ticket.Ticket_Status_ID.in_(_CLOSED_STATE_IDS),
             )
         ) or 0
 

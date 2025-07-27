@@ -6,7 +6,11 @@ from src.core.repositories.models import Ticket, TicketStatus
 from src.core.services.ticket_management import TicketManager
 from src.core.services.ticket_management import (
     apply_semantic_filters,
+    _apply_semantic_filters,
     _OPEN_STATE_IDS,
+    _CLOSED_STATE_IDS,
+    _STATUS_MAP,
+
 )
 
 
@@ -34,12 +38,24 @@ async def test_open_status_filter_matches_multiple_states():
             await TicketManager().create_ticket(db, t)
         await db.commit()
 
-        filters = apply_semantic_filters({"status": "open"})
+        filters = _apply_semantic_filters({"status": "open"})
         assert filters == {"Ticket_Status_ID": _OPEN_STATE_IDS}
 
         res = await TicketManager().list_tickets(db, filters=filters)
         ids = {t.Ticket_ID for t in res}
         assert ids == {t1.Ticket_ID, t2.Ticket_ID, t4.Ticket_ID}
+
+
+@pytest.mark.asyncio
+async def test_closed_status_filter_maps_to_multiple_ids():
+    filters = apply_semantic_filters({"status": "closed"})
+    assert filters == {"Ticket_Status_ID": _CLOSED_STATE_IDS}
+
+
+@pytest.mark.asyncio
+async def test_in_progress_status_expands_all_ids():
+    filters = apply_semantic_filters({"status": "in_progress"})
+    assert filters == {"Ticket_Status_ID": _STATUS_MAP["in_progress"]}
 
 
 @pytest.mark.asyncio
@@ -52,3 +68,22 @@ async def test_priority_filter_maps_to_severity_id():
 
     filters = apply_semantic_filters({"priority": [1, "low"]})
     assert filters == {"Severity_ID": [1, 4]}
+
+
+def test_status_string_mappings():
+    mapping_expectations = {
+        "open": _OPEN_STATE_IDS,
+        "closed": _CLOSED_STATE_IDS,
+        "in_progress": 2,
+        "progress": 2,
+        "pending": 3,
+        "resolved": 4,
+    }
+    for status, expected in mapping_expectations.items():
+        result = _apply_semantic_filters({"status": status})
+        assert result == {"Ticket_Status_ID": expected}
+
+
+def test_open_closed_constants():
+    assert _OPEN_STATE_IDS == [1, 2, 4, 5, 6, 8]
+    assert _CLOSED_STATE_IDS == [3]
