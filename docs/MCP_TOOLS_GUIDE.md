@@ -308,10 +308,11 @@ Example:
 curl -X POST http://localhost:8000/advanced_search \
   -d '{"text_search": "printer", "limit": 10}'
 
-## advanced_search (removed)
+## search_tickets_advanced (removed)
 
-
-Use `search_tickets` with a text string.
+The previous `search_tickets_advanced` endpoint has been removed. Use
+`search_tickets` for unified search or `advanced_search` for complex
+queries.
 
 
 Example:

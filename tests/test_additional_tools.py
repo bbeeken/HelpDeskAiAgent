@@ -174,11 +174,6 @@ async def test_search_tickets_unified_error(client: AsyncClient):
     resp = await client.post("/search_tickets", json={"unexpected": 1})
     assert resp.status_code == 422
 
-@pytest.mark.asyncio
-async def test_search_tickets_advanced_error(client: AsyncClient):
-
-    resp = await client.post("/search_tickets_advanced", json={"limit": -1})
-    assert resp.status_code == 404
 
 
 
