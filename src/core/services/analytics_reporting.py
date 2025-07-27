@@ -16,6 +16,7 @@ from src.core.repositories.models import Ticket, TicketStatus, Site
 from src.core.services.ticket_management import _OPEN_STATE_IDS
 
 _CLOSED_STATE_IDS = [3]
+
 from src.shared.schemas.analytics import (
     StatusCount,
     SiteOpenCount,
@@ -124,7 +125,9 @@ async def open_tickets_by_site(
             func.count(Ticket.Ticket_ID),
         )
         .join(Site, Ticket.Site_ID == Site.ID, isouter=True)
+
         .filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
+
         .group_by(
             Ticket.Site_ID,
             Site.Label,
@@ -159,7 +162,9 @@ async def sla_breaches(
     else:
 
         # Default to counting only open or in-progress tickets
+
         query = query.filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
+
 
     if filters:
         for key, value in filters.items():
@@ -177,11 +182,13 @@ async def open_tickets_by_user(
 
     logger.info("Calculating open tickets by user with filters %s", filters)
 
+
     query = select(
         Ticket.Assigned_Email,
         Ticket.Assigned_Name,
         func.count(Ticket.Ticket_ID),
     ).filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
+
 
     if filters:
         for key, value in filters.items():
@@ -252,6 +259,7 @@ async def get_staff_ticket_report(
     if end_date:
         base_query = base_query.filter(Ticket.Created_Date <= end_date)
 
+
     open_q = base_query.filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
     closed_q = base_query.filter(Ticket.Ticket_Status_ID.in_(_CLOSED_STATE_IDS))
 
@@ -260,6 +268,7 @@ async def get_staff_ticket_report(
     )
     closed_count = (
         await db.scalar(select(func.count()).select_from(closed_q.subquery())) or 0
+
     )
 
     recent_q = (
@@ -320,6 +329,7 @@ class AnalyticsManager:
                     Ticket.Created_Date.between(start, end)
                 )
             )
+
             or 0
         )
 
@@ -338,6 +348,7 @@ class AnalyticsManager:
                     Ticket.Created_Date.between(start, end),
                     Ticket.Ticket_Status_ID.in_(_CLOSED_STATE_IDS),
                 )
+
             )
             or 0
         )

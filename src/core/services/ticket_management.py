@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 _CLOSED_STATE_IDS = [3, 7]
 
 _STATUS_MAP = {
+
     # Closed and resolved tickets share the same state identifiers
     "closed": _CLOSED_STATE_IDS,
     "resolved": _CLOSED_STATE_IDS,
@@ -49,9 +50,11 @@ _STATUS_MAP = {
     "waiting": 4,
     # Pending/queued tickets
     "pending": 6,
+
 }
 
 _OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
+_CLOSED_STATE_IDS = [3]
 
 # Closed states currently map to the single "Closed" status
 _CLOSED_STATE_IDS = [3]
@@ -441,6 +444,7 @@ class TicketManager:
         if status:
             s = status.lower()
             if s == "open":
+
                 query = query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_([1, 2, 4, 5, 6, 8])
                 )
@@ -450,6 +454,7 @@ class TicketManager:
                 query = query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_([2, 4, 5, 6, 8])
                 )
+
         if filters:
             conditions = []
             for key, value in filters.items():
@@ -479,6 +484,7 @@ class TicketManager:
         if status:
             s = status.lower()
             if s == "open":
+
                 query = query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_([1, 2, 4, 5, 6, 8])
                 )
@@ -488,6 +494,7 @@ class TicketManager:
                 query = query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_([2, 4, 5, 6, 8])
                 )
+
         if days is not None and days > 0:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
             query = query.filter(VTicketMasterExpanded.Created_Date >= cutoff)
@@ -609,7 +616,7 @@ class TicketTools:
                 TicketStatusModel,
                 VTicketMasterExpanded.Ticket_Status_ID == TicketStatusModel.ID,
                 isouter=True,
-            ).filter(~TicketStatusModel.Label.ilike("%closed%"))
+            ).filter(~TicketStatusModel.ID.in_(_CLOSED_STATE_IDS))
         stmt = stmt.limit(limit)
         result = await self.db.execute(stmt)
         tickets = result.scalars().all()
@@ -663,4 +670,6 @@ __all__ = [
     "TicketPriority",
     "TicketStatus",
     "TicketSearchResult",
+    "_OPEN_STATE_IDS",
+    "_CLOSED_STATE_IDS",
 ]
