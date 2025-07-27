@@ -446,13 +446,17 @@ class TicketManager:
             if s == "open":
 
                 query = query.filter(
-                    VTicketMasterExpanded.Ticket_Status_ID.in_([1, 2, 4, 5, 6, 8])
+                    VTicketMasterExpanded.Ticket_Status_ID.in_(_OPEN_STATE_IDS)
                 )
             elif s == "closed":
+
                 query = query.filter(VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7]))
+
             elif s in {"in_progress", "progress"}:
                 query = query.filter(
-                    VTicketMasterExpanded.Ticket_Status_ID.in_([2, 4, 5, 6, 8])
+                    VTicketMasterExpanded.Ticket_Status_ID.in_(
+                        _STATUS_MAP["in_progress"]
+                    )
                 )
 
         if filters:
@@ -486,13 +490,16 @@ class TicketManager:
             if s == "open":
 
                 query = query.filter(
-                    VTicketMasterExpanded.Ticket_Status_ID.in_([1, 2, 4, 5, 6, 8])
+                    VTicketMasterExpanded.Ticket_Status_ID.in_(_OPEN_STATE_IDS)
                 )
             elif s == "closed":
+
                 query = query.filter(VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7]))
             elif s in {"in_progress", "progress"}:
                 query = query.filter(
-                    VTicketMasterExpanded.Ticket_Status_ID.in_([2, 4, 5, 6, 8])
+                    VTicketMasterExpanded.Ticket_Status_ID.in_(
+                        _STATUS_MAP["in_progress"]
+                    )
                 )
 
         if days is not None and days > 0:
