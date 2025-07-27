@@ -169,7 +169,7 @@ Status Values
 
 "open" → Maps to status IDs [1,2,4,5,6,8] (Open, In Progress, Waiting, etc.)
 "closed" → Maps to status ID [3] (Closed/Resolved)
-"in_progress" → Maps to status ID [2] (In Progress)
+"in_progress" → Maps to status IDs [2,5] (In Progress)
 "waiting" → Maps to status ID [4] (Waiting on User)
 
 Priority Values
