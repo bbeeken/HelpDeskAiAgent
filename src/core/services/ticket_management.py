@@ -13,7 +13,7 @@ from datetime import datetime, timezone, timedelta
 from src.shared.schemas.search_params import TicketSearchParams
 from src.shared.schemas.filters import AdvancedFilters, apply_advanced_filters
 from pydantic import BaseModel
-from sqlalchemy import select, or_, and_, func, text
+from sqlalchemy import select, or_, and_, func, text, literal_column
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.shared.exceptions import DatabaseError
@@ -174,16 +174,33 @@ class TicketManager:
         if not sanitized:
             return []
         escaped = self._escape_like_pattern(sanitized)
-        like = f"%{escaped}%"
-        stmt = select(VTicketMasterExpanded).filter(
-            and_(
-                or_(
-                    VTicketMasterExpanded.Subject.ilike(like),
-                    VTicketMasterExpanded.Ticket_Body.ilike(like),
-                ),
-                func.length(VTicketMasterExpanded.Ticket_Body) <= 2000,
+
+        if db.bind.dialect.name == "postgresql":
+            ts_vector = func.to_tsvector(
+                "english",
+                func.coalesce(VTicketMasterExpanded.Subject, "")
+                + literal_column("' '")
+                + func.coalesce(VTicketMasterExpanded.Ticket_Body, ""),
             )
-        )
+            ts_query = func.plainto_tsquery("english", sanitized)
+            match_expr = ts_vector.op("@@")(ts_query)
+            stmt = select(VTicketMasterExpanded).filter(
+                and_(
+                    match_expr,
+                    func.length(VTicketMasterExpanded.Ticket_Body) <= 2000,
+                )
+            )
+        else:
+            like = f"%{escaped}%"
+            stmt = select(VTicketMasterExpanded).filter(
+                and_(
+                    or_(
+                        VTicketMasterExpanded.Subject.ilike(like),
+                        VTicketMasterExpanded.Ticket_Body.ilike(like),
+                    ),
+                    func.length(VTicketMasterExpanded.Ticket_Body) <= 2000,
+                )
+            )
         filters = params.model_dump(exclude_none=True) if params else {}
         sort_value = filters.pop("sort", None)
         created_after = filters.pop("created_after", None)

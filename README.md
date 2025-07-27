@@ -180,9 +180,10 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Severity_ID;
 - `GET /tickets/expanded` - list tickets with related labels. Supports
   dynamic query parameters to filter by any column in
   `V_Ticket_Master_Expanded` and a `sort` parameter for ordering.
-- `GET /tickets/search` - search tickets by subject or body. Accepts the same
-  optional fields as `/tickets/expanded` plus `sort=oldest|newest` to control
-  ordering
+- `GET /tickets/search` - search tickets by subject or body. When running on
+  PostgreSQL this endpoint leverages a GIN full-text index for improved
+  relevance. It accepts the same optional fields as `/tickets/expanded` plus
+  `sort=oldest|newest` to control ordering
 - `GET /tickets/smart_search` - perform a natural language search. Parameters:
   `q` for the query, `limit` for number of results (default `10`), and
   `include_closed` to search closed tickets. Returns structured results sorted

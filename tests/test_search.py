@@ -34,13 +34,22 @@ async def test_search_tickets():
             Ticket_Body="Cannot connect",
             Created_Date=datetime.now(UTC),
         )
+        extra = Ticket(
+            Subject="Email Server Down",
+            Ticket_Body="Server not responding",
+            Created_Date=datetime.now(UTC),
+        )
 
         await TicketManager().create_ticket(db, t)
+        await TicketManager().create_ticket(db, extra)
         await db.commit()
         params = TicketSearchParams()
         results = await TicketManager().search_tickets(db, "Network", params=params)
         assert results and results[0]["Subject"] == "Network issue"
         assert "body_preview" in results[0]
+        more = await TicketManager().search_tickets(db, "server")
+        ids = {r["Ticket_ID"] for r in more}
+        assert extra.Ticket_ID in ids
 
 
 @pytest.mark.asyncio
