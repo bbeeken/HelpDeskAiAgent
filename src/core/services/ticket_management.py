@@ -56,6 +56,9 @@ _STATUS_MAP = {
 
 _OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
 
+# Closed states currently map to the single "Closed" status
+_CLOSED_STATE_IDS = [3]
+
 _PRIORITY_MAP = {
     "critical": "Critical",
     "high": "High",
@@ -81,6 +84,8 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
                 v = value.lower()
                 if v == "open":
                     translated["Ticket_Status_ID"] = _OPEN_STATE_IDS
+                elif v == "closed":
+                    translated["Ticket_Status_ID"] = _CLOSED_STATE_IDS
                 else:
                     mapped = _STATUS_MAP.get(v, value)
                     translated["Ticket_Status_ID"] = mapped
@@ -89,6 +94,8 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
                 for item in value:
                     if isinstance(item, str) and item.lower() == "open":
                         ids.extend(_OPEN_STATE_IDS)
+                    elif isinstance(item, str) and item.lower() == "closed":
+                        ids.extend(_CLOSED_STATE_IDS)
                     elif isinstance(item, str):
                         mapped = _STATUS_MAP.get(item.lower(), item)
                         if isinstance(mapped, list):
@@ -130,6 +137,11 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
             translated[key] = value
 
     return translated
+
+
+def _apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
+    """Backward-compatible wrapper for :func:`apply_semantic_filters`."""
+    return apply_semantic_filters(filters)
 
 
 class TicketManager:
@@ -431,28 +443,19 @@ class TicketManager:
         )  # noqa: E501
         query = query.order_by(VTicketMasterExpanded.Ticket_ID)
         if status:
-            query = query.join(
-                TicketStatusModel,
-                VTicketMasterExpanded.Ticket_Status_ID == TicketStatusModel.ID,
-                isouter=True,
-            )
             s = status.lower()
             if s == "open":
                 query = query.filter(
-                    or_(
-                        TicketStatusModel.Label.ilike("%open%"),
-                        TicketStatusModel.Label.ilike("%progress%"),
-                    )
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([1, 2, 4, 5, 6, 8])
                 )
             elif s == "closed":
                 query = query.filter(
-                    or_(
-                        TicketStatusModel.Label.ilike("%closed%"),
-                        TicketStatusModel.Label.ilike("%resolved%"),
-                    )
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7])
                 )
-            elif s == "progress":
-                query = query.filter(TicketStatusModel.Label.ilike("%progress%"))
+            elif s in {"in_progress", "progress"}:
+                query = query.filter(
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([2, 4, 5, 6, 8])
+                )
         if filters:
             conditions = []
             for key, value in filters.items():
@@ -476,26 +479,20 @@ class TicketManager:
         days: int = 7,
         limit: int = 10,
     ) -> List[VTicketMasterExpanded]:
-        query = select(VTicketMasterExpanded).join(
-            TicketStatusModel,
-            VTicketMasterExpanded.Ticket_Status_ID == TicketStatusModel.ID,
-            isouter=True,
-        )
+        query = select(VTicketMasterExpanded)
         if status:
             s = status.lower()
             if s == "open":
                 query = query.filter(
-                    or_(
-                        TicketStatusModel.Label.ilike("%open%"),
-                        TicketStatusModel.Label.ilike("%progress%"),
-                    )
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([1, 2, 4, 5, 6, 8])
                 )
             elif s == "closed":
                 query = query.filter(
-                    or_(
-                        TicketStatusModel.Label.ilike("%closed%"),
-                        TicketStatusModel.Label.ilike("%resolved%"),
-                    )
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7])
+                )
+            elif s in {"in_progress", "progress"}:
+                query = query.filter(
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([2, 4, 5, 6, 8])
                 )
         if days is not None and days > 0:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
