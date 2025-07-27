@@ -22,7 +22,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from .mcp_server import Tool
 from src.infrastructure import database as db
-from src.core.services.ticket_management import TicketManager
+from src.core.services.ticket_management import (
+    TicketManager,
+    apply_semantic_filters,
+    _PRIORITY_MAP,
+)
 from src.core.services.reference_data import ReferenceDataManager
 from src.shared.schemas.ticket import TicketExpandedOut, TicketCreate
 from src.core.repositories.models import (
@@ -181,33 +185,6 @@ def set_config(config: MCPServerConfig) -> None:
     _config = config
 
 
-# ---------------------------------------------------------------------------
-# Semantic Filtering and Mapping
-# ---------------------------------------------------------------------------
-
-_STATUS_MAP = {
-    "open": 1,
-    "closed": 3,
-    "resolved": 4,
-    "in_progress": 2,
-    "progress": 2,
-    "pending": 3,
-}
-
-# IDs that represent an "open" style status in the database. When filtering on
-# ``status=open`` these should all be matched.
-_OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
-
-_PRIORITY_MAP = {
-    "critical": "Critical",
-    "high": "High",
-    "medium": "Medium",
-    "low": "Low",
-}
-
-# Map priority level names to their numeric severity ID. The ID values are
-# consistent across the test database and production schema.
-_PRIORITY_LEVEL_TO_ID = {"Critical": 1, "High": 2, "Medium": 3, "Low": 4}
 
 
 def _format_ticket_by_level(ticket: Any) -> dict:
@@ -252,66 +229,6 @@ def _generate_search_highlights(ticket: dict, query: str) -> dict:
     }
 
 
-def _apply_semantic_filters(filters: dict[str, Any]) -> dict[str, Any]:
-    """Translate human-friendly filters into database column filters."""
-    if not filters:
-        return {}
-        
-    translated: dict[str, Any] = {}
-    
-    for key, value in filters.items():
-        k = key.lower()
-        
-        if k in {"status", "ticket_status"}:
-            if isinstance(value, str):
-                v = value.lower()
-                if v == "open":
-                    translated["Ticket_Status_ID"] = _OPEN_STATE_IDS
-                else:
-                    translated["Ticket_Status_ID"] = _STATUS_MAP.get(v, value)
-            elif isinstance(value, list):
-                ids: list[Any] = []
-                for item in value:
-                    if isinstance(item, str) and item.lower() == "open":
-                        ids.extend(_OPEN_STATE_IDS)
-                    elif isinstance(item, str):
-                        ids.append(_STATUS_MAP.get(item.lower(), item))
-                    else:
-                        ids.append(item)
-                translated["Ticket_Status_ID"] = ids
-            else:
-                translated["Ticket_Status_ID"] = value
-                
-        elif k in {"priority", "priority_level"}:
-            if isinstance(value, list):
-                ids: list[Any] = []
-                for item in value:
-                    if isinstance(item, str):
-                        canonical = _PRIORITY_MAP.get(item.lower(), item)
-                        ids.append(_PRIORITY_LEVEL_TO_ID.get(canonical, item))
-                    else:
-                        ids.append(item)
-                translated["Severity_ID"] = ids
-            else:
-                if isinstance(value, str):
-                    canonical = _PRIORITY_MAP.get(value.lower(), value)
-                    translated["Severity_ID"] = _PRIORITY_LEVEL_TO_ID.get(
-                        canonical, value
-                    )
-                else:
-                    translated["Severity_ID"] = value
-                
-        elif k == "assignee":
-            translated["Assigned_Email"] = value
-            
-        elif k == "category":
-            translated["Ticket_Category_ID"] = value
-            
-    else:
-        # Pass through other filters unchanged
-        translated[key] = value
-
-    return translated
 
 
 
@@ -393,7 +310,7 @@ async def _list_tickets(
     try:
         async with db.SessionLocal() as db_session:
             # Apply semantic filtering
-            applied_filters = _apply_semantic_filters(filters or {})
+            applied_filters = apply_semantic_filters(filters or {})
             
             tickets = await TicketManager().list_tickets(
                 db_session,
@@ -428,7 +345,7 @@ async def _get_tickets_by_user(
     try:
         async with db.SessionLocal() as db_session:
             # Apply semantic filters
-            applied_filters = _apply_semantic_filters(filters or {})
+            applied_filters = apply_semantic_filters(filters or {})
             
             tickets = await TicketManager().get_tickets_by_user(
                 db_session,
@@ -482,130 +399,48 @@ async def _search_tickets_enhanced(
         if user is None and user_identifier is not None:
             user = user_identifier
 
+        if created_after and not _ISO_DT_PATTERN.match(created_after):
+            return JSONResponse(
+                status_code=422,
+                content={"detail": f"Invalid created_after: {created_after}"},
+            )
+        if created_before and not _ISO_DT_PATTERN.match(created_before):
+            return JSONResponse(
+                status_code=422,
+                content={"detail": f"Invalid created_before: {created_before}"},
+            )
+
         async with db.SessionLocal() as db_session:
-            base_stmt = select(VTicketMasterExpanded)
-            applied_filters = {}
+            records, total_count = await TicketManager().search_tickets(
+                db_session,
+                text,
+                limit=limit,
+                params=None,
+                user=user,
+                days=days,
+                created_after=created_after,
+                created_before=created_before,
+                status=status,
+                priority=priority,
+                site_id=site_id,
+                assigned_to=assigned_to,
+                unassigned_only=unassigned_only,
+                filters=filters,
+                skip=skip,
+                sort=sort,
+            )
 
-            # Text search with XSS protection
-            if text:
-                sanitized = html.escape(text.strip())
-                if sanitized:
-                    pattern = f"%{sanitized}%"
-                    base_stmt = base_stmt.filter(
-                        or_(
-                            VTicketMasterExpanded.Subject.ilike(pattern),
-                            VTicketMasterExpanded.Ticket_Body.ilike(pattern),
-                        )
-                    )
-
-            # User-based filtering (contact, assignee, or message sender)
-            if user:
-                ident = user.lower().strip()
-                base_stmt = base_stmt.filter(
-                    or_(
-                        func.lower(VTicketMasterExpanded.Ticket_Contact_Name) == ident,
-                        func.lower(VTicketMasterExpanded.Ticket_Contact_Email) == ident,
-                        func.lower(VTicketMasterExpanded.Assigned_Name) == ident,
-                        func.lower(VTicketMasterExpanded.Assigned_Email) == ident,
-                    )
-                )
-
-            # Time-based filtering (created_after/before override days)
-            if created_after or created_before:
-                if created_after:
-                    if not _ISO_DT_PATTERN.match(created_after):
-                        return JSONResponse(
-                            status_code=422,
-                            content={"detail": f"Invalid created_after: {created_after}"},
-                        )
-                    after_dt = datetime.fromisoformat(created_after.replace("Z", "+00:00"))
-                    base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date >= after_dt)
-
-                if created_before:
-                    if not _ISO_DT_PATTERN.match(created_before):
-                        return JSONResponse(
-                            status_code=422,
-                            content={"detail": f"Invalid created_before: {created_before}"},
-                        )
-                    before_dt = datetime.fromisoformat(created_before.replace("Z", "+00:00"))
-                    base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date <= before_dt)
-            
-            elif days is not None and days >= 0:
-                cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-                base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date >= cutoff)
-
-            # Direct semantic filters (most commonly used by AI agents)
-            if status:
-                status_filters = {"status": status}
-                semantic_status = _apply_semantic_filters(status_filters)
-                applied_filters.update(semantic_status)
-
-            if priority:
-                priority_filters = {"priority": priority}
-                semantic_priority = _apply_semantic_filters(priority_filters)
-                applied_filters.update(semantic_priority)
-
+            applied_filters: Dict[str, Any] = {}
+            if status is not None:
+                applied_filters.update(apply_semantic_filters({"status": status}))
+            if priority is not None:
+                applied_filters.update(apply_semantic_filters({"priority": priority}))
             if site_id is not None:
                 applied_filters["Site_ID"] = site_id
-
             if assigned_to:
                 applied_filters["Assigned_Email"] = assigned_to
-
-            if unassigned_only:
-                base_stmt = base_stmt.filter(VTicketMasterExpanded.Assigned_Email.is_(None))
-
-            # Advanced filters from filters object
             if filters:
-                additional_semantic = _apply_semantic_filters(filters)
-                applied_filters.update(additional_semantic)
-
-            # Apply all accumulated filters
-            for key, value in applied_filters.items():
-                if hasattr(VTicketMasterExpanded, key):
-                    col = getattr(VTicketMasterExpanded, key)
-                    if isinstance(value, list):
-                        base_stmt = base_stmt.filter(col.in_(value))
-                    else:
-                        base_stmt = base_stmt.filter(col == value)
-
-            # Sorting with intelligent defaults
-            order_stmt = base_stmt
-            if sort:
-                for key in reversed(sort):
-                    direction = "asc"
-                    column = key
-                    if key.startswith("-"):
-                        column = key[1:]
-                        direction = "desc"
-                    elif " " in key:
-                        column, dir_part = key.rsplit(" ", 1)
-                        if dir_part.lower() in {"asc", "desc"}:
-                            direction = dir_part.lower()
-                    if hasattr(VTicketMasterExpanded, column):
-                        attr = getattr(VTicketMasterExpanded, column)
-                        order_stmt = order_stmt.order_by(
-                            attr.desc() if direction == "desc" else attr.asc()
-                        )
-            else:
-                # Default: most recent first, then by priority for AI relevance
-                order_stmt = order_stmt.order_by(
-                    VTicketMasterExpanded.Created_Date.desc(),
-                    VTicketMasterExpanded.Severity_ID.asc()  # Lower ID = higher priority
-                )
-
-            # Get total count for pagination metadata
-            count_stmt = select(func.count()).select_from(order_stmt.subquery())
-            total_count = await db_session.scalar(count_stmt) or 0
-
-            # Apply pagination
-            if skip:
-                order_stmt = order_stmt.offset(skip)
-            if limit:
-                order_stmt = order_stmt.limit(limit)
-
-            # Execute query
-            result = await db_session.execute(order_stmt)
-            records = result.scalars().all()
+                applied_filters.update(apply_semantic_filters(filters))
 
             # Process results with AI-friendly enhancements
             data: list[dict] = []
@@ -728,7 +563,7 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
     try:
         async with db.SessionLocal() as db_session:
             # Apply semantic filters to updates
-            applied_updates = _apply_semantic_filters(updates)
+            applied_updates = apply_semantic_filters(updates)
             message = applied_updates.pop("message", None)
 
             # Closing logic
@@ -780,7 +615,7 @@ async def _bulk_update_tickets(
             return {"status": "error", "error": "No updates provided"}
         async with db.SessionLocal() as db_session:
             mgr = TicketManager()
-            applied_updates = _apply_semantic_filters(updates)
+            applied_updates = apply_semantic_filters(updates)
             applied_updates["LastModified"] = datetime.now(timezone.utc)
             applied_updates["LastModfiedBy"] = "Gil AI"
             
@@ -933,7 +768,7 @@ async def _get_open_tickets(
 
             # Apply additional filters
             if filters:
-                applied_filters = _apply_semantic_filters(filters)
+                applied_filters = apply_semantic_filters(filters)
                 filtered = []
                 for t in tickets:
                     match = True
@@ -1059,7 +894,7 @@ async def _get_sla_metrics(
             
             # Apply filters
             if filters:
-                applied_filters = _apply_semantic_filters(filters)
+                applied_filters = apply_semantic_filters(filters)
                 for key, value in applied_filters.items():
                     if hasattr(Ticket, key):
                         query = query.filter(getattr(Ticket, key) == value)

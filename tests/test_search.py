@@ -38,9 +38,9 @@ async def test_search_tickets():
         await TicketManager().create_ticket(db, t)
         await db.commit()
         params = TicketSearchParams()
-        results = await TicketManager().search_tickets(db, "Network", params=params)
-        assert results and results[0]["Subject"] == "Network issue"
-        assert "body_preview" in results[0]
+        records, _ = await TicketManager().search_tickets(db, "Network", params=params)
+        assert records and records[0].Subject == "Network issue"
+        assert hasattr(records[0], "Ticket_ID")
 
 
 @pytest.mark.asyncio
@@ -90,16 +90,16 @@ async def test_search_filters_escape_special_chars():
         await db.commit()
 
         params = TicketSearchParams(Subject="100% guaranteed")
-        res = await TicketManager().search_tickets(db, "", params=params)
-        assert any(r["Ticket_ID"] == t1.Ticket_ID for r in res)
+        res, _ = await TicketManager().search_tickets(db, "", params=params)
+        assert any(r.Ticket_ID == t1.Ticket_ID for r in res)
 
         params = TicketSearchParams(Subject="path\\to\\file")
-        res = await TicketManager().search_tickets(db, "", params=params)
-        assert any(r["Ticket_ID"] == t2.Ticket_ID for r in res)
+        res, _ = await TicketManager().search_tickets(db, "", params=params)
+        assert any(r.Ticket_ID == t2.Ticket_ID for r in res)
 
         params = TicketSearchParams(Subject="under_score_test")
-        res = await TicketManager().search_tickets(db, "", params=params)
-        assert any(r["Ticket_ID"] == t3.Ticket_ID for r in res)
+        res, _ = await TicketManager().search_tickets(db, "", params=params)
+        assert any(r.Ticket_ID == t3.Ticket_ID for r in res)
 
 
 @pytest.mark.asyncio
@@ -122,11 +122,11 @@ async def test_search_created_date_filters():
         await db.commit()
 
         params = TicketSearchParams(created_after=datetime(2023, 1, 5, tzinfo=UTC))
-        res = await TicketManager().search_tickets(db, "DateFilter", params=params)
-        ids = {r["Ticket_ID"] for r in res}
+        res, _ = await TicketManager().search_tickets(db, "DateFilter", params=params)
+        ids = {r.Ticket_ID for r in res}
         assert ids == {new.Ticket_ID}
 
         params = TicketSearchParams(created_before=datetime(2023, 1, 5, tzinfo=UTC))
-        res = await TicketManager().search_tickets(db, "DateFilter", params=params)
-        ids = {r["Ticket_ID"] for r in res}
+        res, _ = await TicketManager().search_tickets(db, "DateFilter", params=params)
+        ids = {r.Ticket_ID for r in res}
         assert ids == {old.Ticket_ID}

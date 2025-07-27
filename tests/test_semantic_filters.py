@@ -4,8 +4,8 @@ from datetime import datetime, UTC
 from src.infrastructure.database import SessionLocal
 from src.core.repositories.models import Ticket, TicketStatus
 from src.core.services.ticket_management import TicketManager
-from src.enhanced_mcp_server import (
-    _apply_semantic_filters,
+from src.core.services.ticket_management import (
+    apply_semantic_filters,
     _OPEN_STATE_IDS,
 )
 
@@ -34,7 +34,7 @@ async def test_open_status_filter_matches_multiple_states():
             await TicketManager().create_ticket(db, t)
         await db.commit()
 
-        filters = _apply_semantic_filters({"status": "open"})
+        filters = apply_semantic_filters({"status": "open"})
         assert filters == {"Ticket_Status_ID": _OPEN_STATE_IDS}
 
         res = await TicketManager().list_tickets(db, filters=filters)
@@ -44,11 +44,11 @@ async def test_open_status_filter_matches_multiple_states():
 
 @pytest.mark.asyncio
 async def test_priority_filter_maps_to_severity_id():
-    filters = _apply_semantic_filters({"priority": "high"})
+    filters = apply_semantic_filters({"priority": "high"})
     assert filters == {"Severity_ID": 2}
 
-    filters = _apply_semantic_filters({"priority": 3})
+    filters = apply_semantic_filters({"priority": 3})
     assert filters == {"Severity_ID": 3}
 
-    filters = _apply_semantic_filters({"priority": [1, "low"]})
+    filters = apply_semantic_filters({"priority": [1, "low"]})
     assert filters == {"Severity_ID": [1, 4]}

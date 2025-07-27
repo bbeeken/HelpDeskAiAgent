@@ -30,6 +30,90 @@ from .system_utilities import OperationResult
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Semantic Filtering helpers (moved from enhanced_mcp_server)
+# ---------------------------------------------------------------------------
+_STATUS_MAP = {
+    "open": 1,
+    "closed": 3,
+    "resolved": 4,
+    "in_progress": 2,
+    "progress": 2,
+    "pending": 3,
+}
+
+_OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
+
+_PRIORITY_MAP = {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+}
+
+_PRIORITY_LEVEL_TO_ID = {"Critical": 1, "High": 2, "Medium": 3, "Low": 4}
+
+
+def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
+    """Translate friendly filters into DB column filters."""
+    if not filters:
+        return {}
+
+    translated: Dict[str, Any] = {}
+
+    for key, value in filters.items():
+        k = key.lower()
+
+        if k in {"status", "ticket_status"}:
+            if isinstance(value, str):
+                v = value.lower()
+                if v == "open":
+                    translated["Ticket_Status_ID"] = _OPEN_STATE_IDS
+                else:
+                    translated["Ticket_Status_ID"] = _STATUS_MAP.get(v, value)
+            elif isinstance(value, list):
+                ids: list[Any] = []
+                for item in value:
+                    if isinstance(item, str) and item.lower() == "open":
+                        ids.extend(_OPEN_STATE_IDS)
+                    elif isinstance(item, str):
+                        ids.append(_STATUS_MAP.get(item.lower(), item))
+                    else:
+                        ids.append(item)
+                translated["Ticket_Status_ID"] = ids
+            else:
+                translated["Ticket_Status_ID"] = value
+
+        elif k in {"priority", "priority_level"}:
+            if isinstance(value, list):
+                ids: list[Any] = []
+                for item in value:
+                    if isinstance(item, str):
+                        canonical = _PRIORITY_MAP.get(item.lower(), item)
+                        ids.append(_PRIORITY_LEVEL_TO_ID.get(canonical, item))
+                    else:
+                        ids.append(item)
+                translated["Severity_ID"] = ids
+            else:
+                if isinstance(value, str):
+                    canonical = _PRIORITY_MAP.get(value.lower(), value)
+                    translated["Severity_ID"] = _PRIORITY_LEVEL_TO_ID.get(
+                        canonical, value
+                    )
+                else:
+                    translated["Severity_ID"] = value
+
+        elif k == "assignee":
+            translated["Assigned_Email"] = value
+
+        elif k == "category":
+            translated["Ticket_Category_ID"] = value
+
+        else:
+            translated[key] = value
+
+    return translated
+
 
 class TicketManager:
     """Handles all ticket CRUD and related operations."""
@@ -166,12 +250,29 @@ class TicketManager:
     async def search_tickets(
         self,
         db: AsyncSession,
-        query: str,
+        query: str | None,
         limit: int = 10,
         params: TicketSearchParams | None = None,
-    ) -> List[dict[str, Any]]:
-        sanitized = self._sanitize_search_input(query)
+        *,
+        user: str | None = None,
+        days: int | None = None,
+        created_after: datetime | str | None = None,
+        created_before: datetime | str | None = None,
+        status: str | int | None = None,
+        priority: str | int | None = None,
+        site_id: int | None = None,
+        assigned_to: str | None = None,
+        unassigned_only: bool = False,
+        filters: Dict[str, Any] | None = None,
+        skip: int = 0,
+        sort: list[str] | None = None,
+    ) -> tuple[List[VTicketMasterExpanded], int]:
+        """Unified ticket search supporting advanced parameters."""
+
+        sanitized = self._sanitize_search_input(query) if query else ""
+
         stmt = select(VTicketMasterExpanded)
+
         if sanitized:
             escaped = self._escape_like_pattern(sanitized)
             like = f"%{escaped}%"
@@ -181,39 +282,101 @@ class TicketManager:
                     VTicketMasterExpanded.Ticket_Body.ilike(like, escape="\\"),
                 )
             )
-        filters = params.model_dump(exclude_none=True) if params else {}
-        sort_value = filters.pop("sort", None)
-        created_after = filters.pop("created_after", None)
-        created_before = filters.pop("created_before", None)
-        for key, value in filters.items():
+
+        if user:
+            ident = user.lower().strip()
+            stmt = stmt.filter(
+                or_(
+                    func.lower(VTicketMasterExpanded.Ticket_Contact_Name) == ident,
+                    func.lower(VTicketMasterExpanded.Ticket_Contact_Email) == ident,
+                    func.lower(VTicketMasterExpanded.Assigned_Name) == ident,
+                    func.lower(VTicketMasterExpanded.Assigned_Email) == ident,
+                )
+            )
+
+        filters_dict = params.model_dump(exclude_none=True) if params else {}
+        sort_value = filters_dict.pop("sort", None)
+        param_after = filters_dict.pop("created_after", None)
+        param_before = filters_dict.pop("created_before", None)
+
+        if created_after is None:
+            created_after = param_after
+        if created_before is None:
+            created_before = param_before
+
+        if status is not None:
+            filters_dict.update(apply_semantic_filters({"status": status}))
+        if priority is not None:
+            filters_dict.update(apply_semantic_filters({"priority": priority}))
+        if site_id is not None:
+            filters_dict["Site_ID"] = site_id
+        if assigned_to:
+            filters_dict["Assigned_Email"] = assigned_to
+        if filters:
+            filters_dict.update(apply_semantic_filters(filters))
+
+        if unassigned_only:
+            stmt = stmt.filter(VTicketMasterExpanded.Assigned_Email.is_(None))
+
+        for key, value in filters_dict.items():
             if hasattr(VTicketMasterExpanded, key):
                 col = getattr(VTicketMasterExpanded, key)
-                if isinstance(value, str):
-                    escaped_value = self._escape_like_pattern(value)
-                    stmt = stmt.filter(col.ilike(f"%{escaped_value}%", escape="\\"))
+                if isinstance(value, list):
+                    stmt = stmt.filter(col.in_(value))
                 else:
                     stmt = stmt.filter(col == value)
+
         if created_after:
+            if isinstance(created_after, str):
+                created_after = datetime.fromisoformat(created_after.replace("Z", "+00:00"))
             stmt = stmt.filter(VTicketMasterExpanded.Created_Date >= created_after)
+        elif days is not None and days >= 0:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+            stmt = stmt.filter(VTicketMasterExpanded.Created_Date >= cutoff)
+
         if created_before:
+            if isinstance(created_before, str):
+                created_before = datetime.fromisoformat(created_before.replace("Z", "+00:00"))
             stmt = stmt.filter(VTicketMasterExpanded.Created_Date <= created_before)
-        if sort_value == "oldest":
-            stmt = stmt.order_by(VTicketMasterExpanded.Created_Date.asc())
+
+        order_list: list[Any] = []
+        if sort:
+            for key in reversed(sort):
+                direction = "asc"
+                column = key
+                if key.startswith("-"):
+                    column = key[1:]
+                    direction = "desc"
+                elif " " in key:
+                    column, dir_part = key.rsplit(" ", 1)
+                    if dir_part.lower() in {"asc", "desc"}:
+                        direction = dir_part.lower()
+                if hasattr(VTicketMasterExpanded, column):
+                    attr = getattr(VTicketMasterExpanded, column)
+                    order_list.append(attr.desc() if direction == "desc" else attr.asc())
+        elif sort_value:
+            if sort_value == "oldest":
+                order_list.append(VTicketMasterExpanded.Created_Date.asc())
+            else:
+                order_list.append(VTicketMasterExpanded.Created_Date.desc())
         else:
-            stmt = stmt.order_by(VTicketMasterExpanded.Created_Date.desc())
-        stmt = stmt.limit(limit)
+            order_list.append(VTicketMasterExpanded.Created_Date.desc())
+
+        if order_list:
+            stmt = stmt.order_by(*order_list)
+
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total_count = await db.scalar(count_stmt) or 0
+
+        if skip:
+            stmt = stmt.offset(skip)
+        if limit:
+            stmt = stmt.limit(limit)
+
         result = await db.execute(stmt)
-        summaries: list[dict[str, Any]] = [
-            {
-                "Ticket_ID": row.Ticket_ID,
-                "Subject": row.Subject,
-                "body_preview": (row.Ticket_Body or "")[:200],
-                "status_label": row.Ticket_Status_Label,
-                "priority_level": row.Priority_Level,
-            }
-            for row in result.scalars().all()
-        ]
-        return summaries
+        records = list(result.scalars().all())
+
+        return records, total_count
 
     async def get_tickets_by_user(
         self,
