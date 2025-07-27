@@ -180,13 +180,13 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Severity_ID;
 - `GET /tickets/expanded` - list tickets with related labels. Supports
   dynamic query parameters to filter by any column in
   `V_Ticket_Master_Expanded` and a `sort` parameter for ordering.
-- `GET /tickets/search` - search tickets by subject or body. Accepts the same
-  optional fields as `/tickets/expanded` plus `sort=oldest|newest` to control
-  ordering
-- `GET /tickets/smart_search` - perform a natural language search. Parameters:
-  `q` for the query, `limit` for number of results (default `10`), and
-  `include_closed` to search closed tickets. Returns structured results sorted
-  by relevance.
+- `GET /ticket/search` - search tickets by subject or body. Query parameters:
+  `q` (required), `limit` (default `10`), optional `created_after`/`created_before`
+  and other `V_Ticket_Master_Expanded` columns for filtering, plus
+  `sort=oldest|newest` to control ordering. The legacy `/tickets/search` path
+  remains available.
+- `POST /ticket/search` - JSON variant accepting the same fields as the GET
+  endpoint via a `TicketSearchRequest` body.
 - `GET /tickets/by_user` - list tickets where the user is the contact,
   assigned technician or has posted a message. Provide an `identifier` and
   optionally filter by `status` (open, closed or progress). Additional query
@@ -198,19 +198,18 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Severity_ID;
 - Ticket body and resolution fields now accept large text values; the previous
   2000-character limit has been removed.
 
-#### Smart search vs. regular search
+#### Searching for tickets
 
-Use `/tickets/search` for straightforward keyword queries or when you need to
-filter and sort by specific columns in `V_Ticket_Master_Expanded`. The
-`/tickets/smart_search` endpoint interprets natural language phrases (e.g.
-"unassigned high priority emails") and returns results ranked by relevance. It
-works best for quick human-friendly searches or when you don't know the exact
-keywords to use.
+Use `/ticket/search` for keyword queries. Provide `q` for the search text and
+optionally specify `limit`, `created_after`, `created_before` or any
+`V_Ticket_Master_Expanded` column to filter results. Sorting by
+`Created_Date` is controlled with `sort=oldest|newest`. A POST variant accepts a
+`TicketSearchRequest` JSON body containing the same fields.
 
 Example:
 
 ```bash
-curl "http://localhost:8000/tickets/smart_search?q=unassigned+critical&limit=5"
+curl "http://localhost:8000/ticket/search?q=printer&limit=5&created_after=2024-01-01"
 ```
 
 ### Analytics Endpoints
