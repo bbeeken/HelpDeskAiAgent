@@ -10,6 +10,7 @@ import os
 import sys
 from dataclasses import dataclass
 from typing import Generic, Optional, TypeVar
+from datetime import datetime
 
 import httpx
 
@@ -28,6 +29,18 @@ class OperationResult(Generic[T]):
     success: bool
     data: Optional[T] = None
     error: Optional[str] = None
+
+
+def parse_search_datetime(date_str: str | None) -> datetime | None:
+    """Safely parse datetime with proper error handling."""
+    if not date_str:
+        return None
+    try:
+        if date_str.endswith("Z"):
+            date_str = date_str[:-1] + "+00:00"
+        return datetime.fromisoformat(date_str)
+    except ValueError:
+        raise ValueError(f"Invalid datetime format: {date_str}")
 
 
 # -------------------------------------------------------------------
@@ -67,5 +80,4 @@ def cli_main(argv: list[str] | None = None) -> None:
 if __name__ == "__main__":
     cli_main()
 
-__all__ = ["OperationResult", "create_ticket", "cli_main"]
-
+__all__ = ["OperationResult", "create_ticket", "cli_main", "parse_search_datetime"]

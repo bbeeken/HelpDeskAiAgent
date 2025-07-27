@@ -26,7 +26,7 @@ from src.core.repositories.models import (
     VTicketMasterExpanded,
 )
 
-from .system_utilities import OperationResult
+from .system_utilities import OperationResult, parse_search_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +42,11 @@ _STATUS_MAP = {
     # Closed and resolved tickets share the same state identifiers
     "closed": _CLOSED_STATE_IDS,
     "resolved": _CLOSED_STATE_IDS,
-
     # Tickets actively being worked may fall under multiple progress states
     "in_progress": [2, 5],
     "progress": [2, 5],
-
     # Waiting on user response
     "waiting": 4,
-
     # Pending/queued tickets
     "pending": 6,
 }
@@ -150,7 +147,9 @@ class TicketManager:
     # ------------------------------------------------------------------
     # Basic CRUD
     # ------------------------------------------------------------------
-    async def get_ticket(self, db: AsyncSession, ticket_id: int) -> VTicketMasterExpanded | None:
+    async def get_ticket(
+        self, db: AsyncSession, ticket_id: int
+    ) -> VTicketMasterExpanded | None:
         return await db.get(VTicketMasterExpanded, ticket_id)
 
     async def create_ticket(
@@ -227,7 +226,9 @@ class TicketManager:
             for key, value in filters.items():
                 if hasattr(VTicketMasterExpanded, key):
                     attr = getattr(VTicketMasterExpanded, key)
-                    conditions.append(attr.in_(value) if isinstance(value, list) else attr == value)
+                    conditions.append(
+                        attr.in_(value) if isinstance(value, list) else attr == value
+                    )
             if conditions:
                 query = query.filter(and_(*conditions))
         if sort:
@@ -246,7 +247,9 @@ class TicketManager:
                         direction = dir_part.lower()
                 if hasattr(VTicketMasterExpanded, column):
                     attr = getattr(VTicketMasterExpanded, column)
-                    order_columns.append(attr.desc() if direction == "desc" else attr.asc())
+                    order_columns.append(
+                        attr.desc() if direction == "desc" else attr.asc()
+                    )
             if order_columns:
                 query = query.order_by(*order_columns)
             sorted_applied = True
@@ -259,22 +262,13 @@ class TicketManager:
         result = await db.execute(query)
         return result.scalars().all()
 
-
     def _escape_like_pattern(self, value: str) -> str:
         """Escape LIKE wildcard characters in a filter value."""
-        return (
-            value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        )
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
     def _sanitize_search_input(self, query: str) -> str:
-
-
         """Basic sanitization of search input."""
         return html.escape(query).strip()
-
-
-
-
 
     async def search_tickets(
         self,
@@ -357,7 +351,7 @@ class TicketManager:
 
         if created_after:
             if isinstance(created_after, str):
-                created_after = datetime.fromisoformat(created_after.replace("Z", "+00:00"))
+                created_after = parse_search_datetime(created_after)
             stmt = stmt.filter(VTicketMasterExpanded.Created_Date >= created_after)
         elif days is not None and days >= 0:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
@@ -365,12 +359,12 @@ class TicketManager:
 
         if created_before:
             if isinstance(created_before, str):
-                created_before = datetime.fromisoformat(created_before.replace("Z", "+00:00"))
+                created_before = parse_search_datetime(created_before)
             stmt = stmt.filter(VTicketMasterExpanded.Created_Date <= created_before)
 
         order_list: list[Any] = []
         if sort:
-            for key in reversed(sort):
+            for key in sort:
                 direction = "asc"
                 column = key
                 if key.startswith("-"):
@@ -382,7 +376,9 @@ class TicketManager:
                         direction = dir_part.lower()
                 if hasattr(VTicketMasterExpanded, column):
                     attr = getattr(VTicketMasterExpanded, column)
-                    order_list.append(attr.desc() if direction == "desc" else attr.asc())
+                    order_list.append(
+                        attr.desc() if direction == "desc" else attr.asc()
+                    )
         elif sort_value:
             if sort_value == "oldest":
                 order_list.append(VTicketMasterExpanded.Created_Date.asc())
@@ -449,9 +445,7 @@ class TicketManager:
                     VTicketMasterExpanded.Ticket_Status_ID.in_([1, 2, 4, 5, 6, 8])
                 )
             elif s == "closed":
-                query = query.filter(
-                    VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7])
-                )
+                query = query.filter(VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7]))
             elif s in {"in_progress", "progress"}:
                 query = query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_([2, 4, 5, 6, 8])
@@ -461,7 +455,9 @@ class TicketManager:
             for key, value in filters.items():
                 if hasattr(VTicketMasterExpanded, key):
                     attr = getattr(VTicketMasterExpanded, key)
-                    conditions.append(attr.in_(value) if isinstance(value, list) else attr == value)
+                    conditions.append(
+                        attr.in_(value) if isinstance(value, list) else attr == value
+                    )
             if conditions:
                 query = query.filter(and_(*conditions))
         if skip:
@@ -487,9 +483,7 @@ class TicketManager:
                     VTicketMasterExpanded.Ticket_Status_ID.in_([1, 2, 4, 5, 6, 8])
                 )
             elif s == "closed":
-                query = query.filter(
-                    VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7])
-                )
+                query = query.filter(VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7]))
             elif s in {"in_progress", "progress"}:
                 query = query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_([2, 4, 5, 6, 8])
@@ -506,7 +500,9 @@ class TicketManager:
     # ------------------------------------------------------------------
     # Messages & Attachments
     # ------------------------------------------------------------------
-    async def get_messages(self, db: AsyncSession, ticket_id: int) -> List[TicketMessage]:
+    async def get_messages(
+        self, db: AsyncSession, ticket_id: int
+    ) -> List[TicketMessage]:
         result = await db.execute(
             select(TicketMessage)
             .filter(TicketMessage.Ticket_ID == ticket_id)
@@ -525,8 +521,8 @@ class TicketManager:
         msg = TicketMessage(
             Ticket_ID=ticket_id,
             Message=message,
-            SenderUserCode='GilAI@heinzcorps.com',
-            SenderUserName='Gil AI',
+            SenderUserCode="GilAI@heinzcorps.com",
+            SenderUserName="Gil AI",
             DateTimeStamp=datetime.now(timezone.utc),
         )
         db.add(msg)
@@ -540,7 +536,9 @@ class TicketManager:
             raise DatabaseError("Failed to save message", details=str(e))
         return msg
 
-    async def get_attachments(self, db: AsyncSession, ticket_id: int) -> List[TicketAttachment]:
+    async def get_attachments(
+        self, db: AsyncSession, ticket_id: int
+    ) -> List[TicketAttachment]:
         result = await db.execute(
             select(TicketAttachment).filter(TicketAttachment.Ticket_ID == ticket_id)
         )
@@ -621,13 +619,17 @@ class TicketTools:
                 TicketSearchResult(
                     ticket_id=ticket.Ticket_ID,
                     subject=ticket.Subject,
-                    summary=(ticket.Ticket_Body[:200] + "...")
-                    if ticket.Ticket_Body and len(ticket.Ticket_Body) > 200
-                    else ticket.Ticket_Body,
+                    summary=(
+                        (ticket.Ticket_Body[:200] + "...")
+                        if ticket.Ticket_Body and len(ticket.Ticket_Body) > 200
+                        else ticket.Ticket_Body
+                    ),
                     status=ticket.Ticket_Status_Label or "Unknown",
                     priority=ticket.Priority_Level or "Medium",
                     assigned_to=ticket.Assigned_Name,
-                    created_date=ticket.Created_Date.isoformat() if ticket.Created_Date else "",
+                    created_date=(
+                        ticket.Created_Date.isoformat() if ticket.Created_Date else ""
+                    ),
                     relevance_score=1.0,
                 )
             )
