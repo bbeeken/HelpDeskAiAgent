@@ -167,7 +167,7 @@ Site Reference
 Status Mapping
 "open" → includes Open, In Progress, Waiting states [1,2,4,5,6,8]
 "closed" → Closed/Resolved states [3]
-"in_progress" → Currently being worked [2]
+"in_progress" → Currently being worked [2,5]
 "waiting" → Waiting on user response [4]
 
 Priority Mapping

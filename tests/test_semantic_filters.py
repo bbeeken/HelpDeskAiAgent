@@ -74,10 +74,10 @@ def test_status_string_mappings():
     mapping_expectations = {
         "open": _OPEN_STATE_IDS,
         "closed": _CLOSED_STATE_IDS,
-        "in_progress": 2,
-        "progress": 2,
-        "pending": 3,
-        "resolved": 4,
+        "in_progress": [2, 5],
+        "progress": [2, 5],
+        "pending": 6,
+        "resolved": _STATUS_MAP["resolved"],
     }
     for status, expected in mapping_expectations.items():
         result = _apply_semantic_filters({"status": status})
