@@ -153,6 +153,7 @@ async def sla_breaches(
         status_ids,
     )
     cutoff = datetime.now(timezone.utc) - timedelta(days=sla_days)
+    cutoff = parse_search_datetime(cutoff)
     query = select(func.count(Ticket.Ticket_ID)).filter(Ticket.Created_Date < cutoff)
 
     if status_ids is not None:
@@ -224,6 +225,7 @@ async def ticket_trend(db: AsyncSession, days: int = 7) -> List[TrendCount]:
     """Return ticket counts grouped by creation date over the past `days` days."""
     logger.info("Calculating ticket trend for the past %d days", days)
     start = datetime.now(timezone.utc) - timedelta(days=days)
+    start = parse_search_datetime(start)
     result = await db.execute(
         select(
             func.date(Ticket.Created_Date),
@@ -297,7 +299,9 @@ class AnalyticsManager:
         self, time_range_days: int = 30, include_predictions: bool = True
     ) -> Dict[str, Any]:
         end_date = datetime.now(timezone.utc)
+        end_date = parse_search_datetime(end_date)
         start_date = end_date - timedelta(days=time_range_days)
+        start_date = parse_search_datetime(start_date)
 
         metrics = await self._gather_all_metrics(start_date, end_date)
         trends = await self._analyze_trends(metrics, time_range_days)
@@ -363,7 +367,9 @@ class AnalyticsManager:
         self, metrics: Dict[str, Any], days: int
     ) -> Dict[str, TrendAnalysis]:
         prev_end = datetime.now(timezone.utc) - timedelta(days=days)
+        prev_end = parse_search_datetime(prev_end)
         prev_start = prev_end - timedelta(days=days)
+        prev_start = parse_search_datetime(prev_start)
         prev_metrics = await self._gather_all_metrics(prev_start, prev_end)
 
         change = (

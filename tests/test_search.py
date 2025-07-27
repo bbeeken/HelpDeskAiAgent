@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 from src.core.repositories.models import Base, Ticket
 from src.infrastructure.database import engine, SessionLocal
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 from src.core.services.ticket_management import TicketManager
 from src.shared.schemas.search_params import TicketSearchParams
 from src.core.repositories.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
@@ -165,3 +165,34 @@ async def test_search_created_after_invalid_string():
     async with SessionLocal() as db:
         with pytest.raises(ValueError):
             await TicketManager().search_tickets(db, "x", created_after="bad")
+
+
+@pytest.mark.asyncio
+async def test_search_datetime_and_days_filters():
+    async with SessionLocal() as db:
+        old = Ticket(
+            Subject="MicroDate",
+            Ticket_Body="old",
+            Created_Date=datetime.now(UTC) - timedelta(days=5),
+            Ticket_Status_ID=1,
+        )
+        new = Ticket(
+            Subject="MicroDate",
+            Ticket_Body="new",
+            Created_Date=datetime.now(UTC),
+            Ticket_Status_ID=1,
+        )
+        await TicketManager().create_ticket(db, old)
+        await TicketManager().create_ticket(db, new)
+        await db.commit()
+
+        after = datetime.now(UTC) - timedelta(days=2, microseconds=987654)
+        res, _ = await TicketManager().search_tickets(
+            db,
+            "MicroDate",
+            created_after=after,
+        )
+        assert {r.Ticket_ID for r in res} == {new.Ticket_ID}
+
+        res, _ = await TicketManager().search_tickets(db, "MicroDate", days=2)
+        assert {r.Ticket_ID for r in res} == {new.Ticket_ID}

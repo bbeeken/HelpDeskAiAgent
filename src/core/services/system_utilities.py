@@ -32,25 +32,38 @@ class OperationResult(Generic[T]):
     error: Optional[str] = None
 
 
-def parse_search_datetime(date_str: str | None) -> datetime | None:
-    """Safely parse datetime with proper error handling."""
-    if not date_str:
+def parse_search_datetime(value: datetime | str | None) -> datetime | None:
+    """Safely parse a value into a ``datetime``.
+
+    Strings are parsed using either the custom DB format or ISO format. If a
+    ``datetime`` instance is provided, it is returned after normalizing the
+    microsecond precision to milliseconds.
+    """
+
+    if value is None:
         return None
-    try:
-        # First attempt database-specific format
-        dt = parse_db_datetime(date_str)
-    except ValueError:
-        dt = None
-    if dt is None:
+
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        date_str = value
         try:
-            if date_str.endswith("Z"):
-                date_str = date_str[:-1] + "+00:00"
-            dt = datetime.fromisoformat(date_str)
+            # First attempt database-specific format
+            dt = parse_db_datetime(date_str)
         except ValueError:
-            raise ValueError(f"Invalid datetime format: {date_str}")
+            dt = None
+        if dt is None:
+            try:
+                if date_str.endswith("Z"):
+                    date_str = date_str[:-1] + "+00:00"
+                dt = datetime.fromisoformat(date_str)
+            except ValueError:
+                raise ValueError(f"Invalid datetime format: {date_str}")
+
     # Normalize microseconds to milliseconds precision to match DB expectations
     if dt.microsecond % 1000:
         dt = dt.replace(microsecond=(dt.microsecond // 1000) * 1000)
+
     return dt
 
 

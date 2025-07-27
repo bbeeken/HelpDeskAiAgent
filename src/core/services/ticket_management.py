@@ -353,17 +353,16 @@ class TicketManager:
                     stmt = stmt.filter(col == value)
 
         if created_after:
-            if isinstance(created_after, str):
-                created_after = parse_search_datetime(created_after)
-            stmt = stmt.filter(VTicketMasterExpanded.Created_Date >= created_after)
+            created_after_dt = parse_search_datetime(created_after)
+            stmt = stmt.filter(VTicketMasterExpanded.Created_Date >= created_after_dt)
         elif days is not None and days >= 0:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+            cutoff = parse_search_datetime(cutoff)
             stmt = stmt.filter(VTicketMasterExpanded.Created_Date >= cutoff)
 
         if created_before:
-            if isinstance(created_before, str):
-                created_before = parse_search_datetime(created_before)
-            stmt = stmt.filter(VTicketMasterExpanded.Created_Date <= created_before)
+            created_before_dt = parse_search_datetime(created_before)
+            stmt = stmt.filter(VTicketMasterExpanded.Created_Date <= created_before_dt)
 
         order_list: list[Any] = []
         if sort:
@@ -504,6 +503,7 @@ class TicketManager:
 
         if days is not None and days > 0:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+            cutoff = parse_search_datetime(cutoff)
             query = query.filter(VTicketMasterExpanded.Created_Date >= cutoff)
         query = query.order_by(VTicketMasterExpanded.Created_Date.desc())
         if limit:

@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime, timezone, timedelta
+from .system_utilities import parse_search_datetime
 from typing import List, Dict, Any, Optional
 
 from sqlalchemy import select, func, and_, or_
@@ -669,6 +670,7 @@ class EnhancedContextManager:
     async def _get_overdue_tickets_summary(self) -> List[Dict[str, Any]]:
         """Get summary of overdue tickets."""
         cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        cutoff = parse_search_datetime(cutoff)
 
         result = await self.db.execute(
             select(VTicketMasterExpanded)
@@ -707,6 +709,7 @@ class EnhancedContextManager:
     async def _get_recent_system_activity(self) -> List[Dict[str, Any]]:
         """Get recent system activity."""
         recent_cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+        recent_cutoff = parse_search_datetime(recent_cutoff)
 
         result = await self.db.execute(
             select(VTicketMasterExpanded)
@@ -730,6 +733,7 @@ class EnhancedContextManager:
     async def _calculate_system_health(self) -> Dict[str, Any]:
         """Calculate overall system health metrics."""
         last_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+        last_24h = parse_search_datetime(last_24h)
 
         # Get recent ticket count
         recent_result = await self.db.execute(
