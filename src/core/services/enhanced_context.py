@@ -24,6 +24,7 @@ from src.shared.schemas.agent_data import (
 )
 from .user_services import UserManager
 from .analytics_reporting import AnalyticsManager
+from .ticket_management import _OPEN_STATE_IDS, _CLOSED_STATE_IDS
 
 logger = logging.getLogger(__name__)
 
@@ -508,10 +509,7 @@ class EnhancedContextManager:
             .filter(
                 and_(
                     VTicketMasterExpanded.Site_ID == site_id,
-                    or_(
-                        TicketStatus.Label.ilike("%open%"),
-                        TicketStatus.Label.ilike("%progress%"),
-                    ),
+                    TicketStatus.ID.in_(_OPEN_STATE_IDS),
                 )
             )
         )
@@ -614,10 +612,7 @@ class EnhancedContextManager:
             .filter(
                 and_(
                     VTicketMasterExpanded.Assigned_Email.is_not(None),
-                    or_(
-                        TicketStatus.Label.ilike("%open%"),
-                        TicketStatus.Label.ilike("%progress%"),
-                    ),
+                    TicketStatus.ID.in_(_OPEN_STATE_IDS),
                 )
             )
             .group_by(
@@ -648,10 +643,7 @@ class EnhancedContextManager:
             .filter(
                 and_(
                     VTicketMasterExpanded.Assigned_Email.is_(None),
-                    or_(
-                        TicketStatus.Label.ilike("%open%"),
-                        TicketStatus.Label.ilike("%progress%"),
-                    ),
+                    TicketStatus.ID.in_(_OPEN_STATE_IDS),
                 )
             )
             .order_by(VTicketMasterExpanded.Created_Date.desc())
@@ -687,10 +679,7 @@ class EnhancedContextManager:
             .filter(
                 and_(
                     VTicketMasterExpanded.Created_Date < cutoff,
-                    or_(
-                        TicketStatus.Label.ilike("%open%"),
-                        TicketStatus.Label.ilike("%progress%"),
-                    ),
+                    TicketStatus.ID.in_(_OPEN_STATE_IDS),
                 )
             )
             .order_by(VTicketMasterExpanded.Created_Date.asc())
@@ -755,12 +744,7 @@ class EnhancedContextManager:
                 VTicketMasterExpanded.Ticket_Status_ID == TicketStatus.ID,
                 isouter=True,
             )
-            .filter(
-                or_(
-                    TicketStatus.Label.ilike("%open%"),
-                    TicketStatus.Label.ilike("%progress%"),
-                )
-            )
+            .filter(TicketStatus.ID.in_(_OPEN_STATE_IDS))
         )
         open_count = open_result.scalar() or 0
 
@@ -816,10 +800,7 @@ class EnhancedContextManager:
                 .filter(
                     and_(
                         VTicketMasterExpanded.Ticket_Contact_Email == user_email,
-                        or_(
-                            TicketStatus.Label.ilike("%open%"),
-                            TicketStatus.Label.ilike("%progress%"),
-                        ),
+                        TicketStatus.ID.in_(_OPEN_STATE_IDS),
                     )
                 )
             )
@@ -975,10 +956,7 @@ class EnhancedContextManager:
                 .filter(
                     and_(
                         VTicketMasterExpanded.Ticket_Contact_Email == user_email,
-                        or_(
-                            TicketStatus.Label.ilike("%open%"),
-                            TicketStatus.Label.ilike("%progress%"),
-                        ),
+                        TicketStatus.ID.in_(_OPEN_STATE_IDS),
                     )
                 )
                 .order_by(VTicketMasterExpanded.Created_Date.desc())
@@ -1020,10 +998,7 @@ class EnhancedContextManager:
                 .filter(
                     and_(
                         VTicketMasterExpanded.Ticket_Contact_Email == user_email,
-                        or_(
-                            TicketStatus.Label.ilike("%closed%"),
-                            TicketStatus.Label.ilike("%resolved%"),
-                        ),
+                        TicketStatus.ID.in_(_CLOSED_STATE_IDS),
                     )
                 )
                 .order_by(VTicketMasterExpanded.Closed_Date.desc())

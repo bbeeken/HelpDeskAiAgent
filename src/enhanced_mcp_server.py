@@ -46,6 +46,7 @@ from src.core.services.analytics_reporting import (
     sla_breaches,
     AnalyticsManager,
 )
+from src.core.services.ticket_management import _OPEN_STATE_IDS
 from src.core.services.enhanced_context import EnhancedContextManager
 from src.core.services.advanced_query import AdvancedQueryManager
 from src.shared.schemas.agent_data import AdvancedQuery
@@ -855,6 +856,7 @@ async def _get_analytics_unified(
                 overdue = await mgr._get_overdue_tickets_summary()
             return {"status": "success", "data": overdue}
 
+
         valid_types = {
             "overview",
             "ticket_counts",
@@ -873,6 +875,7 @@ async def _get_analytics_unified(
             "error": f"Unknown analytics type: {type}. Valid types: {', '.join(sorted(valid_types))}",
         }
 
+
     except Exception as e:
         logger.error(f"Error in get_analytics_unified: {e}")
         return {"status": "error", "error": str(e)}
@@ -890,12 +893,7 @@ async def _get_sla_metrics(
             query = (
                 select(func.count(Ticket.Ticket_ID))
                 .join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
-                .filter(
-                    or_(
-                        TicketStatus.Label.ilike("%open%"),
-                        TicketStatus.Label.ilike("%progress%"),
-                    )
-                )
+                .filter(TicketStatus.ID.in_(_OPEN_STATE_IDS))
             )
             
             # Apply filters
@@ -1077,12 +1075,7 @@ async def _count_open_tickets_by_field(
             isouter=True,
         )
         .filter(column.in_(ids))
-        .filter(
-            or_(
-                TicketStatus.Label.ilike("%open%"),
-                TicketStatus.Label.ilike("%progress%"),
-            )
-        )
+        .filter(TicketStatus.ID.in_(_OPEN_STATE_IDS))
         .group_by(column)
     )
     
@@ -1426,7 +1419,9 @@ ENHANCED_TOOLS: List[Tool] = [
                         "overdue_tickets",
                         "status_counts",
                     ],
+
                     "description": "Analytics report type"
+
                 },
                 "params": {"type": "object", "description": "Optional parameters for the report"},
             },

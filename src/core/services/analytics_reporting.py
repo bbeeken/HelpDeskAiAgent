@@ -10,12 +10,13 @@ import time
 import threading
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from .system_utilities import OperationResult
+from .system_utilities import OperationResult, parse_search_datetime
 from sqlalchemy import func, select, or_
 from src.core.repositories.models import Ticket, TicketStatus, Site
 from src.core.services.ticket_management import _OPEN_STATE_IDS
 
 _CLOSED_STATE_IDS = [3]
+
 from src.shared.schemas.analytics import (
     StatusCount,
     SiteOpenCount,
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class TrendDirection(str, Enum):
     """Trend direction indicators."""
+
     INCREASING = "increasing"
     DECREASING = "decreasing"
     STABLE = "stable"
@@ -86,11 +88,13 @@ async def tickets_by_status(
                 Ticket.Ticket_Status_ID,
                 TicketStatus.Label,
                 func.count(Ticket.Ticket_ID),
-            ).join(
+            )
+            .join(
                 TicketStatus,
                 Ticket.Ticket_Status_ID == TicketStatus.ID,
                 isouter=True,
-            ).group_by(
+            )
+            .group_by(
                 Ticket.Ticket_Status_ID,
                 TicketStatus.Label,
             )
@@ -121,7 +125,9 @@ async def open_tickets_by_site(
             func.count(Ticket.Ticket_ID),
         )
         .join(Site, Ticket.Site_ID == Site.ID, isouter=True)
+
         .filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
+
         .group_by(
             Ticket.Site_ID,
             Site.Label,
@@ -147,10 +153,7 @@ async def sla_breaches(
         status_ids,
     )
     cutoff = datetime.now(timezone.utc) - timedelta(days=sla_days)
-    query = (
-        select(func.count(Ticket.Ticket_ID))
-        .filter(Ticket.Created_Date < cutoff)
-    )
+    query = select(func.count(Ticket.Ticket_ID)).filter(Ticket.Created_Date < cutoff)
 
     if status_ids is not None:
         if isinstance(status_ids, int):
@@ -159,9 +162,9 @@ async def sla_breaches(
     else:
 
         # Default to counting only open or in-progress tickets
-        query = query.filter(
-            Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS)
-        )
+
+        query = query.filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
+
 
     if filters:
         for key, value in filters.items():
@@ -179,14 +182,13 @@ async def open_tickets_by_user(
 
     logger.info("Calculating open tickets by user with filters %s", filters)
 
-    query = (
-        select(
-            Ticket.Assigned_Email,
-            Ticket.Assigned_Name,
-            func.count(Ticket.Ticket_ID),
-        )
-        .filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
-    )
+
+    query = select(
+        Ticket.Assigned_Email,
+        Ticket.Assigned_Name,
+        func.count(Ticket.Ticket_ID),
+    ).filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
+
 
     if filters:
         for key, value in filters.items():
@@ -209,15 +211,12 @@ async def tickets_waiting_on_user(db: AsyncSession) -> List[WaitingOnUserCount]:
         select(
             Ticket.Ticket_Contact_Email,
             func.count(Ticket.Ticket_ID),
-        ).filter(
-            Ticket.Ticket_Status_ID == 4
-        ).group_by(
-            Ticket.Ticket_Contact_Email
         )
+        .filter(Ticket.Ticket_Status_ID == 4)
+        .group_by(Ticket.Ticket_Contact_Email)
     )
     return [
-        WaitingOnUserCount(contact_email=row[0], count=row[1])
-        for row in result.all()
+        WaitingOnUserCount(contact_email=row[0], count=row[1]) for row in result.all()
     ]
 
 
@@ -229,19 +228,17 @@ async def ticket_trend(db: AsyncSession, days: int = 7) -> List[TrendCount]:
         select(
             func.date(Ticket.Created_Date),
             func.count(Ticket.Ticket_ID),
-        ).filter(
-            Ticket.Created_Date >= start
-        ).group_by(
-            func.date(Ticket.Created_Date)
-        ).order_by(
-            func.date(Ticket.Created_Date)
         )
+        .filter(Ticket.Created_Date >= start)
+        .group_by(func.date(Ticket.Created_Date))
+        .order_by(func.date(Ticket.Created_Date))
     )
 
     trend: List[TrendCount] = []
     for d, c in result.all():
         if isinstance(d, str):
-            d = date_cls.fromisoformat(d)
+            parsed = parse_search_datetime(d)
+            d = parsed.date() if parsed else None
         elif isinstance(d, datetime):
             d = d.date()
         trend.append(TrendCount(date=d, count=c))
@@ -262,14 +259,22 @@ async def get_staff_ticket_report(
     if end_date:
         base_query = base_query.filter(Ticket.Created_Date <= end_date)
 
+
     open_q = base_query.filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
     closed_q = base_query.filter(Ticket.Ticket_Status_ID.in_(_CLOSED_STATE_IDS))
 
-    open_count = await db.scalar(select(func.count()).select_from(open_q.subquery())) or 0
-    closed_count = await db.scalar(select(func.count()).select_from(closed_q.subquery())) or 0
+    open_count = (
+        await db.scalar(select(func.count()).select_from(open_q.subquery())) or 0
+    )
+    closed_count = (
+        await db.scalar(select(func.count()).select_from(closed_q.subquery())) or 0
+
+    )
 
     recent_q = (
-        base_query.order_by(Ticket.Created_Date.desc()).with_only_columns(Ticket.Ticket_ID).limit(5)
+        base_query.order_by(Ticket.Created_Date.desc())
+        .with_only_columns(Ticket.Ticket_ID)
+        .limit(5)
     )
     result = await db.execute(recent_q)
     recent_ids = [row[0] for row in result.all()]
@@ -318,24 +323,35 @@ class AnalyticsManager:
     async def _gather_all_metrics(
         self, start: datetime, end: datetime
     ) -> Dict[str, Any]:
-        total = await self.db.scalar(
-            select(func.count(Ticket.Ticket_ID)).filter(
-                Ticket.Created_Date.between(start, end)
+        total = (
+            await self.db.scalar(
+                select(func.count(Ticket.Ticket_ID)).filter(
+                    Ticket.Created_Date.between(start, end)
+                )
             )
-        ) or 0
 
-        active = await self.db.scalar(
-            select(func.count(Ticket.Ticket_ID))
-            .filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
-        ) or 0
+            or 0
+        )
 
-        resolved = await self.db.scalar(
-            select(func.count(Ticket.Ticket_ID))
-            .filter(
-                Ticket.Created_Date.between(start, end),
-                Ticket.Ticket_Status_ID.in_(_CLOSED_STATE_IDS),
+        active = (
+            await self.db.scalar(
+                select(func.count(Ticket.Ticket_ID)).filter(
+                    Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS)
+                )
             )
-        ) or 0
+            or 0
+        )
+
+        resolved = (
+            await self.db.scalar(
+                select(func.count(Ticket.Ticket_ID)).filter(
+                    Ticket.Created_Date.between(start, end),
+                    Ticket.Ticket_Status_ID.in_(_CLOSED_STATE_IDS),
+                )
+
+            )
+            or 0
+        )
 
         return {
             "total_tickets": total,
@@ -374,7 +390,10 @@ class AnalyticsManager:
     ) -> List[Dict[str, Any]]:
         insights: List[Dict[str, Any]] = []
         trend = trends["volume_trend"]
-        if trend.direction == TrendDirection.INCREASING and trend.change_percentage > 30:
+        if (
+            trend.direction == TrendDirection.INCREASING
+            and trend.change_percentage > 30
+        ):
             insights.append(
                 {
                     "type": "warning",
@@ -395,5 +414,14 @@ class AnalyticsManager:
             "confidence": f"{trend.confidence:.0%}",
         }
 
-__all__ = ["tickets_by_status", "open_tickets_by_site", "sla_breaches", "open_tickets_by_user", "tickets_waiting_on_user", "ticket_trend", "get_staff_ticket_report", "AnalyticsManager"]
 
+__all__ = [
+    "tickets_by_status",
+    "open_tickets_by_site",
+    "sla_breaches",
+    "open_tickets_by_user",
+    "tickets_waiting_on_user",
+    "ticket_trend",
+    "get_staff_ticket_report",
+    "AnalyticsManager",
+]
