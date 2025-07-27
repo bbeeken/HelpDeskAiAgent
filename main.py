@@ -8,7 +8,7 @@ from datetime import datetime, UTC
 from typing import Any, Dict, List
 
 import sentry_sdk
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
@@ -344,6 +344,8 @@ def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
 
         try:
             return await tool._implementation(**filtered)
+        except HTTPException as exc:
+            raise exc
         except Exception as e:
             logger.exception("Error executing tool %s", tool.name)
             return JSONResponse(
