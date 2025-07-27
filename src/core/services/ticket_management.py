@@ -44,6 +44,9 @@ _STATUS_MAP = {
 
 _OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
 
+# Closed states currently map to the single "Closed" status
+_CLOSED_STATE_IDS = [3]
+
 _PRIORITY_MAP = {
     "critical": "Critical",
     "high": "High",
@@ -69,6 +72,8 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
                 v = value.lower()
                 if v == "open":
                     translated["Ticket_Status_ID"] = _OPEN_STATE_IDS
+                elif v == "closed":
+                    translated["Ticket_Status_ID"] = _CLOSED_STATE_IDS
                 else:
                     translated["Ticket_Status_ID"] = _STATUS_MAP.get(v, value)
             elif isinstance(value, list):
@@ -76,6 +81,8 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
                 for item in value:
                     if isinstance(item, str) and item.lower() == "open":
                         ids.extend(_OPEN_STATE_IDS)
+                    elif isinstance(item, str) and item.lower() == "closed":
+                        ids.extend(_CLOSED_STATE_IDS)
                     elif isinstance(item, str):
                         ids.append(_STATUS_MAP.get(item.lower(), item))
                     else:
@@ -113,6 +120,11 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
             translated[key] = value
 
     return translated
+
+
+def _apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
+    """Backward-compatible wrapper for :func:`apply_semantic_filters`."""
+    return apply_semantic_filters(filters)
 
 
 class TicketManager:
