@@ -85,7 +85,11 @@ async def test_enhanced_search_ai_features():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
             "/search_tickets",
-            json={"text": "email server", "include_relevance_score": True, "include_highlights": True},
+            json={
+                "text": "email server",
+                "include_relevance_score": True,
+                "include_highlights": True,
+            },
         )
         assert resp.status_code == 200
         data = resp.json()

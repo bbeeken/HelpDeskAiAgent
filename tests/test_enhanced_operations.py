@@ -46,5 +46,3 @@ async def test_validate_ticket_update_invalid_field():
         )
         assert not res.is_valid
         assert res.blocking_errors
-
-
