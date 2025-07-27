@@ -36,13 +36,16 @@ logger = logging.getLogger(__name__)
 _STATUS_MAP = {
     "open": 1,
     "closed": 3,
-    "resolved": 4,
+    "resolved": 3,
     "in_progress": 2,
     "progress": 2,
     "pending": 3,
+    "waiting": 4,
+    "waiting_on_user": 4,
 }
 
 _OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
+_CLOSED_STATE_IDS = [3]
 
 _PRIORITY_MAP = {
     "critical": "Critical",
@@ -421,19 +424,9 @@ class TicketManager:
             )
             s = status.lower()
             if s == "open":
-                query = query.filter(
-                    or_(
-                        TicketStatusModel.Label.ilike("%open%"),
-                        TicketStatusModel.Label.ilike("%progress%"),
-                    )
-                )
+                query = query.filter(TicketStatusModel.ID.in_(_OPEN_STATE_IDS))
             elif s == "closed":
-                query = query.filter(
-                    or_(
-                        TicketStatusModel.Label.ilike("%closed%"),
-                        TicketStatusModel.Label.ilike("%resolved%"),
-                    )
-                )
+                query = query.filter(TicketStatusModel.ID.in_(_CLOSED_STATE_IDS))
             elif s == "progress":
                 query = query.filter(TicketStatusModel.Label.ilike("%progress%"))
         if filters:
@@ -467,19 +460,9 @@ class TicketManager:
         if status:
             s = status.lower()
             if s == "open":
-                query = query.filter(
-                    or_(
-                        TicketStatusModel.Label.ilike("%open%"),
-                        TicketStatusModel.Label.ilike("%progress%"),
-                    )
-                )
+                query = query.filter(TicketStatusModel.ID.in_(_OPEN_STATE_IDS))
             elif s == "closed":
-                query = query.filter(
-                    or_(
-                        TicketStatusModel.Label.ilike("%closed%"),
-                        TicketStatusModel.Label.ilike("%resolved%"),
-                    )
-                )
+                query = query.filter(TicketStatusModel.ID.in_(_CLOSED_STATE_IDS))
         if days is not None and days > 0:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
             query = query.filter(VTicketMasterExpanded.Created_Date >= cutoff)
@@ -597,7 +580,7 @@ class TicketTools:
                 TicketStatusModel,
                 VTicketMasterExpanded.Ticket_Status_ID == TicketStatusModel.ID,
                 isouter=True,
-            ).filter(~TicketStatusModel.Label.ilike("%closed%"))
+            ).filter(~TicketStatusModel.ID.in_(_CLOSED_STATE_IDS))
         stmt = stmt.limit(limit)
         result = await self.db.execute(stmt)
         tickets = result.scalars().all()
@@ -647,4 +630,6 @@ __all__ = [
     "TicketPriority",
     "TicketStatus",
     "TicketSearchResult",
+    "_OPEN_STATE_IDS",
+    "_CLOSED_STATE_IDS",
 ]
