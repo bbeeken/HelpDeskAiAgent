@@ -11,6 +11,7 @@ import sys
 from dataclasses import dataclass
 from typing import Generic, Optional, TypeVar
 from datetime import datetime
+from src.shared.utils.date_format import parse_db_datetime
 
 import httpx
 
@@ -35,6 +36,11 @@ def parse_search_datetime(date_str: str | None) -> datetime | None:
     """Safely parse datetime with proper error handling."""
     if not date_str:
         return None
+    try:
+        # First attempt database-specific format
+        return parse_db_datetime(date_str)
+    except ValueError:
+        pass
     try:
         if date_str.endswith("Z"):
             date_str = date_str[:-1] + "+00:00"

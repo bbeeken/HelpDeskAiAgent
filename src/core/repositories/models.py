@@ -1,4 +1,5 @@
-from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text
+from src.shared.utils.date_format import FormattedDateTime
 from sqlalchemy.orm import DeclarativeBase
 
 
@@ -17,13 +18,13 @@ class Ticket(Base):
     Asset_ID = Column(Integer)
     Site_ID = Column(Integer)
     Ticket_Category_ID = Column(Integer)
-    Created_Date = Column(DateTime(timezone=False))
+    Created_Date = Column(FormattedDateTime())
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
     Severity_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
-    Closed_Date = Column(DateTime(timezone=False))
-    LastModified = Column(DateTime(timezone=False))
+    Closed_Date = Column(FormattedDateTime())
+    LastModified = Column(FormattedDateTime())
     LastModfiedBy = Column(String)
     Resolution = Column(Text)
 
@@ -53,7 +54,7 @@ class TicketAttachment(Base):
     Ticket_ID = Column(Integer)
     Name = Column(String)
     WebURl = Column(String)
-    UploadDateTime = Column(DateTime(timezone=False))
+    UploadDateTime = Column(FormattedDateTime())
 
 
 class TicketMessage(Base):
@@ -63,7 +64,7 @@ class TicketMessage(Base):
     Message = Column(Text)
     SenderUserCode = Column(String)
     SenderUserName = Column(String)
-    DateTimeStamp = Column(DateTime(timezone=False))
+    DateTimeStamp = Column(FormattedDateTime())
 
 
 class Site(Base):
@@ -97,8 +98,8 @@ class OnCallShift(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_email = Column(String, nullable=False, index=True)
-    start_time = Column(DateTime(timezone=False), nullable=False)
-    end_time = Column(DateTime(timezone=False), nullable=False)
+    start_time = Column(FormattedDateTime(), nullable=False)
+    end_time = Column(FormattedDateTime(), nullable=False)
 
 
 class ViewBase(DeclarativeBase):
@@ -123,13 +124,13 @@ class VTicketMasterExpanded(ViewBase):
     Ticket_Category_ID = Column(Integer)
     Ticket_Category_Label = Column(String)
 
-    Created_Date = Column(DateTime(timezone=False))
+    Created_Date = Column(FormattedDateTime())
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
     Severity_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
-    Closed_Date = Column(DateTime(timezone=False))
-    LastModified = Column(DateTime(timezone=False))
+    Closed_Date = Column(FormattedDateTime())
+    LastModified = Column(FormattedDateTime())
     LastModfiedBy = Column(String)
 
     Assigned_Vendor_Name = Column(String)
