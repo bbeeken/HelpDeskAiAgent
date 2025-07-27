@@ -48,7 +48,9 @@ async def test_get_ticket_messages_success(client: AsyncClient):
 async def test_get_ticket_messages_error(client: AsyncClient):
     resp = await client.post("/get_ticket_messages", json={})
     assert resp.status_code == 422
-    assert "path" in resp.json()
+    data = resp.json()
+    assert "path" in data
+    assert "payload" in data
 
 
 @pytest.mark.asyncio
@@ -73,7 +75,9 @@ async def test_get_ticket_attachments_success(client: AsyncClient):
 async def test_get_ticket_attachments_error(client: AsyncClient):
     resp = await client.post("/get_ticket_attachments", json={})
     assert resp.status_code == 422
-    assert "path" in resp.json()
+    data = resp.json()
+    assert "path" in data
+    assert "payload" in data
 
 
 @pytest.mark.asyncio
@@ -94,7 +98,9 @@ async def test_escalate_ticket_success(client: AsyncClient):
 async def test_escalate_ticket_error(client: AsyncClient):
     resp = await client.post("/update_ticket", json={})
     assert resp.status_code == 422
-    assert "path" in resp.json()
+    data = resp.json()
+    assert "path" in data
+    assert "payload" in data
 
 
 @pytest.mark.asyncio
@@ -116,7 +122,9 @@ async def test_get_reference_data_priorities_error(client: AsyncClient):
         json={"type": "priorities", "limit": "bad"},
     )
     assert resp.status_code == 422
-    assert "path" in resp.json()
+    data = resp.json()
+    assert "path" in data
+    assert "payload" in data
 
 
 @pytest.mark.asyncio
@@ -212,4 +220,6 @@ async def test_bulk_update_tickets_success(client: AsyncClient):
 async def test_bulk_update_tickets_error(client: AsyncClient):
     resp = await client.post("/bulk_update_tickets", json={"ticket_ids": []})
     assert resp.status_code == 422
-    assert "path" in resp.json()
+    data = resp.json()
+    assert "path" in data
+    assert "payload" in data

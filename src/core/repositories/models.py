@@ -18,6 +18,7 @@ class Ticket(Base):
     Asset_ID = Column(Integer)
     Site_ID = Column(Integer)
     Ticket_Category_ID = Column(Integer)
+
     Created_Date = Column(FormattedDateTime())
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
@@ -56,7 +57,6 @@ class TicketAttachment(Base):
     WebURl = Column(String)
     UploadDateTime = Column(FormattedDateTime())
 
-
 class TicketMessage(Base):
     __tablename__ = "Ticket_Messages"
     ID = Column(Integer, primary_key=True, index=True)
@@ -64,6 +64,7 @@ class TicketMessage(Base):
     Message = Column(Text)
     SenderUserCode = Column(String)
     SenderUserName = Column(String)
+
     DateTimeStamp = Column(FormattedDateTime())
 
 
@@ -98,8 +99,10 @@ class OnCallShift(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_email = Column(String, nullable=False, index=True)
+
     start_time = Column(FormattedDateTime(), nullable=False)
     end_time = Column(FormattedDateTime(), nullable=False)
+
 
 
 class ViewBase(DeclarativeBase):
@@ -124,6 +127,7 @@ class VTicketMasterExpanded(ViewBase):
     Ticket_Category_ID = Column(Integer)
     Ticket_Category_Label = Column(String)
 
+
     Created_Date = Column(FormattedDateTime())
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
@@ -131,6 +135,7 @@ class VTicketMasterExpanded(ViewBase):
     Assigned_Vendor_ID = Column(Integer)
     Closed_Date = Column(FormattedDateTime())
     LastModified = Column(FormattedDateTime())
+
     LastModfiedBy = Column(String)
 
     Assigned_Vendor_Name = Column(String)
