@@ -70,13 +70,20 @@ async def search_tickets(
 ) -> List[TicketSearchOut]:
     """Search tickets with optional date filtering."""
     logger.info("Searching tickets for '%s' (limit=%d)", q, limit)
-    results = await TicketManager().search_tickets(db, q, limit=limit, params=params)
+    records, _ = await TicketManager().search_tickets(db, q, limit=limit, params=params)
     validated: List[TicketSearchOut] = []
-    for r in results:
+    for r in records:
+        data = {
+            "Ticket_ID": r.Ticket_ID,
+            "Subject": r.Subject,
+            "body_preview": (r.Ticket_Body or "")[:200],
+            "status_label": r.Ticket_Status_Label,
+            "priority_level": r.Priority_Level,
+        }
         try:
-            validated.append(TicketSearchOut.model_validate(r))
+            validated.append(TicketSearchOut.model_validate(data))
         except ValidationError as exc:
-            logger.error("Invalid search result %s: %s", r.get("Ticket_ID", "?"), exc)
+            logger.error("Invalid search result %s: %s", getattr(r, "Ticket_ID", "?"), exc)
     return validated
 
 
