@@ -36,7 +36,9 @@ logger = logging.getLogger(__name__)
 # Mapping of friendly status terms to their corresponding Ticket_Status_ID values
 # These mappings allow semantic filtering when searching or updating tickets.
 
-_CLOSED_STATE_IDS = [3, 7]
+# Closed states currently map to the single "Closed" status
+# Defined before _STATUS_MAP so the mapping can reference it
+_CLOSED_STATE_IDS = [3]
 
 _STATUS_MAP = {
     # Closed and resolved tickets share the same state identifiers
@@ -55,9 +57,6 @@ _STATUS_MAP = {
 }
 
 _OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
-
-# Closed states currently map to the single "Closed" status
-_CLOSED_STATE_IDS = [3]
 
 _PRIORITY_MAP = {
     "critical": "Critical",
