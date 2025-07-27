@@ -307,18 +307,36 @@ def build_mcp_endpoint(tool: Tool, schema: Dict[str, Any]):
         if extra:
             return JSONResponse(
                 status_code=422,
-                content={"detail": f"Unexpected parameters: {', '.join(extra)}"}
+                content={
+                    "detail": f"Unexpected parameters: {', '.join(extra)}",
+                    "payload": data,
+                }
             )
 
         # Validate schema
         try:
             validator.validate(data)
         except JsonSchemaError as exc:
+            invalid_value = data
+            for seg in exc.path:
+                if isinstance(invalid_value, dict):
+                    invalid_value = invalid_value.get(seg)
+                elif (
+                    isinstance(invalid_value, list)
+                    and isinstance(seg, int)
+                    and seg < len(invalid_value)
+                ):
+                    invalid_value = invalid_value[seg]
+                else:
+                    invalid_value = None
+                    break
             return JSONResponse(
                 status_code=422,
                 content={
                     "detail": f"Schema validation error: {exc.message}",
                     "path": list(exc.path),
+                    "value": invalid_value,
+                    "payload": data,
                 }
             )
 

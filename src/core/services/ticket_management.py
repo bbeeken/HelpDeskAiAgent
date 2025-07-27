@@ -27,6 +27,7 @@ from src.core.repositories.models import (
 )
 
 from .system_utilities import OperationResult, parse_search_datetime
+from src.shared.utils.date_format import format_db_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -641,7 +642,9 @@ class TicketTools:
                     priority=ticket.Priority_Level or "Medium",
                     assigned_to=ticket.Assigned_Name,
                     created_date=(
-                        ticket.Created_Date.isoformat() if ticket.Created_Date else ""
+                        format_db_datetime(ticket.Created_Date)
+                        if ticket.Created_Date
+                        else ""
                     ),
                     relevance_score=1.0,
                 )

@@ -1,3 +1,4 @@
+import json
 import requests
 import sys
 from typing import Set
@@ -33,6 +34,9 @@ def verify(base_url: str) -> bool:
 
     if ok:
         print("All expected tools present.")
+    else:
+        print("Server tool list:")
+        print(json.dumps(tools, indent=2))
     return ok
 
 
