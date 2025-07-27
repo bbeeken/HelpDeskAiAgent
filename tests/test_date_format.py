@@ -9,5 +9,7 @@ def test_parse_search_datetime_db_format():
     text = format_db_datetime(dt)
     parsed = parse_search_datetime(text)
 
+
     assert parsed == dt
+
 
