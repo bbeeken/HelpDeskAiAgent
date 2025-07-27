@@ -25,6 +25,7 @@ from src.shared.schemas.agent_data import (
 from .user_services import UserManager
 from .analytics_reporting import AnalyticsManager
 from .ticket_management import _OPEN_STATE_IDS, _CLOSED_STATE_IDS
+from src.shared.utils.date_format import format_db_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -360,9 +361,9 @@ class EnhancedContextManager:
         is_overdue = age_hours > sla_threshold_hours and not closed_date
 
         return {
-            "created_timestamp": created.isoformat() if created else None,
-            "last_modified": last_modified.isoformat() if last_modified else None,
-            "closed_timestamp": closed_date.isoformat() if closed_date else None,
+            "created_timestamp": format_db_datetime(created) if created else None,
+            "last_modified": format_db_datetime(last_modified) if last_modified else None,
+            "closed_timestamp": format_db_datetime(closed_date) if closed_date else None,
             "age_minutes": round(age_minutes, 2),
             "age_hours": round(age_hours, 2),
             "age_days": round(age_days, 2),
@@ -373,7 +374,7 @@ class EnhancedContextManager:
             "sla_threshold_hours": sla_threshold_hours,
             "priority_text": self._severity_id_to_text(ticket.Severity_ID),
             "complexity_estimate": self._estimate_ticket_complexity(ticket),
-            "metadata_generated_at": now.isoformat(),
+            "metadata_generated_at": format_db_datetime(now),
         }
 
     # Additional helper methods...
@@ -777,7 +778,7 @@ class EnhancedContextManager:
             "avg_resolution_hours": 0.0,
             "ticket_frequency": "unknown",
             "error": True,
-            "calculation_timestamp": self._get_current_utc().isoformat(),
+            "calculation_timestamp": format_db_datetime(self._get_current_utc()),
         }
 
     async def _calculate_user_ticket_statistics(self, user_email: str) -> Dict[str, Any]:
@@ -837,7 +838,7 @@ class EnhancedContextManager:
                 "closed_tickets": total_tickets - open_tickets,
                 "avg_resolution_hours": round(avg_resolution_hours, 2),
                 "ticket_frequency": "high" if total_tickets > 20 else "normal",
-                "calculation_timestamp": self._get_current_utc().isoformat(),
+                "calculation_timestamp": format_db_datetime(self._get_current_utc()),
                 "error": False,
             }
 
