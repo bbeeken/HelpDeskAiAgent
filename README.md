@@ -378,10 +378,6 @@ JSON Schema. Payloads missing required fields or with incorrect types return a
 `422 Unprocessable Entity` response. The error payload also includes a
 `path` field that pinpoints which property failed validation.
 
-`422 Unprocessable Entity` response. The response also includes a `path`
-field indicating which property failed validation.
-
-
 `get_open_tickets` lists tickets filtered by status and age. Provide a
 number of `days` and optional `status` such as `open` or `closed`.
 
