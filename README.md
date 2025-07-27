@@ -406,7 +406,9 @@ failed validation.
 
 Additional tools are available:
 
-* `search_tickets` – run a detailed ticket search.
+* `search_tickets` – run a detailed ticket search. The legacy
+  `search_tickets_advanced` route has been removed in favor of this
+  unified interface.
   ```bash
   curl -X POST http://localhost:8000/search_tickets \
     -d '{"text": "printer", "status": 1, "days": 0}'

@@ -472,37 +472,6 @@ async def _get_tickets_by_user(
         return {"status": "error", "error": str(e)}
 
 
-async def _search_tickets(query: str, limit: int = 10) -> Dict[str, Any]:
-    """Search tickets and return results scored by relevance."""
-    try:
-        async with db.SessionLocal() as db_session:
-            results = await TicketManager().search_tickets(
-                db_session, query, limit=limit * 2  # Get more results for relevance sorting
-            )
-            
-            enriched = []
-            for r in results:
-                score = _calculate_search_relevance(r, query)
-                if score > 0:  # Only include results with some relevance
-                    highlights = _generate_search_highlights(r, query)
-                    r = _format_ticket_by_level(r)
-                    r["relevance"] = round(score, 2)
-                    r["highlights"] = highlights
-                    enriched.append(r)
-
-            # Sort by relevance and limit results
-            enriched.sort(key=lambda d: d["relevance"], reverse=True)
-            enriched = enriched[:limit]
-            
-            return {
-                "status": "success",
-                "data": enriched,
-                "query": query,
-                "count": len(enriched)
-            }
-    except Exception as e:
-        logger.error(f"Error in search_tickets: {e}")
-        return {"status": "error", "error": str(e)}
 
 
 async def _search_tickets_enhanced(
@@ -729,42 +698,6 @@ async def _search_tickets_enhanced(
             },
         }
 
-async def _search_tickets_advanced(**criteria: Any) -> Dict[str, Any]:
-    """Perform advanced ticket search with metadata."""
-    try:
-        # Validate and sanitize input
-        query = AdvancedQuery.model_validate(criteria or {})
-
-        # Sanitize string inputs to prevent XSS
-        if query.text_search:
-            query.text_search = html.escape(query.text_search)
-        if query.contact_name:
-            query.contact_name = html.escape(query.contact_name)
-
-        query.search_fields = [html.escape(f) for f in query.search_fields]
-
-        # Sanitize custom filters
-        sanitized_custom: Dict[str, Any] = {}
-        for key, val in query.custom_filters.items():
-            sanitized_custom[key] = html.escape(val) if isinstance(val, str) else val
-        query.custom_filters = sanitized_custom
-
-        # Sanitize list fields
-        if query.assigned_to:
-            query.assigned_to = [html.escape(v) for v in query.assigned_to]
-        if query.contact_email:
-            query.contact_email = [html.escape(v) for v in query.contact_email]
-        if query.status_filter:
-            query.status_filter = [html.escape(str(v)) for v in query.status_filter]
-
-        async with db.SessionLocal() as db_session:
-            mgr = AdvancedQueryManager(db_session)
-            result = await mgr.query_tickets_advanced(query)
-            return {"status": "success", "data": result.model_dump()}
-            
-    except Exception as e:
-        logger.error(f"Error in search_tickets_advanced: {e}")
-        return {"status": "error", "error": str(e)}
 
 
 async def _create_ticket(**payload: Any) -> Dict[str, Any]:
