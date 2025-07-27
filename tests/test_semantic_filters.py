@@ -7,6 +7,8 @@ from src.core.services.ticket_management import TicketManager
 from src.core.services.ticket_management import (
     apply_semantic_filters,
     _OPEN_STATE_IDS,
+    _CLOSED_STATE_IDS,
+    _STATUS_MAP,
 )
 
 
@@ -40,6 +42,18 @@ async def test_open_status_filter_matches_multiple_states():
         res = await TicketManager().list_tickets(db, filters=filters)
         ids = {t.Ticket_ID for t in res}
         assert ids == {t1.Ticket_ID, t2.Ticket_ID, t4.Ticket_ID}
+
+
+@pytest.mark.asyncio
+async def test_closed_status_filter_maps_to_multiple_ids():
+    filters = apply_semantic_filters({"status": "closed"})
+    assert filters == {"Ticket_Status_ID": _CLOSED_STATE_IDS}
+
+
+@pytest.mark.asyncio
+async def test_in_progress_status_expands_all_ids():
+    filters = apply_semantic_filters({"status": "in_progress"})
+    assert filters == {"Ticket_Status_ID": _STATUS_MAP["in_progress"]}
 
 
 @pytest.mark.asyncio

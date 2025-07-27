@@ -33,13 +33,25 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Semantic Filtering helpers (moved from enhanced_mcp_server)
 # ---------------------------------------------------------------------------
+# Mapping of friendly status terms to their corresponding Ticket_Status_ID values
+# These mappings allow semantic filtering when searching or updating tickets.
+
+_CLOSED_STATE_IDS = [3, 7]
+
 _STATUS_MAP = {
-    "open": 1,
-    "closed": 3,
-    "resolved": 4,
-    "in_progress": 2,
-    "progress": 2,
-    "pending": 3,
+    # Closed and resolved tickets share the same state identifiers
+    "closed": _CLOSED_STATE_IDS,
+    "resolved": _CLOSED_STATE_IDS,
+
+    # Tickets actively being worked may fall under multiple progress states
+    "in_progress": [2, 5],
+    "progress": [2, 5],
+
+    # Waiting on user response
+    "waiting": 4,
+
+    # Pending/queued tickets
+    "pending": 6,
 }
 
 _OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
@@ -70,14 +82,19 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
                 if v == "open":
                     translated["Ticket_Status_ID"] = _OPEN_STATE_IDS
                 else:
-                    translated["Ticket_Status_ID"] = _STATUS_MAP.get(v, value)
+                    mapped = _STATUS_MAP.get(v, value)
+                    translated["Ticket_Status_ID"] = mapped
             elif isinstance(value, list):
                 ids: list[Any] = []
                 for item in value:
                     if isinstance(item, str) and item.lower() == "open":
                         ids.extend(_OPEN_STATE_IDS)
                     elif isinstance(item, str):
-                        ids.append(_STATUS_MAP.get(item.lower(), item))
+                        mapped = _STATUS_MAP.get(item.lower(), item)
+                        if isinstance(mapped, list):
+                            ids.extend(mapped)
+                        else:
+                            ids.append(mapped)
                     else:
                         ids.append(item)
                 translated["Ticket_Status_ID"] = ids
