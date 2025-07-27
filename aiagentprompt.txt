@@ -294,7 +294,7 @@ SEARCH STRATEGY EXAMPLES
 Example 1: User Reports Email Issues
 python# First, search for similar issues
 
-results = search_tickets(text="email", status="open", days_back=7)
+results = search_tickets(text="email", status="open", days=7)
 
 # If specific to user, also check their history
 user_tickets = search_tickets(user="user@company.com", limit=5)

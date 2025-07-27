@@ -863,10 +863,12 @@ async def _get_analytics_unified(
             "trends",
             "overdue_tickets",
         ]
-        return {
-            "status": "error",
-            "error": f"Unknown analytics type: {type}. Valid types: {', '.join(valid_types)}",
-        }
+        return JSONResponse(
+            status_code=404,
+            content={
+                "detail": f"Unknown analytics type: {type}. Valid types: {', '.join(valid_types)}"
+            },
+        )
     except Exception as e:
         logger.error(f"Error in get_analytics_unified: {e}")
         return {"status": "error", "error": str(e)}
@@ -1359,170 +1361,56 @@ ENHANCED_TOOLS: List[Tool] = [
     name="search_tickets",
     description="Universal ticket search tool supporting text queries, user filtering, date ranges, and advanced filters. Automatically handles semantic filtering (e.g. 'open' status includes multiple states). Designed for AI agents to find tickets efficiently.",
     inputSchema={
-        "type": "object",
-        "properties": {
-            # Primary search parameters
-            "text": {
-                "type": "string", 
-                "description": "Text to search for in ticket subject and body. Supports partial matches."
-            },
-            "query": {
-                "type": "string",
-                "description": "Alias for 'text' parameter for backward compatibility"
-            },
-            
-            # User-based filtering
-            "user": {
-                "type": "string", 
-                "description": "Filter by user email/name (searches contact, assignee, or message sender)"
-            },
-            "user_identifier": {
-                "type": "string",
-                "description": "Alias for 'user' parameter for backward compatibility"
-            },
-            
-            # Time-based filtering
-            "days": {
-                "type": "integer", 
-                "description": "Limit to tickets created in the last N days (0 = all tickets). Ignored when 'created_after' or 'created_before' are provided",
-                "default": 30,
-                "minimum": 0
-            },
-            "created_after": {
-                "type": "string", 
-                "format": "date-time",
-                "pattern": "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$",
-                "description": "Only tickets created on or after this ISO date (overrides 'days')"
-            },
-            "created_before": {
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$",
-                "description": "Only tickets created on or before this ISO date"
-            },
-            # Direct semantic filters (commonly used)
-            "status": {
-                "oneOf": [
-                    {"type": "string", "enum": ["open", "closed", "in_progress", "resolved", "waiting"]},
-                    {"type": "integer"}
-                ],
-                "description": "Ticket status (friendly name or numeric ID). 'open' includes multiple open states"
-            },
-            "priority": {
-                "oneOf": [
-                    {"type": "string", "enum": ["critical", "high", "medium", "low"]},
-                    {"type": "integer"}
-                ],
-                "description": "Priority level (friendly name or Severity_ID)"
-            },
-            "site_id": {
-                "type": "integer",
-                "description": "Filter by specific site ID (1=Vermillion, 2=Steele, 3=Summit, etc.)"
-            },
-            "assigned_to": {
-                "type": "string",
-                "description": "Filter by assignee email address"
-            },
-            "unassigned_only": {
-                "type": "boolean",
-                "default": False,
-                "description": "If true, only return unassigned tickets (Assigned_Email is null)"
-            },
-            
-            # Advanced filters object (for complex scenarios)
-            "filters": {
                 "type": "object",
-                "description": "Additional filters as key-value pairs (advanced use)",
                 "properties": {
-                    "Asset_ID": {"type": "integer", "description": "Filter by asset ID"},
-                    "Ticket_Category_ID": {"type": "integer", "description": "Filter by category ID"}, 
-                    "Assigned_Vendor_ID": {"type": "integer", "description": "Filter by vendor ID"},
-                    "Severity_ID": {"type": "integer", "description": "Direct severity ID filter (1-4)"}
-                }
-            },
-            
-            # Result control
-            "limit": {
-                "type": "integer", 
-                "description": "Maximum number of results to return",
-                "default": 10,
-                "minimum": 1,
-                "maximum": 100
-            },
-            "skip": {
-                "type": "integer", 
-                "description": "Number of results to skip (for pagination)",
-                "default": 0,
-                "minimum": 0
-            },
-            "sort": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Sort fields (prefix with '-' for descending). Examples: ['Created_Date'], ['-Priority_Level', 'Created_Date']",
-                "default": ["-Created_Date"]
-            },
-            
-            # AI-specific enhancements
-            "include_relevance_score": {
-                "type": "boolean",
-                "default": True,
-                "description": "Include relevance scores for text searches (recommended for AI agents)"
-            },
-            "include_highlights": {
-                "type": "boolean", 
-                "default": True,
-                "description": "Include search term highlighting in results"
-            }
-        },
-        "examples": [
-            {
-                "text": "printer error",
-                "status": "open",
-                "days": 7,
-                "limit": 5
-            },
-            {
-                "user": "tech@example.com",
-                "status": "open",
-                "sort": ["-Created_Date"]
-            },
-            {
-                "text": "network issues",
-                "user": "alice@example.com", 
-                "priority": "high",
-                "days": 30
-            },
-            {
-                "status": "open",
-                "unassigned_only": True,
-                "sort": ["-Priority_Level"],
-                "limit": 20
-            },
-            {
-                "site_id": 1,
-                "status": "open",
-                "assigned_to": "tech@heinzcorps.com"
-            },
-            {
-                "text": "email",
-                "created_after": "2024-01-01T00:00:00Z",
-                "created_before": "2024-12-31T23:59:59Z"
-            }
-        ]
+                    "text": {"type": "string", "description": "Free-text query for ticket subject and body"},
+                    "query": {"type": "string", "description": "Alias for 'text' (backward compatibility)"},
+                    "user": {"type": "string", "description": "Filter by user email or name"},
+                    "user_identifier": {"type": "string", "description": "Alias for 'user' (backward compatibility)"},
+                    "days": {"type": "integer", "default": 30, "minimum": 0,
+                        "description": "Limit to tickets created in the last N days (0 = all time). Ignored when created_after or created_before are provided"},
+                    "created_after": {"type": "string", "format": "date-time",
+                        "description": "Return tickets created on or after this ISO 8601 datetime"},
+                    "created_before": {"type": "string", "format": "date-time",
+                        "description": "Return tickets created on or before this ISO 8601 datetime"},
+                    "status": {"type": "string", "enum": ["open", "in_progress", "resolved", "closed"],
+                        "description": "Ticket status filter"},
+                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"],
+                        "description": "Priority level filter"},
+                    "site_id": {"type": "integer", "description": "Filter by specific site ID"},
+                    "assigned_to": {"type": "string", "description": "Filter by assignee email"},
+                    "unassigned_only": {"type": "boolean", "default": False,
+                        "description": "If true, only return unassigned tickets"},
+                    "filters": {"type": "object", "description": "Additional key/value filters for advanced use"},
+                    "limit": {"type": "integer", "default": 10, "minimum": 1, "maximum": 100,
+                        "description": "Maximum number of results to return"},
+                    "skip": {"type": "integer", "default": 0, "minimum": 0,
+                        "description": "Number of results to skip (for pagination)"},
+                    "sort": {"type": "array", "items": {"type": "string"},
+                        "description": "Sort fields (prefix with '-' for descending)", "default": ["-Created_Date"]},
+                    "include_relevance_score": {"type": "boolean", "default": True,
+                        "description": "Include relevance scores for text searches"},
+                    "include_highlights": {"type": "boolean", "default": True,
+                        "description": "Include search term highlighting in results"}
+                },
+                "examples": [
+                    {"text": "printer error", "status": "open", "days": 7, "limit": 5},
+                    {"user": "tech@example.com", "status": "open", "sort": ["-Created_Date"]},
+                    {"text": "network issues", "user": "alice@example.com", "priority": "high", "days": 30},
+                    {"status": "open", "unassigned_only": True, "sort": ["-Priority_Level"], "limit": 20},
+                    {"site_id": 1, "status": "open", "assigned_to": "tech@heinzcorps.com"},
+                    {"text": "email", "created_after": "2024-01-01T00:00:00Z", "created_before": "2024-12-31T23:59:59Z"}
+                ]
     },
     _implementation=_search_tickets_enhanced,
-),
+  ),
     Tool(
         name="get_analytics",
         description="Retrieve analytics reports",
         inputSchema={
             "type": "object",
             "properties": {
-                "type": {
-                    "type": "string",
-                    "enum": ["overview", "ticket_counts", "workload", "sla_performance", "trends", "overdue_tickets"],
-                    "description": "Analytics report type"
-                },
+                "type": {"type": "string", "description": "Analytics report type"},
                 "params": {"type": "object", "description": "Optional parameters for the report"},
             },
             "required": ["type"],
