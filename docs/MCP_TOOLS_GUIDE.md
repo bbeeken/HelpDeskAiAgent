@@ -89,7 +89,7 @@ Comprehensive ticket search with AI-optimized features and semantic filtering. S
 #### Core Search
 - `text` – Text to search for in ticket subject and body (supports partial matching)
 - `query` – Alias for `text` parameter (backward compatibility)
-- `user` – Filter by user email/name (searches contact, assignee, or message sender)
+- `user` – Filter by user email or name
 - `user_identifier` – Alias for `user` parameter (backward compatibility)
 
 #### Time Filtering
@@ -98,8 +98,8 @@ Comprehensive ticket search with AI-optimized features and semantic filtering. S
 - `created_before` – Only tickets created on or before this ISO datetime (ISO-8601)
 
 #### Semantic Filters (AI-Friendly)
-- `status` – Ticket status (friendly name or numeric ID). Friendly names include: `"open"`, `"closed"`, `"in_progress"`, `"resolved"`, `"waiting"`
-- `priority` – Priority level (friendly name or ID). Names include: `"critical"`, `"high"`, `"medium"`, `"low"`
+- `status` – Ticket status filter. Allowed values: `"open"`, `"in_progress"`, `"resolved"`, `"closed"`
+- `priority` – Priority level filter: `"critical"`, `"high"`, `"medium"`, `"low"`
 - `site_id` – Filter by site ID (1=Vermillion, 2=Steele, 3=Summit, etc.)
 - `assigned_to` – Filter by assignee email address
 - `unassigned_only` – If true, only return unassigned tickets (default: false)
@@ -131,7 +131,7 @@ When a text query is used the response includes extra context:
 #### Basic Text Search
 ```bash
 curl -X POST http://localhost:8000/search_tickets \
-  -d '{"text": "printer error", "status": 1, "limit": 5}'
+  -d '{"text": "printer error", "status": "open", "limit": 5}'
 ```
 
 #### User-Specific Search
@@ -143,7 +143,7 @@ curl -X POST http://localhost:8000/search_tickets \
 #### Site and Priority Filtering
 ```bash
 curl -X POST http://localhost:8000/search_tickets \
-  -d '{"site_id": 1, "priority": 2, "days": 7}'
+  -d '{"site_id": 1, "priority": "high", "days": 7}'
 ```
 
 #### Unassigned Ticket Triage
@@ -307,20 +307,6 @@ Example:
 ```bash
 curl -X POST http://localhost:8000/advanced_search \
   -d '{"text_search": "printer", "limit": 10}'
-
-## search_tickets_advanced (removed)
-
-The previous `search_tickets_advanced` endpoint has been removed. Use
-`search_tickets` for unified search or `advanced_search` for complex
-queries.
-
-
-Example:
-```bash
-curl -X POST http://localhost:8000/search_tickets \
-  -d '{"text": "printer", "limit": 10}'
-
-```
 
 ## escalate_ticket (removed)
 Use `update_ticket` to change `Severity_ID` or assignment.
