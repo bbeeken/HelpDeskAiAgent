@@ -10,7 +10,7 @@ from src.core.services.ticket_management import TicketManager
 
 
 @pytest.mark.asyncio
-async def test_search_skips_oversized_ticket_body():
+async def test_search_returns_long_ticket_body():
     async with SessionLocal() as db:
         valid = Ticket(
             Subject="Query",
@@ -32,17 +32,18 @@ async def test_search_skips_oversized_ticket_body():
         await TicketManager().create_ticket(db, invalid)
         await db.commit()
         valid_id = valid.Ticket_ID
+        invalid_id = invalid.Ticket_ID
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get("/tickets/search", params={"q": "Query"})
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data) == 1
-        item = data[0]
-        assert item["Ticket_ID"] == valid_id
-        assert set(["Ticket_ID", "Subject", "body_preview",
-                   "status_label", "priority_level"]) <= item.keys()
+        ids = {item["Ticket_ID"] for item in data}
+        assert {valid_id, invalid_id} <= ids
+        for item in data:
+            assert set(["Ticket_ID", "Subject", "body_preview",
+                       "status_label", "priority_level"]).issubset(item.keys())
 
 
 @pytest.mark.asyncio
