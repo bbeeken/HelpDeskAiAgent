@@ -130,3 +130,38 @@ async def test_search_created_date_filters():
         res, _ = await TicketManager().search_tickets(db, "DateFilter", params=params)
         ids = {r.Ticket_ID for r in res}
         assert ids == {old.Ticket_ID}
+
+
+@pytest.mark.asyncio
+async def test_search_created_after_string_precision():
+    async with SessionLocal() as db:
+        old = Ticket(
+            Subject="DatePrecision",
+            Ticket_Body="old",
+            Created_Date=datetime(2023, 1, 1, tzinfo=UTC),
+            Ticket_Status_ID=1,
+        )
+        new = Ticket(
+            Subject="DatePrecision",
+            Ticket_Body="new",
+            Created_Date=datetime(2023, 1, 10, tzinfo=UTC),
+            Ticket_Status_ID=1,
+        )
+        await TicketManager().create_ticket(db, old)
+        await TicketManager().create_ticket(db, new)
+        await db.commit()
+
+        res, _ = await TicketManager().search_tickets(
+            db,
+            "DatePrecision",
+            created_after="2023-01-05T00:00:00.123456+00:00",
+        )
+        ids = {r.Ticket_ID for r in res}
+        assert ids == {new.Ticket_ID}
+
+
+@pytest.mark.asyncio
+async def test_search_created_after_invalid_string():
+    async with SessionLocal() as db:
+        with pytest.raises(ValueError):
+            await TicketManager().search_tickets(db, "x", created_after="bad")
