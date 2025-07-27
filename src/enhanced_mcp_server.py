@@ -328,6 +328,33 @@ def _apply_semantic_filters(filters: dict[str, Any]) -> dict[str, Any]:
     return translated
 
 
+def _ensure_utc(dt: datetime | None) -> datetime:
+    """Return a timezone-aware datetime in UTC."""
+    if dt is None:
+        return datetime.now(timezone.utc)
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _is_ticket_overdue(ticket) -> bool:
+    """Determine if a ticket is overdue based on creation date and status."""
+    created = ticket.Created_Date
+    if not created:
+        return False
+    age_hours = (datetime.now(timezone.utc) - _ensure_utc(created)).total_seconds() / 3600
+    return age_hours > 24 and ticket.Closed_Date is None
+
+
+def _estimate_complexity(ticket) -> str:
+    """Rough complexity estimate based on subject and body length."""
+    subject_length = len(getattr(ticket, "Subject", "") or "")
+    body_length = len(getattr(ticket, "Ticket_Body", "") or "")
+    if body_length > 500 or subject_length > 100:
+        return "high"
+    if body_length > 200 or subject_length > 50:
+        return "medium"
+    return "low"
+
+
 # ---------------------------------------------------------------------------
 # MCP Server Tool Implementations
 # ---------------------------------------------------------------------------
@@ -626,7 +653,7 @@ async def _search_tickets_enhanced(
                 
                 # Add AI-friendly metadata
                 item["metadata"] = {
-                    "age_days": (datetime.now(timezone.utc) - (r.Created_Date or datetime.now(timezone.utc))).days,
+                    "age_days": (datetime.now(timezone.utc) - _ensure_utc(r.Created_Date)).days if r.Created_Date else 0,
                     "is_overdue": _is_ticket_overdue(r),
                     "complexity_estimate": _estimate_complexity(r),
                 }
@@ -683,10 +710,11 @@ async def _search_tickets_enhanced(
     except Exception as e:
         logger.error(f"Error in enhanced search_tickets: {e}")
         return {
-            "status": "error", 
-            "error": str(e),
-            "error_type": "search_execution_error",
-            "suggested_action": "Check parameters and try again with simpler filters"
+            "status": "error",
+            "error": {
+                "message": str(e),
+                "code": "SEARCH_EXECUTION_ERROR",
+            },
         }
 
 async def _search_tickets_advanced(**criteria: Any) -> Dict[str, Any]:
