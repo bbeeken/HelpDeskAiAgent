@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import anyio
 import html
+from fastapi.responses import JSONResponse
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp import types
@@ -44,6 +45,11 @@ from src.core.services.advanced_query import AdvancedQueryManager
 from src.shared.schemas.agent_data import AdvancedQuery
 
 logger = logging.getLogger(__name__)
+
+# ISO 8601 datetime with optional fractional seconds and timezone
+_ISO_DT_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
+)
 
 # ---------------------------------------------------------------------------
 # Configuration Classes
@@ -328,68 +334,33 @@ def _apply_semantic_filters(filters: dict[str, Any]) -> dict[str, Any]:
     return translated
 
 
-def _is_ticket_overdue(ticket: Any) -> bool:
-    """Return True if ticket age exceeds SLA threshold while still open."""
-    try:
-        created = getattr(ticket, "Created_Date", None)
-        if not created:
-            return False
 
-        if getattr(ticket, "Closed_Date", None):
-            return False
+def _ensure_utc(dt: datetime | None) -> datetime:
+    """Return a timezone-aware datetime in UTC."""
+    if dt is None:
+        return datetime.now(timezone.utc)
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
-        status_id = getattr(ticket, "Ticket_Status_ID", None)
-        if status_id is not None and status_id not in _OPEN_STATE_IDS:
-            return False
 
-        severity_id = getattr(ticket, "Severity_ID", 3)
-        sla_hours = {
-            1: 4,    # Critical
-            2: 24,   # High
-            3: 72,   # Medium
-            4: 168,  # Low
-        }.get(severity_id, 72)
-
-        age_hours = (datetime.now(timezone.utc) - created).total_seconds() / 3600
-        return age_hours > sla_hours
-    except Exception as exc:  # pragma: no cover - defensive
-        logger.warning(f"Failed to evaluate SLA for ticket: {exc}")
+def _is_ticket_overdue(ticket) -> bool:
+    """Determine if a ticket is overdue based on creation date and status."""
+    created = ticket.Created_Date
+    if not created:
         return False
+    age_hours = (datetime.now(timezone.utc) - _ensure_utc(created)).total_seconds() / 3600
+    return age_hours > 24 and ticket.Closed_Date is None
 
 
-def _estimate_complexity(ticket: Any) -> str:
-    """Estimate ticket complexity using length, message count and attachments."""
-    try:
-        subject_len = len(getattr(ticket, "Subject", "") or "")
-        body_len = len(getattr(ticket, "Ticket_Body", "") or "")
-        message_count = getattr(ticket, "message_count", 0) or 0
-        attachment_count = getattr(ticket, "attachment_count", 0) or 0
-
-        score = 0.0
-        text_len = subject_len + body_len
-        if text_len > 800:
-            score += 2
-        elif text_len > 400:
-            score += 1
-
-        if message_count > 10:
-            score += 2
-        elif message_count > 3:
-            score += 1
-
-        if attachment_count > 5:
-            score += 1
-        elif attachment_count > 0:
-            score += 0.5
-
-        if score >= 4:
-            return "high"
-        if score >= 2:
-            return "medium"
-        return "low"
-    except Exception as exc:  # pragma: no cover - defensive
-        logger.warning(f"Failed to estimate complexity: {exc}")
+def _estimate_complexity(ticket) -> str:
+    """Rough complexity estimate based on subject and body length."""
+    subject_length = len(getattr(ticket, "Subject", "") or "")
+    body_length = len(getattr(ticket, "Ticket_Body", "") or "")
+    if body_length > 500 or subject_length > 100:
+        return "high"
+    if body_length > 200 or subject_length > 50:
         return "medium"
+    return "low"
+
 
 
 # ---------------------------------------------------------------------------
@@ -593,18 +564,22 @@ async def _search_tickets_enhanced(
             # Time-based filtering (created_after/before override days)
             if created_after or created_before:
                 if created_after:
-                    try:
-                        after_dt = datetime.fromisoformat(created_after.replace('Z', '+00:00'))
-                        base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date >= after_dt)
-                    except ValueError:
-                        logger.warning(f"Invalid created_after date format: {created_after}")
-                
+                    if not _ISO_DT_PATTERN.match(created_after):
+                        return JSONResponse(
+                            status_code=422,
+                            content={"detail": f"Invalid created_after: {created_after}"},
+                        )
+                    after_dt = datetime.fromisoformat(created_after.replace("Z", "+00:00"))
+                    base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date >= after_dt)
+
                 if created_before:
-                    try:
-                        before_dt = datetime.fromisoformat(created_before.replace('Z', '+00:00'))
-                        base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date <= before_dt)
-                    except ValueError:
-                        logger.warning(f"Invalid created_before date format: {created_before}")
+                    if not _ISO_DT_PATTERN.match(created_before):
+                        return JSONResponse(
+                            status_code=422,
+                            content={"detail": f"Invalid created_before: {created_before}"},
+                        )
+                    before_dt = datetime.fromisoformat(created_before.replace("Z", "+00:00"))
+                    base_stmt = base_stmt.filter(VTicketMasterExpanded.Created_Date <= before_dt)
             
             elif days is not None and days >= 0:
                 cutoff = datetime.now(timezone.utc) - timedelta(days=days)
@@ -690,7 +665,7 @@ async def _search_tickets_enhanced(
                 
                 # Add AI-friendly metadata
                 item["metadata"] = {
-                    "age_days": (datetime.now(timezone.utc) - (r.Created_Date or datetime.now(timezone.utc))).days,
+                    "age_days": (datetime.now(timezone.utc) - _ensure_utc(r.Created_Date)).days if r.Created_Date else 0,
                     "is_overdue": _is_ticket_overdue(r),
                     "complexity_estimate": _estimate_complexity(r),
                 }
@@ -747,10 +722,11 @@ async def _search_tickets_enhanced(
     except Exception as e:
         logger.error(f"Error in enhanced search_tickets: {e}")
         return {
-            "status": "error", 
-            "error": str(e),
-            "error_type": "search_execution_error",
-            "suggested_action": "Check parameters and try again with simpler filters"
+            "status": "error",
+            "error": {
+                "message": str(e),
+                "code": "SEARCH_EXECUTION_ERROR",
+            },
         }
 
 async def _search_tickets_advanced(**criteria: Any) -> Dict[str, Any]:
@@ -1645,31 +1621,36 @@ ENHANCED_TOOLS: List[Tool] = [
             # Time-based filtering
             "days": {
                 "type": "integer", 
-                "description": "Limit to tickets created in the last N days (0 = all time)",
+                "description": "Limit to tickets created in the last N days (0 = all tickets). Ignored when 'created_after' or 'created_before' are provided",
                 "default": 30,
                 "minimum": 0
             },
             "created_after": {
                 "type": "string", 
                 "format": "date-time",
+                "pattern": "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$",
                 "description": "Only tickets created on or after this ISO date (overrides 'days')"
             },
             "created_before": {
-                "type": "string", 
-                "format": "date-time", 
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$",
                 "description": "Only tickets created on or before this ISO date"
             },
-            
             # Direct semantic filters (commonly used)
             "status": {
-                "type": "string",
-                "enum": ["open", "closed", "in_progress", "resolved", "waiting"],
-                "description": "Ticket status - 'open' includes multiple open states (Open, In Progress, Waiting, etc.)"
+                "oneOf": [
+                    {"type": "string", "enum": ["open", "closed", "in_progress", "resolved", "waiting"]},
+                    {"type": "integer"}
+                ],
+                "description": "Ticket status (friendly name or numeric ID). 'open' includes multiple open states"
             },
             "priority": {
-                "type": "string",
-                "enum": ["critical", "high", "medium", "low"],
-                "description": "Priority level (maps to Severity_ID: critical=1, high=2, medium=3, low=4)"
+                "oneOf": [
+                    {"type": "string", "enum": ["critical", "high", "medium", "low"]},
+                    {"type": "integer"}
+                ],
+                "description": "Priority level (friendly name or Severity_ID)"
             },
             "site_id": {
                 "type": "integer",
