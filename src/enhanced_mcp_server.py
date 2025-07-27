@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 import anyio
 import html
 from fastapi.responses import JSONResponse
+from fastapi import HTTPException
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp import types
@@ -401,14 +402,14 @@ async def _search_tickets_enhanced(
             user = user_identifier
 
         if created_after and not _ISO_DT_PATTERN.match(created_after):
-            return JSONResponse(
+            raise HTTPException(
                 status_code=422,
-                content={"detail": f"Invalid created_after: {created_after}"},
+                detail=f"Invalid created_after: {created_after}",
             )
         if created_before and not _ISO_DT_PATTERN.match(created_before):
-            return JSONResponse(
+            raise HTTPException(
                 status_code=422,
-                content={"detail": f"Invalid created_before: {created_before}"},
+                detail=f"Invalid created_before: {created_before}",
             )
 
         async with db.SessionLocal() as db_session:
@@ -518,6 +519,8 @@ async def _search_tickets_enhanced(
                 }
             }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in enhanced search_tickets: {e}")
         return {
