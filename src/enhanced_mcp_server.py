@@ -327,11 +327,12 @@ def _apply_semantic_filters(filters: dict[str, Any]) -> dict[str, Any]:
         elif k == "category":
             translated["Ticket_Category_ID"] = value
             
-        else:
-            # Pass through other filters unchanged
-            translated[key] = value
-            
+    else:
+        # Pass through other filters unchanged
+        translated[key] = value
+
     return translated
+
 
 
 def _ensure_utc(dt: datetime | None) -> datetime:
@@ -359,6 +360,7 @@ def _estimate_complexity(ticket) -> str:
     if body_length > 200 or subject_length > 50:
         return "medium"
     return "low"
+
 
 
 # ---------------------------------------------------------------------------
