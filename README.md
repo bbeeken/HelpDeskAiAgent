@@ -25,14 +25,12 @@ This project exposes a FastAPI application for the Truck Stop MCP Helpdesk.
   - `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TENANT_ID` – optional credentials used for Microsoft Graph
     lookups in `src.core.services.user_services`. When omitted, stub responses are returned.
 
-
   - `ENABLE_RATE_LIMITING` – enable the SlowAPI limiter middleware.
     Set to `false`, `0`, or `no` to disable it (default `true`).
 
   - `ERROR_TRACKING_DSN` – optional DSN for Sentry or another error tracking
     service. When set, the application initializes `sentry_sdk` on startup to
     capture unhandled exceptions.
-
 
   They can be provided in the shell environment or in a `.env` file in the project root.
   A template called `.env.example` lists the required and optional variables; copy it to `.env` and
@@ -125,7 +123,6 @@ Both the `Ticket_Body` and `Resolution` columns are defined using the SQL
 `TEXT` (or `nvarchar(max)`) type so lengthy content can be stored without
 truncation. Ensure any custom migrations preserve this unrestricted text type.
 
-
 ### V_Ticket_Master_Expanded
 
 The API uses the `V_Ticket_Master_Expanded` view to join tickets with
@@ -135,7 +132,6 @@ fully populated ticket record.
 
 Create the view with SQL similar to the following (the full statement is also
 available in `src.core.repositories.sql.py` as `CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL`):
-
 
 ```sql
 CREATE VIEW V_Ticket_Master_Expanded AS
@@ -171,7 +167,6 @@ LEFT JOIN Ticket_Categories c ON c.ID = t.Ticket_Category_ID
 LEFT JOIN Vendors v ON v.ID = t.Assigned_Vendor_ID
 LEFT JOIN Priority_Levels p ON p.ID = t.Severity_ID;
 ```
-
 
 ### API Highlights
 
@@ -250,9 +245,7 @@ curl "http://localhost:8000/ticket/search?q=printer&limit=5&created_after=2024-0
   ]
   ```
 
-
 - `GET /analytics/open_by_site` - count open tickets grouped by site.
-
 
   Example:
 
@@ -292,7 +285,6 @@ curl "http://localhost:8000/ticket/search?q=printer&limit=5&created_after=2024-0
 
   ```
 
-
 ## CLI
 
 `src.core.services.cli` provides a small command-line interface to the API. Set `API_BASE_URL` to the server URL (default `http://localhost:8000`).
@@ -308,12 +300,10 @@ python -m src.core.services.cli create-ticket
 
 Connect to the built-in MCP endpoint to exchange JSON-RPC messages.
 
-
 1. **Open the stream** with `GET /mcp`. It returns Server-Sent Events. The first
    `endpoint` event contains the URL for posting commands (e.g. `/mcp/abc123`).
 2. **POST messages** to that URL. Each payload is echoed back on the stream as a
    `message` event.
-
 
 Example:
 
@@ -324,9 +314,7 @@ curl -X POST -H "Content-Type: application/json" \
 
   http://localhost:8000$ENDPOINT
 
-
 ```
-
 
 ## Docker
 
@@ -355,13 +343,11 @@ which the script reports as unexpected.
 
 Verify the list of available tools with:
 
-
 ```bash
 python verify_tools.py http://localhost:8000
 ```
 
 ### Tool Reference
-
 
 The MCP server exposes several JSON-RPC tools. `get_tickets_by_user` returns
 expanded ticket records for a user. It accepts an `identifier`, optional
@@ -379,7 +365,6 @@ response body includes a `path` key showing which property failed validation and
 now echoes back the submitted `payload`. When possible a `value` field contains
 the specific invalid item.
 
-
 `get_open_tickets` lists tickets filtered by status and age. Provide a
 number of `days` and optional `status` such as `open` or `closed`.
 
@@ -387,15 +372,6 @@ number of `days` and optional `status` such as `open` or `closed`.
 curl -X POST http://localhost:8000/get_open_tickets \
   -d '{"status": "open", "days": 7, "limit": 5}'
 ```
-
-Request bodies are validated against each tool's `inputSchema` using the
-`jsonschema` library. Missing or incorrectly typed fields result in a `422`
-
-response. The `path` key in the JSON body indicates which field failed.
-
-response. The error body includes a `path` key that pinpoints which property
-failed validation.
-
 
 Additional tools are available:
 
@@ -449,9 +425,7 @@ The server exposes nine core JSON-RPC tools. Each expects a JSON body matching i
 
 See [docs/MCP_TOOLS_GUIDE.md](docs/MCP_TOOLS_GUIDE.md) for detailed descriptions.
 
-
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
 
