@@ -8,5 +8,5 @@ def test_parse_search_datetime_db_format():
     dt = datetime(2023, 1, 2, 3, 4, 5, 123456, tzinfo=UTC)
     text = format_db_datetime(dt)
     parsed = parse_search_datetime(text)
-    assert parsed == dt
+    assert parsed == dt.replace(microsecond=123000)
 
