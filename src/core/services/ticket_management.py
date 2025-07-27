@@ -171,19 +171,16 @@ class TicketManager:
         params: TicketSearchParams | None = None,
     ) -> List[dict[str, Any]]:
         sanitized = self._sanitize_search_input(query)
-        if not sanitized:
-            return []
-        escaped = self._escape_like_pattern(sanitized)
-        like = f"%{escaped}%"
-        stmt = select(VTicketMasterExpanded).filter(
-            and_(
+        stmt = select(VTicketMasterExpanded)
+        if sanitized:
+            escaped = self._escape_like_pattern(sanitized)
+            like = f"%{escaped}%"
+            stmt = stmt.filter(
                 or_(
-                    VTicketMasterExpanded.Subject.ilike(like),
-                    VTicketMasterExpanded.Ticket_Body.ilike(like),
-                ),
-                func.length(VTicketMasterExpanded.Ticket_Body) <= 2000,
+                    VTicketMasterExpanded.Subject.ilike(like, escape="\\"),
+                    VTicketMasterExpanded.Ticket_Body.ilike(like, escape="\\"),
+                )
             )
-        )
         filters = params.model_dump(exclude_none=True) if params else {}
         sort_value = filters.pop("sort", None)
         created_after = filters.pop("created_after", None)
@@ -193,7 +190,7 @@ class TicketManager:
                 col = getattr(VTicketMasterExpanded, key)
                 if isinstance(value, str):
                     escaped_value = self._escape_like_pattern(value)
-                    stmt = stmt.filter(col.ilike(f"%{escaped_value}%"))
+                    stmt = stmt.filter(col.ilike(f"%{escaped_value}%", escape="\\"))
                 else:
                     stmt = stmt.filter(col == value)
         if created_after:

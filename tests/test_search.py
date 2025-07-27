@@ -44,7 +44,7 @@ async def test_search_tickets():
 
 
 @pytest.mark.asyncio
-async def test_search_endpoint_skips_invalid_ticket():
+async def test_search_endpoint_handles_long_ticket_body():
     async with SessionLocal() as db:
         bad = Ticket(
             Subject="Bad",
@@ -56,12 +56,14 @@ async def test_search_endpoint_skips_invalid_ticket():
         )
         await TicketManager().create_ticket(db, bad)
         await db.commit()
+        bad_id = bad.Ticket_ID
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get("/tickets/search", params={"q": "Bad"})
         assert resp.status_code == 200
-        assert resp.json() == []
+        data = resp.json()
+        assert any(item["Ticket_ID"] == bad_id for item in data)
 
 
 @pytest.mark.asyncio
