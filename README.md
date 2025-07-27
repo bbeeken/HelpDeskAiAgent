@@ -176,7 +176,7 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Severity_ID;
   dynamic query parameters to filter by any column in
   `V_Ticket_Master_Expanded` and a `sort` parameter for ordering.
 - `GET /ticket/search` - search tickets by subject or body. Query parameters:
-  `q` (required), `limit` (default `10`), optional `created_after`/`created_before`
+`q` (required), `limit` (default `10`), optional `created_after`/`created_before` (ISO-8601 datetimes with timezone)
   and other `V_Ticket_Master_Expanded` columns for filtering, plus
   `sort=oldest|newest` to control ordering. The legacy `/tickets/search` path
   remains available.
@@ -196,7 +196,7 @@ LEFT JOIN Priority_Levels p ON p.ID = t.Severity_ID;
 #### Searching for tickets
 
 Use `/ticket/search` for keyword queries. Provide `q` for the search text and
-optionally specify `limit`, `created_after`, `created_before` or any
+optionally specify `limit`, `created_after`, `created_before` (ISO-8601 datetimes with timezone) or any
 `V_Ticket_Master_Expanded` column to filter results. Sorting by
 `Created_Date` is controlled with `sort=oldest|newest`. A POST variant accepts a
 `TicketSearchRequest` JSON body containing the same fields.
@@ -204,7 +204,7 @@ optionally specify `limit`, `created_after`, `created_before` or any
 Example:
 
 ```bash
-curl "http://localhost:8000/ticket/search?q=printer&limit=5&created_after=2024-01-01"
+curl "http://localhost:8000/ticket/search?q=printer&limit=5&created_after=2024-01-01T00:00:00Z"
 ```
 
 ### Analytics Endpoints

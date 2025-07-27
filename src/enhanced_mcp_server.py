@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 import anyio
 import html
 from fastapi.responses import JSONResponse
+from fastapi import HTTPException
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp import types
@@ -403,14 +404,14 @@ async def _search_tickets_enhanced(
             days = 30
 
         if created_after and not _ISO_DT_PATTERN.match(created_after):
-            return JSONResponse(
+            raise HTTPException(
                 status_code=422,
-                content={"detail": f"Invalid created_after: {created_after}"},
+                detail=f"Invalid created_after: {created_after}",
             )
         if created_before and not _ISO_DT_PATTERN.match(created_before):
-            return JSONResponse(
+            raise HTTPException(
                 status_code=422,
-                content={"detail": f"Invalid created_before: {created_before}"},
+                detail=f"Invalid created_before: {created_before}",
             )
 
         async with db.SessionLocal() as db_session:
@@ -444,6 +445,18 @@ async def _search_tickets_enhanced(
                 applied_filters["Assigned_Email"] = assigned_to
             if filters:
                 applied_filters.update(apply_semantic_filters(filters))
+
+            summary_filter_keys: set[str] = set()
+            if status is not None:
+                summary_filter_keys.add("status")
+            if priority is not None:
+                summary_filter_keys.add("priority")
+            if site_id is not None:
+                summary_filter_keys.add("site_id")
+            if assigned_to:
+                summary_filter_keys.add("assigned_to")
+            if filters:
+                summary_filter_keys.update(filters.keys())
 
             # Process results with AI-friendly enhancements
             data: list[dict] = []
@@ -489,7 +502,7 @@ async def _search_tickets_enhanced(
             # Generate search summary for AI context
             search_summary = {
                 "query_type": [],
-                "filters_applied": list(applied_filters.keys()),
+                "filters_applied": sorted(summary_filter_keys),
                 "search_scope": "all_tickets"
             }
             
@@ -520,6 +533,8 @@ async def _search_tickets_enhanced(
                 }
             }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in enhanced search_tickets: {e}")
         return {
