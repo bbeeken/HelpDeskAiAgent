@@ -116,8 +116,7 @@ Comprehensive ticket search with AI-optimized features and semantic filtering. S
 
 When a text query is used the response includes extra context:
 
-- `relevance_score` – numeric ranking based on how well the query matches the
-  ticket subject, body and category.
+- `relevance_score` – similarity of the ticket content to the query using a TF‑IDF based cosine distance.
 - `highlights` – object with `subject` and `body` snippets where matched terms
   are wrapped in `<em>` tags. Only returned when `include_highlights` is true.
 - `metadata` – additional ticket info:
