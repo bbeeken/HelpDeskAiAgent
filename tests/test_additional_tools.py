@@ -80,9 +80,6 @@ async def test_get_ticket_attachments_error(client: AsyncClient):
 async def test_escalate_ticket_success(client: AsyncClient):
     tid = await _create_ticket(client)
 
-
-
-
     payload = {
         "ticket_id": tid,
         "severity_id": 1,
@@ -95,9 +92,7 @@ async def test_escalate_ticket_success(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_escalate_ticket_error(client: AsyncClient):
-
     resp = await client.post("/update_ticket", json={})
-
     assert resp.status_code == 422
     assert "path" in resp.json()
 
@@ -144,12 +139,9 @@ async def test_search_tickets_enhanced_success(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-
 async def test_search_tickets_alias_params(client: AsyncClient):
     await _create_ticket(client, subject="Alias bar")
     payload = {"query": "Alias", "user_identifier": "tester@example.com"}
-
- 
 
     resp = await client.post("/search_tickets", json=payload)
     assert resp.status_code == 200
@@ -162,22 +154,15 @@ async def test_search_tickets_unified_user_identifier_alias(client: AsyncClient)
 
     payload = {"user_identifier": "tester@example.com"}
 
-
     resp = await client.post("/search_tickets", json=payload)
     assert resp.status_code == 200
     assert resp.json().get("status") in {"success", "error"}
 
 
 @pytest.mark.asyncio
-
 async def test_search_tickets_unified_error(client: AsyncClient):
     resp = await client.post("/search_tickets", json={"unexpected": 1})
     assert resp.status_code == 422
-
-
-
-
-
 
 
 @pytest.mark.asyncio
@@ -193,14 +178,20 @@ async def test_get_analytics_sla_performance_success(client: AsyncClient):
         )
         await TicketManager().create_ticket(db, t)
         await db.commit()
-    resp = await client.post("/get_analytics", json={"type": "sla_performance", "params": {"days": 30}})
+    resp = await client.post(
+        "/get_analytics",
+        json={"type": "sla_performance", "params": {"days": 30}},
+    )
     assert resp.status_code == 200
     assert resp.json().get("status") in {"success", "error"}
 
 
 @pytest.mark.asyncio
 async def test_get_analytics_sla_performance_error(client: AsyncClient):
-    resp = await client.post("/get_analytics", json={"type": "sla_performance", "params": {"days": "bad"}})
+    resp = await client.post(
+        "/get_analytics",
+        json={"type": "sla_performance", "params": {"days": "bad"}},
+    )
     assert resp.status_code == 200
 
 
@@ -208,7 +199,10 @@ async def test_get_analytics_sla_performance_error(client: AsyncClient):
 async def test_bulk_update_tickets_success(client: AsyncClient):
     tid1 = await _create_ticket(client, "Bulk1")
     tid2 = await _create_ticket(client, "Bulk2")
-    payload = {"ticket_ids": [tid1, tid2], "updates": {"Assigned_Name": "Agent"}}
+    payload = {
+        "ticket_ids": [tid1, tid2],
+        "updates": {"Assigned_Name": "Agent"},
+    }
     resp = await client.post("/bulk_update_tickets", json=payload)
     assert resp.status_code == 200
     assert resp.json().get("status") in {"success", "error"}
