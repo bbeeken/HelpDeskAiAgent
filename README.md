@@ -345,17 +345,13 @@ values from `.env`. `DB_CONN_STRING` is set automatically to connect to the
 ## Verifying Available Tools
 
 Run `verify_tools.py` after deploying to ensure the server exposes the expected
-set of tool endpoints. The `/tools` route now returns an object with a `tools`
-key containing the available tools. The verification script fetches this route
+set of tool endpoints. The `/tools` route returns an object with a `tools` key
+listing the available operations. The verification script fetches this route
 and compares the returned names against a predefined mapping. It exits with a
 non-zero status when any tools are missing or unexpected. The default mapping
-checks for the ``get_ticket`` and ``list_tickets`` endpoints. The route also
-
-lists new operations such as ``advanced_search``, ``sla_metrics`` and
-``bulk_update_tickets``.
-
-
-lists additional operations such as ``sla_metrics`` and ``bulk_update_tickets``.
+checks for the ``get_ticket`` and ``search_tickets`` endpoints. The route may
+list additional operations such as ``sla_metrics`` and ``bulk_update_tickets``,
+which the script reports as unexpected.
 
 Verify the list of available tools with:
 
