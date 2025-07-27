@@ -63,7 +63,7 @@ Use `search_tickets` for all queries:
   `search_tickets(priority="high", unassigned_only=true)`
 
 - Creation date range:  
-  `search_tickets(created_after="2024-01-01", created_before="2024-01-31")`
+  `search_tickets(created_after="2024-01-01T00:00:00Z", created_before="2024-01-31T00:00:00Z")`
 
 ---
 
