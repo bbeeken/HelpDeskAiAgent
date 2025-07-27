@@ -17,6 +17,8 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp import types
 from sqlalchemy import select, func, or_
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 from .mcp_server import Tool
 from src.infrastructure import database as db
@@ -222,39 +224,17 @@ def _format_ticket_by_level(ticket: Any) -> dict:
     return data
 
 
-def _calculate_search_relevance(ticket: dict, query: str) -> float:
-    """Calculate relevance score based on query matches."""
-    if not query:
-        return 0.0
-        
-    q = query.lower()
-    words = q.split()
-    
-    subject = (ticket.get("Subject") or "").lower()
-    body = (ticket.get("body_preview") or "").lower()
-    category = (ticket.get("Category_Name") or "").lower()
+def _calculate_similarity_scores(texts: list[str], query: str) -> list[float]:
+    """Return cosine similarity scores between the query and each text."""
+    if not query or not texts:
+        return [0.0] * len(texts)
 
-    score = 0.0
-    
-    # Exact matches get highest scores
-    if q in subject:
-        score += 3.0
-    if q in body:
-        score += 2.0
-    if q in category:
-        score += 1.5
-    
-    # Word matches get lower scores
-    for word in words:
-        if len(word) > 2:  # Skip very short words
-            if word in subject:
-                score += 1.0
-            if word in body:
-                score += 0.5
-            if word in category:
-                score += 0.3
-
-    return score
+    docs = [query] + texts
+    vectorizer = TfidfVectorizer().fit(docs)
+    query_vec = vectorizer.transform([query])
+    text_vecs = vectorizer.transform(texts)
+    similarities = cosine_similarity(text_vecs, query_vec).flatten()
+    return similarities.tolist()
 
 
 def _generate_search_highlights(ticket: dict, query: str) -> dict:
@@ -480,15 +460,25 @@ async def _search_tickets(query: str, limit: int = 10) -> Dict[str, Any]:
                 db_session, query, limit=limit * 2  # Get more results for relevance sorting
             )
             
-            enriched = []
+            enriched: list[dict] = []
+            corpus: list[str] = []
             for r in results:
-                score = _calculate_search_relevance(r, query)
-                if score > 0:  # Only include results with some relevance
-                    highlights = _generate_search_highlights(r, query)
-                    r = _format_ticket_by_level(r)
-                    r["relevance"] = round(score, 2)
-                    r["highlights"] = highlights
-                    enriched.append(r)
+                item = _format_ticket_by_level(r)
+                corpus.append(
+                    " ".join(
+                        [
+                            item.get("Subject", ""),
+                            item.get("body_preview", ""),
+                            item.get("Category_Name", ""),
+                        ]
+                    )
+                )
+                enriched.append(item)
+
+            scores = _calculate_similarity_scores(corpus, query)
+            for itm, score in zip(enriched, scores):
+                itm["relevance"] = round(float(score), 2)
+                itm["highlights"] = _generate_search_highlights(itm, query)
 
             # Sort by relevance and limit results
             enriched.sort(key=lambda d: d["relevance"], reverse=True)
@@ -659,10 +649,11 @@ async def _search_tickets_enhanced(
             records = result.scalars().all()
 
             # Process results with AI-friendly enhancements
-            data = []
+            data: list[dict] = []
+            text_corpus: list[str] = []
             for r in records:
                 item = _format_ticket_by_level(r)
-                
+
                 # Add AI-friendly metadata
                 item["metadata"] = {
                     "age_days": (datetime.now(timezone.utc) - _ensure_utc(r.Created_Date)).days if r.Created_Date else 0,
@@ -670,16 +661,29 @@ async def _search_tickets_enhanced(
                     "complexity_estimate": _estimate_complexity(r),
                 }
 
-                # Add relevance scoring for text searches
-                if text and include_relevance_score:
-                    score = _calculate_search_relevance(item, text)
-                    item["relevance_score"] = round(score, 2)
-
-                # Add search highlighting for better AI context
-                if text and include_highlights:
-                    item["highlights"] = _generate_search_highlights(item, text)
+                if text:
+                    text_corpus.append(
+                        " ".join(
+                            [
+                                item.get("Subject", ""),
+                                item.get("body_preview", ""),
+                                item.get("Category_Name", ""),
+                            ]
+                        )
+                    )
 
                 data.append(item)
+
+            # Calculate relevance scores using TF-IDF
+            if text and include_relevance_score:
+                scores = _calculate_similarity_scores(text_corpus, text)
+                for itm, score in zip(data, scores):
+                    itm["relevance_score"] = round(float(score), 2)
+
+            # Add search highlighting for better AI context
+            if text and include_highlights:
+                for itm in data:
+                    itm["highlights"] = _generate_search_highlights(itm, text)
 
             # Sort by relevance if text search was performed
             if text and include_relevance_score:
@@ -775,6 +779,7 @@ async def _create_ticket(**payload: Any) -> Dict[str, Any]:
             now = datetime.now(timezone.utc)
             payload.setdefault("Created_Date", now)
             payload.setdefault("LastModified", now)
+            payload.setdefault("LastModfiedBy", "Gil AI")
             
             result = await TicketManager().create_ticket(db_session, payload)
             if not result.success:

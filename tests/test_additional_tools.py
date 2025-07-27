@@ -139,6 +139,7 @@ async def test_search_tickets_enhanced_success(client: AsyncClient):
     assert "execution_metadata" in data
     if data["data"]:
         assert "relevance_score" in data["data"][0]
+        assert 0 <= data["data"][0]["relevance_score"] <= 1
         assert "metadata" in data["data"][0]
 
 
