@@ -144,3 +144,15 @@ def test_ticket_expanded_from_orm_blank_assigned_email():
     assert obj.Closed_Date is None
     assert obj.LastModified is None
     assert obj.LastModfiedBy is None
+
+
+def test_ticket_expanded_from_orm_blank_contact_email():
+    ticket = VTicketMasterExpanded(
+        Ticket_ID=1,
+        Subject="s",
+        Ticket_Body="b",
+        Ticket_Contact_Name="n",
+        Ticket_Contact_Email="",
+    )
+    obj = TicketExpandedOut.model_validate(ticket)
+    assert obj.Ticket_Contact_Email is None
