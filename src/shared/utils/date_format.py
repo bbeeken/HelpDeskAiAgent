@@ -9,13 +9,28 @@ def format_db_datetime(dt: datetime) -> str:
     """Return ``dt`` formatted for database storage."""
     if dt.tzinfo is not None:
         dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
-    return dt.strftime(DB_DATETIME_FORMAT)
+    # Trim microseconds to milliseconds for consistent DB precision
+    return dt.strftime(DB_DATETIME_FORMAT)[:-3]
 
 
 def parse_db_datetime(text: str) -> datetime:
     """Parse a database datetime string into an aware ``datetime``."""
-    dt = datetime.strptime(text, DB_DATETIME_FORMAT)
-    return dt.replace(tzinfo=timezone.utc)
+    try:
+        base, frac = text.split(".")
+    except ValueError:
+        raise ValueError(f"Invalid datetime format: {text}")
+
+    dt = datetime.strptime(base, "%Y-%m-%d %H:%M:%S")
+
+    if len(frac) == 6:
+        micro = int(frac)
+    elif len(frac) == 3:
+        micro = int(frac) * 1000
+    else:
+        raise ValueError(f"Invalid fractional second precision: {frac}")
+
+    dt = dt.replace(microsecond=micro, tzinfo=timezone.utc)
+    return dt
 
 
 try:
