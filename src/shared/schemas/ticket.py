@@ -114,6 +114,12 @@ class TicketIn(TicketBase):
 class TicketOut(TicketIn):
     Ticket_ID: int
 
+    @field_validator("Ticket_Contact_Email", mode="before")
+    def _clean_contact_email(cls, v):
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
     model_config = ConfigDict(
         str_max_length=None,
         from_attributes=True,
