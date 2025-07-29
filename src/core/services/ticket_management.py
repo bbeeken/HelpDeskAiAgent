@@ -127,8 +127,11 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
                 else:
                     translated["Severity_ID"] = value
 
-        elif k == "assignee":
+        elif k in {"assignee", "assignee_email"}:
             translated["Assigned_Email"] = value
+
+        elif k == "assignee_name":
+            translated["Assigned_Name"] = value
 
         elif k == "category":
             translated["Ticket_Category_ID"] = value

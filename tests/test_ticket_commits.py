@@ -102,3 +102,29 @@ async def test_assign_ticket_commits_once(monkeypatch):
     result = await _update_ticket(tid, {"assignee_email": "tech@example.com"})
     assert result["status"] == "success"
     assert counter[0] == 1
+
+
+@pytest.mark.asyncio
+async def test_assign_ticket_semantic_fields(monkeypatch):
+    async with db.SessionLocal() as setup:
+        ticket = {
+            "Subject": "A2",
+            "Ticket_Body": "b",
+            "Ticket_Contact_Name": "u",
+            "Ticket_Contact_Email": "u@example.com",
+        }
+        res = await TicketManager().create_ticket(setup, ticket)
+        await setup.commit()
+        tid = res.data.Ticket_ID
+
+    counter = [0]
+    await _patched_session(monkeypatch, counter)
+    result = await _update_ticket(
+        tid,
+        {"assignee_email": "tech@example.com", "assignee_name": "Tech"},
+    )
+    assert result["status"] == "success"
+    assert counter[0] == 1
+    data = result["data"]
+    assert data["Assigned_Email"] == "tech@example.com"
+    assert data["Assigned_Name"] == "Tech"
