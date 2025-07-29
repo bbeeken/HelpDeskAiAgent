@@ -78,7 +78,7 @@ async def test_close_ticket_commits_once(monkeypatch):
 
     counter = [0]
     await _patched_session(monkeypatch, counter)
-    result = await _update_ticket(tid, {"resolution": "done", "status": "closed"})
+    result = await _update_ticket(tid, {"Resolution": "done", "status": "closed"})
     assert result["status"] == "success"
     assert result["data"]["Ticket_Status_ID"] == 3
     assert counter[0] == 1
@@ -99,6 +99,23 @@ async def test_assign_ticket_commits_once(monkeypatch):
 
     counter = [0]
     await _patched_session(monkeypatch, counter)
-    result = await _update_ticket(tid, {"assignee_email": "tech@example.com"})
+    result = await _update_ticket(tid, {"Assigned_Email": "tech@example.com"})
     assert result["status"] == "success"
     assert counter[0] == 1
+
+
+@pytest.mark.asyncio
+async def test_update_ticket_invalid_payload(monkeypatch):
+    async with db.SessionLocal() as setup:
+        ticket = {
+            "Subject": "I",
+            "Ticket_Body": "b",
+            "Ticket_Contact_Name": "u",
+            "Ticket_Contact_Email": "u@example.com",
+        }
+        res = await TicketManager().create_ticket(setup, ticket)
+        await setup.commit()
+        tid = res.data.Ticket_ID
+
+    result = await _update_ticket(tid, {"bad_field": 1})
+    assert result["status"] == "error"

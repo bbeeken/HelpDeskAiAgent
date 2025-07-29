@@ -29,7 +29,8 @@ from src.core.services.ticket_management import (
     _PRIORITY_MAP,
 )
 from src.core.services.reference_data import ReferenceDataManager
-from src.shared.schemas.ticket import TicketExpandedOut, TicketCreate
+from src.shared.schemas.ticket import TicketExpandedOut, TicketCreate, TicketUpdate
+from pydantic import ValidationError
 from src.core.repositories.models import (
     Priority,
     Ticket,
@@ -587,18 +588,26 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
                 applied_updates["Ticket_Status_ID"] = status_value[0]
             message = applied_updates.pop("message", None)
 
+            try:
+                update_model = TicketUpdate(**applied_updates)
+            except ValidationError as ve:
+                await db_session.rollback()
+                return {"status": "error", "error": str(ve)}
+
+            update_dict = update_model.model_dump(exclude_unset=True)
+
             # Closing logic
-            if applied_updates.get("Ticket_Status_ID") == 4 and "Closed_Date" not in applied_updates:
-                applied_updates["Closed_Date"] = datetime.now(timezone.utc)
+            if update_dict.get("Ticket_Status_ID") == 4 and "Closed_Date" not in update_dict:
+                update_dict["Closed_Date"] = datetime.now(timezone.utc)
 
             # Assignment defaults
-            if "Assigned_Email" in applied_updates and "Assigned_Name" not in applied_updates:
-                applied_updates["Assigned_Name"] = applied_updates.get("Assigned_Email")
+            if "Assigned_Email" in update_dict and "Assigned_Name" not in update_dict:
+                update_dict["Assigned_Name"] = update_dict.get("Assigned_Email")
 
-            applied_updates["LastModified"] = datetime.now(timezone.utc)
-            applied_updates["LastModfiedBy"] = "Gil AI"
+            update_dict["LastModified"] = datetime.now(timezone.utc)
+            update_dict["LastModfiedBy"] = "Gil AI"
 
-            updated = await TicketManager().update_ticket(db_session, ticket_id, applied_updates)
+            updated = await TicketManager().update_ticket(db_session, ticket_id, update_dict)
             if not updated:
                 await db_session.rollback()
                 return {"status": "error", "error": f"Ticket {ticket_id} not found"}
@@ -640,15 +649,27 @@ async def _bulk_update_tickets(
             status_value = applied_updates.get("Ticket_Status_ID")
             if isinstance(status_value, list) and len(status_value) == 1:
                 applied_updates["Ticket_Status_ID"] = status_value[0]
-            applied_updates["LastModified"] = datetime.now(timezone.utc)
-            applied_updates["LastModfiedBy"] = "Gil AI"
+
+            try:
+                update_model = TicketUpdate(**applied_updates)
+            except ValidationError as ve:
+                await db_session.rollback()
+                return {"status": "error", "error": str(ve)}
+
+            update_dict = update_model.model_dump(exclude_unset=True)
+            update_dict["LastModified"] = datetime.now(timezone.utc)
+            update_dict["LastModfiedBy"] = "Gil AI"
+            if update_dict.get("Ticket_Status_ID") == 4 and "Closed_Date" not in update_dict:
+                update_dict["Closed_Date"] = datetime.now(timezone.utc)
+            if "Assigned_Email" in update_dict and "Assigned_Name" not in update_dict:
+                update_dict["Assigned_Name"] = update_dict.get("Assigned_Email")
             
             updated: list[Dict[str, Any]] = []
             failed: list[Dict[str, Any]] = []
             
             for tid in ticket_ids:
                 try:
-                    result = await mgr.update_ticket(db_session, tid, applied_updates)
+                    result = await mgr.update_ticket(db_session, tid, update_dict)
                     if result:
                         ticket = await mgr.get_ticket(db_session, tid)
                         updated.append(_format_ticket_by_level(ticket))

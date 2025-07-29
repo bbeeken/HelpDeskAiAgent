@@ -223,3 +223,21 @@ async def test_bulk_update_tickets_error(client: AsyncClient):
     data = resp.json()
     assert "path" in data
     assert "payload" in data
+
+
+@pytest.mark.asyncio
+async def test_update_ticket_validation_error(client: AsyncClient):
+    tid = await _create_ticket(client, "Validate")
+    payload = {"ticket_id": tid, "updates": {"bad": 1}}
+    resp = await client.post("/update_ticket", json=payload)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "error"
+
+
+@pytest.mark.asyncio
+async def test_bulk_update_tickets_validation_error(client: AsyncClient):
+    tid = await _create_ticket(client, "BulkBad")
+    payload = {"ticket_ids": [tid], "updates": {"bad": 1}}
+    resp = await client.post("/bulk_update_tickets", json=payload)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "error"
