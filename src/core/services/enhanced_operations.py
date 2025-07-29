@@ -355,7 +355,12 @@ class EnhancedOperationsManager:
     async def _execute_ticket_update(self, ticket_id: int, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Execute ticket update."""
         update_data = TicketUpdate(**parameters)
-        updated_ticket = await self.ticket_manager.update_ticket(self.db, ticket_id, update_data)
+        updated_ticket = await self.ticket_manager.update_ticket(
+            self.db,
+            ticket_id,
+            update_data,
+            modified_by="Gil AI",
+        )
         return {"updated_ticket_id": ticket_id, "success": True}
 
     async def _execute_ticket_assignment(self, ticket_id: int, parameters: Dict[str, Any]) -> Dict[str, Any]:
@@ -368,7 +373,12 @@ class EnhancedOperationsManager:
             Assigned_Name=assignee_name
         )
 
-        updated_ticket = await self.ticket_manager.update_ticket(self.db, ticket_id, update_data)
+        updated_ticket = await self.ticket_manager.update_ticket(
+            self.db,
+            ticket_id,
+            update_data,
+            modified_by="Gil AI",
+        )
         return {"assigned_to": assignee_email, "success": True}
 
     async def _execute_ticket_closure(self, ticket_id: int, parameters: Dict[str, Any]) -> Dict[str, Any]:
@@ -381,7 +391,12 @@ class EnhancedOperationsManager:
             Resolution=resolution
         )
 
-        updated_ticket = await self.ticket_manager.update_ticket(self.db, ticket_id, update_data)
+        updated_ticket = await self.ticket_manager.update_ticket(
+            self.db,
+            ticket_id,
+            update_data,
+            modified_by="Gil AI",
+        )
         return {"closed": True, "resolution": resolution}
 
     # Helper methods
