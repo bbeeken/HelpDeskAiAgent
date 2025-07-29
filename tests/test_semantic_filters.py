@@ -70,6 +70,47 @@ async def test_priority_filter_maps_to_severity_id():
     assert filters == {"Severity_ID": [1, 4]}
 
 
+@pytest.mark.asyncio
+async def test_assignee_email_and_name_filters():
+    async with SessionLocal() as db:
+        now = datetime.now(UTC)
+        t1 = Ticket(
+            Subject="F1",
+            Ticket_Body="b",
+            Ticket_Contact_Name="n",
+            Ticket_Contact_Email="e",
+            Assigned_Email="tech@example.com",
+            Assigned_Name="Tech",
+            Ticket_Status_ID=1,
+            Created_Date=now,
+        )
+        t2 = Ticket(
+            Subject="F2",
+            Ticket_Body="b",
+            Ticket_Contact_Name="n",
+            Ticket_Contact_Email="e",
+            Assigned_Email="other@example.com",
+            Assigned_Name="Other",
+            Ticket_Status_ID=1,
+            Created_Date=now,
+        )
+        await TicketManager().create_ticket(db, t1)
+        await TicketManager().create_ticket(db, t2)
+        await db.commit()
+
+        filters = apply_semantic_filters({"assignee_email": "tech@example.com"})
+        assert filters == {"Assigned_Email": "tech@example.com"}
+        res = await TicketManager().list_tickets(db, filters=filters)
+        ids = {t.Ticket_ID for t in res}
+        assert ids == {t1.Ticket_ID}
+
+        filters = apply_semantic_filters({"assignee_name": "Tech"})
+        assert filters == {"Assigned_Name": "Tech"}
+        res = await TicketManager().list_tickets(db, filters=filters)
+        ids = {t.Ticket_ID for t in res}
+        assert ids == {t1.Ticket_ID}
+
+
 def test_status_string_mappings():
     mapping_expectations = {
         "open": _OPEN_STATE_IDS,

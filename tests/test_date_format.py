@@ -12,5 +12,3 @@ def test_parse_search_datetime_db_format():
     expected = dt.replace(microsecond=(dt.microsecond // 1000) * 1000)
 
     assert parsed == expected
-
-
