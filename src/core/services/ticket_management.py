@@ -216,7 +216,7 @@ class TicketManager:
         db: AsyncSession,
         filters: AdvancedFilters | Dict[str, Any] | None = None,
         skip: int = 0,
-        limit: int = 10,
+        limit: int = 100,
         sort: str | List[str] | None = None,
     ) -> Sequence[VTicketMasterExpanded]:
         query = select(VTicketMasterExpanded)
@@ -277,7 +277,7 @@ class TicketManager:
         self,
         db: AsyncSession,
         query: str | None,
-        limit: int = 10,
+        limit: int = 100,
         params: TicketSearchParams | None = None,
         *,
         user: str | None = None,
@@ -481,7 +481,7 @@ class TicketManager:
         *,
         status: str | None = None,
         days: int = 7,
-        limit: int = 10,
+        limit: int = 100,
     ) -> List[VTicketMasterExpanded]:
         query = select(VTicketMasterExpanded)
         if status:
@@ -611,7 +611,7 @@ class TicketTools:
         self,
         query: str,
         include_closed: bool = False,
-        limit: int = 10,
+        limit: int = 100,
     ) -> Dict[str, Any]:
         like = f"%{query}%"
         stmt = select(VTicketMasterExpanded).filter(
