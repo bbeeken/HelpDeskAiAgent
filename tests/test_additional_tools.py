@@ -233,4 +233,7 @@ async def test_update_ticket_open_status_error(client: AsyncClient):
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "error"
-    assert "ambiguous" in data["error"].lower()
+    err = data["error"].lower()
+    assert "ambiguous" in err
+    assert "open" in err
+    assert "valid options" in err

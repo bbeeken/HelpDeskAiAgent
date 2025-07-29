@@ -587,9 +587,15 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
                 if len(status_value) == 1:
                     applied_updates["Ticket_Status_ID"] = status_value[0]
                 else:
+                    provided = (
+                        updates.get("status")
+                        or updates.get("ticket_status")
+                        or updates.get("Ticket_Status_ID")
+                    )
+                    opts = ", ".join(str(v) for v in status_value)
                     return {
                         "status": "error",
-                        "error": "Ambiguous status values are not allowed",
+                        "error": f"Ambiguous status value '{provided}'. Valid options: {opts}",
                     }
             message = applied_updates.pop("message", None)
 
