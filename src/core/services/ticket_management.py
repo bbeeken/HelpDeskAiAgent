@@ -57,7 +57,6 @@ _STATUS_MAP = {
 }
 
 _OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
-_CLOSED_STATE_IDS = [3]
 
 _PRIORITY_MAP = {
     "critical": "Critical",
