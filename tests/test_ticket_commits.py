@@ -102,3 +102,22 @@ async def test_assign_ticket_commits_once(monkeypatch):
     result = await _update_ticket(tid, {"assignee_email": "tech@example.com"})
     assert result["status"] == "success"
     assert counter[0] == 1
+
+
+@pytest.mark.asyncio
+async def test_close_ticket_sets_closed_date():
+    async with db.SessionLocal() as setup:
+        ticket = {
+            "Subject": "D",
+            "Ticket_Body": "b",
+            "Ticket_Contact_Name": "u",
+            "Ticket_Contact_Email": "u@example.com",
+        }
+        res = await TicketManager().create_ticket(setup, ticket)
+        await setup.commit()
+        tid = res.data.Ticket_ID
+
+    result = await _update_ticket(tid, {"status": "closed"})
+    assert result["status"] == "success"
+    assert result["data"]["Ticket_Status_ID"] == 3
+    assert result["data"]["Closed_Date"] is not None
