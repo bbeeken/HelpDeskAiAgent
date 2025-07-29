@@ -583,8 +583,14 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
             # Apply semantic filters to updates
             applied_updates = apply_semantic_filters(updates)
             status_value = applied_updates.get("Ticket_Status_ID")
-            if isinstance(status_value, list) and len(status_value) == 1:
-                applied_updates["Ticket_Status_ID"] = status_value[0]
+            if isinstance(status_value, list):
+                if len(status_value) == 1:
+                    applied_updates["Ticket_Status_ID"] = status_value[0]
+                else:
+                    return {
+                        "status": "error",
+                        "error": "Ambiguous status values are not allowed",
+                    }
             message = applied_updates.pop("message", None)
 
             # Closing logic - Status 3 is Closed, not Status 4
