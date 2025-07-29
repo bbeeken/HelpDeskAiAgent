@@ -62,7 +62,7 @@ curl -X POST http://localhost:8000/update_ticket \
 Example – close a ticket:
 ```bash
 curl -X POST http://localhost:8000/update_ticket \
-  -d '{"ticket_id": 5, "updates": {"Ticket_Status_ID": 4, "Resolution": "Replaced toner"}}'
+  -d '{"ticket_id": 5, "updates": {"Ticket_Status_ID": 3, "Resolution": "Replaced toner"}}'
 ```
 
 
