@@ -127,8 +127,11 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
                 else:
                     translated["Severity_ID"] = value
 
-        elif k == "assignee":
+        elif k in {"assignee", "assignee_email"}:
             translated["Assigned_Email"] = value
+
+        elif k == "assignee_name":
+            translated["Assigned_Name"] = value
 
         elif k == "category":
             translated["Ticket_Category_ID"] = value
@@ -535,13 +538,13 @@ class TicketManager:
         msg = TicketMessage(
             Ticket_ID=ticket_id,
             Message=message,
-            SenderUserCode="GilAI@heinzcorps.com",
-            SenderUserName="Gil AI",
+            SenderUserCode=sender_code,
+            SenderUserName=sender_name,
             DateTimeStamp=datetime.now(timezone.utc),
         )
         db.add(msg)
         try:
-            await db.commit()
+            await db.flush()
             await db.refresh(msg)
             logger.info("Posted message to ticket %s", ticket_id)
         except SQLAlchemyError as e:

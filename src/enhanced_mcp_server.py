@@ -588,6 +588,7 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
                 applied_updates["Ticket_Status_ID"] = status_value[0]
             message = applied_updates.pop("message", None)
 
+
             try:
                 update_model = TicketUpdate(**applied_updates)
             except ValidationError as ve:
@@ -600,9 +601,15 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
             if update_dict.get("Ticket_Status_ID") == 4 and "Closed_Date" not in update_dict:
                 update_dict["Closed_Date"] = datetime.now(timezone.utc)
 
+            # Closing logic - Status 3 is Closed, not Status 4
+            if applied_updates.get("Ticket_Status_ID") == 3 and "Closed_Date" not in applied_updates:
+                applied_updates["Closed_Date"] = datetime.now(timezone.utc)
+
+
             # Assignment defaults
             if "Assigned_Email" in update_dict and "Assigned_Name" not in update_dict:
                 update_dict["Assigned_Name"] = update_dict.get("Assigned_Email")
+
 
             update_dict["LastModified"] = datetime.now(timezone.utc)
             update_dict["LastModfiedBy"] = "Gil AI"
@@ -612,16 +619,27 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
                 await db_session.rollback()
                 return {"status": "error", "error": f"Ticket {ticket_id} not found"}
 
-            if message:
-                await TicketManager().post_message(
-                    db_session,
-                    ticket_id,
-                    message,
-                    applied_updates.get("Assigned_Email", "system"),
-                    applied_updates.get("Assigned_Name", applied_updates.get("Assigned_Email", "system")),
-                )
+            try:
+                updated = await TicketManager().update_ticket(db_session, ticket_id, applied_updates)
+                if not updated:
+                    return {"status": "error", "error": f"Ticket {ticket_id} not found"}
 
-            await db_session.commit()
+                if message:
+                    await TicketManager().post_message(
+                        db_session,
+                        ticket_id,
+                        message,
+                        applied_updates.get("Assigned_Email", "system"),
+                        applied_updates.get("Assigned_Name", applied_updates.get("Assigned_Email", "system")),
+                    )
+
+
+                await db_session.commit()
+
+            except Exception as e:
+                await db_session.rollback()
+                logger.error(f"Error updating ticket {ticket_id}: {e}")
+                return {"status": "error", "error": str(e)}
 
             ticket = await TicketManager().get_ticket(db_session, ticket_id)
             data = _format_ticket_by_level(ticket)
@@ -649,6 +667,7 @@ async def _bulk_update_tickets(
             status_value = applied_updates.get("Ticket_Status_ID")
             if isinstance(status_value, list) and len(status_value) == 1:
                 applied_updates["Ticket_Status_ID"] = status_value[0]
+
 
             try:
                 update_model = TicketUpdate(**applied_updates)
@@ -683,19 +702,44 @@ async def _bulk_update_tickets(
             else:
                 await db_session.commit()
 
-            return {
-                "status": "success",
-                "updated": updated,
-                "failed": failed,
-                "dry_run": dry_run,
-                "total_processed": len(ticket_ids),
-                "total_updated": len(updated),
-                "total_failed": len(failed)
-            }
+            updated: list[Dict[str, Any]] = []
+            failed: list[Dict[str, Any]] = []
+
+
+            try:
+                for tid in ticket_ids:
+                    try:
+                        result = await mgr.update_ticket(db_session, tid, applied_updates)
+                        if result:
+                            ticket = await mgr.get_ticket(db_session, tid)
+                            updated.append(_format_ticket_by_level(ticket))
+                        else:
+                            failed.append({"ticket_id": tid, "error": "Not found"})
+                    except Exception as e:
+                        failed.append({"ticket_id": tid, "error": str(e)})
+
+                if dry_run:
+                    await db_session.rollback()
+                else:
+                    await db_session.commit()
+
+                return {
+                    "status": "success",
+                    "updated": updated,
+                    "failed": failed,
+                    "dry_run": dry_run,
+                    "total_processed": len(ticket_ids),
+                    "total_updated": len(updated),
+                    "total_failed": len(failed)
+                }
+
+            except Exception as e:
+                await db_session.rollback()
+                logger.error(f"Error in bulk_update_tickets: {e}")
+                return {"status": "error", "error": str(e)}
     except Exception as e:
         logger.error(f"Error in bulk_update_tickets: {e}")
         return {"status": "error", "error": str(e)}
-
 
 async def _add_ticket_message(
     ticket_id: int,

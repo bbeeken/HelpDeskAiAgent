@@ -105,10 +105,12 @@ async def test_assign_ticket_commits_once(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_update_ticket_invalid_payload(monkeypatch):
+
+async def test_assign_ticket_semantic_fields(monkeypatch):
     async with db.SessionLocal() as setup:
         ticket = {
-            "Subject": "I",
+            "Subject": "A2",
+
             "Ticket_Body": "b",
             "Ticket_Contact_Name": "u",
             "Ticket_Contact_Email": "u@example.com",
@@ -117,5 +119,19 @@ async def test_update_ticket_invalid_payload(monkeypatch):
         await setup.commit()
         tid = res.data.Ticket_ID
 
+
     result = await _update_ticket(tid, {"bad_field": 1})
     assert result["status"] == "error"
+
+    counter = [0]
+    await _patched_session(monkeypatch, counter)
+    result = await _update_ticket(
+        tid,
+        {"assignee_email": "tech@example.com", "assignee_name": "Tech"},
+    )
+    assert result["status"] == "success"
+    assert counter[0] == 1
+    data = result["data"]
+    assert data["Assigned_Email"] == "tech@example.com"
+    assert data["Assigned_Name"] == "Tech"
+
