@@ -538,13 +538,13 @@ class TicketManager:
         msg = TicketMessage(
             Ticket_ID=ticket_id,
             Message=message,
-            SenderUserCode="GilAI@heinzcorps.com",
-            SenderUserName="Gil AI",
+            SenderUserCode=sender_code,
+            SenderUserName=sender_name,
             DateTimeStamp=datetime.now(timezone.utc),
         )
         db.add(msg)
         try:
-            await db.commit()
+            await db.flush()
             await db.refresh(msg)
             logger.info("Posted message to ticket %s", ticket_id)
         except SQLAlchemyError as e:
