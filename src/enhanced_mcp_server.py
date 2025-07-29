@@ -587,6 +587,9 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
                 applied_updates["Ticket_Status_ID"] = status_value[0]
             message = applied_updates.pop("message", None)
 
+            if not applied_updates:
+                return {"status": "error", "error": "No updates provided"}
+
             # Closing logic - Status 3 is Closed, not Status 4
             if applied_updates.get("Ticket_Status_ID") == 3 and "Closed_Date" not in applied_updates:
                 applied_updates["Closed_Date"] = datetime.now(timezone.utc)
