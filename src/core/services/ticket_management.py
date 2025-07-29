@@ -175,24 +175,128 @@ class TicketManager:
     ) -> Ticket | None:
         if isinstance(updates, BaseModel):
             updates = updates.model_dump(exclude_unset=True)
+
+        # Remove fields that should never be user-modifiable
+        protected_fields = {"Ticket_ID", "Created_Date"}
+        updates = {k: v for k, v in updates.items() if k not in protected_fields}
+
+        if not updates:
+            return None
+
         ticket = await db.get(Ticket, ticket_id)
         if not ticket:
             return None
+
+        original_values: Dict[str, Any] = {}
+        actual_changes: Dict[str, Dict[str, Any]] = {}
+
         for key, value in updates.items():
-            if hasattr(ticket, key):
+            if not hasattr(ticket, key):
+                continue
+
+            original_value = getattr(ticket, key)
+            original_values[key] = original_value
+
+            valid = await self._validate_field_update(
+                db, ticket, key, value, original_value
+            )
+            if not valid:
+                continue
+
+            if original_value != value:
+                actual_changes[key] = {"from": original_value, "to": value}
                 setattr(ticket, key, value)
-        # Record when the ticket was last modified
-        ticket.LastModified = datetime.now(timezone.utc)
-        ticket.LastModfiedBy = "Gil AI"
-        try:
-            await db.flush()
-            await db.refresh(ticket)
-            logger.info("Updated ticket %s", ticket_id)
+
+        if actual_changes:
+            ticket.LastModified = datetime.now(timezone.utc)
+            ticket.LastModfiedBy = "Gil AI"  # TODO: pass real user context
+
+            try:
+                await db.flush()
+                await db.refresh(ticket)
+                logger.info(
+                    f"Updated ticket {ticket_id}: {list(actual_changes.keys())}"
+                )
+                return ticket
+            except Exception:
+                await db.rollback()
+                logger.exception(f"Failed to update ticket {ticket_id}")
+                raise
+        else:
+            logger.info(f"No changes applied to ticket {ticket_id}")
             return ticket
-        except Exception:
-            await db.rollback()
-            logger.exception("Failed to update ticket %s", ticket_id)
-            raise
+
+    async def _validate_field_update(
+        self, db: AsyncSession, ticket: Ticket, field: str, new_value: Any, old_value: Any
+    ) -> bool:
+        """Validate and sanitize field updates according to business rules."""
+
+        if isinstance(new_value, str) and field in ["Subject", "Ticket_Body", "Resolution"]:
+            new_value = self._sanitize_text_input(new_value)
+            setattr(ticket, field, new_value)
+
+        if field == "Ticket_Status_ID":
+            if not await self._validate_status_transition(db, old_value, new_value):
+                logger.warning(f"Invalid status transition: {old_value} -> {new_value}")
+                return False
+
+            if new_value == 3 and not ticket.Resolution:
+                logger.warning(f"Cannot close ticket {ticket.Ticket_ID} without resolution")
+                return False
+
+        if field == "Site_ID" and new_value is not None:
+            if not await self._validate_site_exists(db, new_value):
+                logger.warning(f"Site ID {new_value} does not exist")
+                return False
+
+        if field == "Asset_ID" and new_value is not None:
+            if not await self._validate_asset_exists(db, new_value):
+                logger.warning(f"Asset ID {new_value} does not exist")
+                return False
+
+        if field == "Severity_ID" and new_value is not None:
+            if new_value not in [1, 2, 3, 4]:
+                logger.warning(f"Invalid severity ID: {new_value}")
+                return False
+
+        if field in ["Ticket_Contact_Email", "Assigned_Email"] and new_value:
+            if not self._validate_email_format(new_value):
+                logger.warning(f"Invalid email format: {new_value}")
+                return False
+
+        if isinstance(new_value, str):
+            if field in ["Subject"] and len(new_value) > 255:
+                logger.warning(f"Subject too long: {len(new_value)} chars")
+                return False
+            if len(new_value) > 10000:
+                logger.warning(f"Field {field} too long: {len(new_value)} chars")
+                return False
+
+        return True
+
+    async def _validate_status_transition(
+        self, db: AsyncSession, old_status: int, new_status: int
+    ) -> bool:
+        if new_status not in [1, 2, 3, 4, 5, 6, 8]:
+            return False
+        if old_status == 3 and new_status != 3:
+            return False
+        return True
+
+    async def _validate_site_exists(self, db: AsyncSession, site_id: int) -> bool:
+        from src.core.repositories.models import Site
+        result = await db.get(Site, site_id)
+        return result is not None
+
+    async def _validate_asset_exists(self, db: AsyncSession, asset_id: int) -> bool:
+        from src.core.repositories.models import Asset
+        result = await db.get(Asset, asset_id)
+        return result is not None
+
+    def _validate_email_format(self, email: str) -> bool:
+        import re
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(pattern, email) is not None
 
     async def delete_ticket(self, db: AsyncSession, ticket_id: int) -> bool:
         ticket = await db.get(Ticket, ticket_id)
@@ -272,6 +376,29 @@ class TicketManager:
     def _sanitize_search_input(self, query: str) -> str:
         """Basic sanitization of search input."""
         return html.escape(query).strip()
+
+    def _sanitize_text_input(self, text: str) -> str:
+        """Sanitize text input to prevent XSS and other issues."""
+        if not isinstance(text, str):
+            return str(text)
+
+        import html as _html
+        import re
+
+        # HTML escape
+        text = _html.escape(text)
+
+        # Remove potentially dangerous characters
+        text = re.sub(r'[<>"\']', '', text)
+
+        # Normalize whitespace
+        text = ' '.join(text.split())
+
+        # Truncate if too long
+        if len(text) > 10000:
+            text = text[:10000] + "... [truncated]"
+
+        return text
 
     async def search_tickets(
         self,
@@ -532,23 +659,24 @@ class TicketManager:
         sender_code: str,
         sender_name: str,
     ) -> TicketMessage:
+        message = self._sanitize_text_input(message)
+
         msg = TicketMessage(
             Ticket_ID=ticket_id,
             Message=message,
-            SenderUserCode="GilAI@heinzcorps.com",
-            SenderUserName="Gil AI",
+            SenderUserCode=sender_code or "system",
+            SenderUserName=sender_name or "System",
             DateTimeStamp=datetime.now(timezone.utc),
         )
         db.add(msg)
         try:
-            await db.commit()
+            await db.flush()
             await db.refresh(msg)
             logger.info("Posted message to ticket %s", ticket_id)
+            return msg
         except SQLAlchemyError as e:
-            await db.rollback()
             logger.exception("Failed to save ticket message for %s", ticket_id)
             raise DatabaseError("Failed to save message", details=str(e))
-        return msg
 
     async def get_attachments(
         self, db: AsyncSession, ticket_id: int
