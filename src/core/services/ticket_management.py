@@ -174,7 +174,12 @@ class TicketManager:
             return OperationResult(success=False, error=f"Failed to create ticket: {e}")
 
     async def update_ticket(
-        self, db: AsyncSession, ticket_id: int, updates: BaseModel | Dict[str, Any]
+        self,
+        db: AsyncSession,
+        ticket_id: int,
+        updates: BaseModel | Dict[str, Any],
+        *,
+        modified_by: str = "Gil AI",
     ) -> Ticket | None:
         if isinstance(updates, BaseModel):
             updates = updates.model_dump(exclude_unset=True)
@@ -186,7 +191,7 @@ class TicketManager:
                 setattr(ticket, key, value)
         # Record when the ticket was last modified
         ticket.LastModified = datetime.now(timezone.utc)
-        ticket.LastModfiedBy = "Gil AI"
+        ticket.LastModfiedBy = modified_by
         try:
             await db.flush()
             await db.refresh(ticket)

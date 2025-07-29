@@ -605,7 +605,12 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
                 applied_updates["Assigned_Name"] = applied_updates.get("Assigned_Email")
 
             try:
-                updated = await TicketManager().update_ticket(db_session, ticket_id, applied_updates)
+                updated = await TicketManager().update_ticket(
+                    db_session,
+                    ticket_id,
+                    applied_updates,
+                    modified_by="Gil AI",
+                )
                 if not updated:
                     return {"status": "error", "error": f"Ticket {ticket_id} not found"}
 
@@ -658,7 +663,12 @@ async def _bulk_update_tickets(
             try:
                 for tid in ticket_ids:
                     try:
-                        result = await mgr.update_ticket(db_session, tid, applied_updates)
+                        result = await mgr.update_ticket(
+                            db_session,
+                            tid,
+                            applied_updates,
+                            modified_by="Gil AI",
+                        )
                         if result:
                             ticket = await mgr.get_ticket(db_session, tid)
                             updated.append(_format_ticket_by_level(ticket))
