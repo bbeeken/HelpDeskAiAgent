@@ -582,6 +582,9 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
         async with db.SessionLocal() as db_session:
             # Apply semantic filters to updates
             applied_updates = apply_semantic_filters(updates)
+            status_value = applied_updates.get("Ticket_Status_ID")
+            if isinstance(status_value, list) and len(status_value) == 1:
+                applied_updates["Ticket_Status_ID"] = status_value[0]
             message = applied_updates.pop("message", None)
 
             # Closing logic
@@ -634,6 +637,9 @@ async def _bulk_update_tickets(
         async with db.SessionLocal() as db_session:
             mgr = TicketManager()
             applied_updates = apply_semantic_filters(updates)
+            status_value = applied_updates.get("Ticket_Status_ID")
+            if isinstance(status_value, list) and len(status_value) == 1:
+                applied_updates["Ticket_Status_ID"] = status_value[0]
             applied_updates["LastModified"] = datetime.now(timezone.utc)
             applied_updates["LastModfiedBy"] = "Gil AI"
             
