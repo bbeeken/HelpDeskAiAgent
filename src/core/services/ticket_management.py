@@ -57,7 +57,6 @@ _STATUS_MAP = {
 }
 
 _OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
-_CLOSED_STATE_IDS = [3]
 
 _PRIORITY_MAP = {
     "critical": "Critical",
@@ -127,8 +126,11 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
                 else:
                     translated["Severity_ID"] = value
 
-        elif k == "assignee":
+        elif k in {"assignee", "assignee_email"}:
             translated["Assigned_Email"] = value
+
+        elif k == "assignee_name":
+            translated["Assigned_Name"] = value
 
         elif k == "category":
             translated["Ticket_Category_ID"] = value
@@ -171,7 +173,12 @@ class TicketManager:
             return OperationResult(success=False, error=f"Failed to create ticket: {e}")
 
     async def update_ticket(
-        self, db: AsyncSession, ticket_id: int, updates: BaseModel | Dict[str, Any]
+        self,
+        db: AsyncSession,
+        ticket_id: int,
+        updates: BaseModel | Dict[str, Any],
+        *,
+        modified_by: str = "Gil AI",
     ) -> Ticket | None:
         if isinstance(updates, BaseModel):
             updates = updates.model_dump(exclude_unset=True)
@@ -183,7 +190,7 @@ class TicketManager:
                 setattr(ticket, key, value)
         # Record when the ticket was last modified
         ticket.LastModified = datetime.now(timezone.utc)
-        ticket.LastModfiedBy = "Gil AI"
+        ticket.LastModfiedBy = modified_by
         try:
             await db.flush()
             await db.refresh(ticket)
@@ -535,13 +542,13 @@ class TicketManager:
         msg = TicketMessage(
             Ticket_ID=ticket_id,
             Message=message,
-            SenderUserCode="GilAI@heinzcorps.com",
-            SenderUserName="Gil AI",
+            SenderUserCode=sender_code,
+            SenderUserName=sender_name,
             DateTimeStamp=datetime.now(timezone.utc),
         )
         db.add(msg)
         try:
-            await db.commit()
+            await db.flush()
             await db.refresh(msg)
             logger.info("Posted message to ticket %s", ticket_id)
         except SQLAlchemyError as e:

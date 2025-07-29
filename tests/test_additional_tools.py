@@ -223,3 +223,17 @@ async def test_bulk_update_tickets_error(client: AsyncClient):
     data = resp.json()
     assert "path" in data
     assert "payload" in data
+
+
+@pytest.mark.asyncio
+async def test_update_ticket_open_status_error(client: AsyncClient):
+    tid = await _create_ticket(client, "Ambiguous")
+    payload = {"ticket_id": tid, "updates": {"status": "open"}}
+    resp = await client.post("/update_ticket", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "error"
+    err = data["error"].lower()
+    assert "ambiguous" in err
+    assert "open" in err
+    assert "valid options" in err

@@ -264,10 +264,15 @@ async def update_ticket_endpoint(
     updates: TicketUpdate,
     db: AsyncSession = Depends(get_db_with_commit),
 ) -> TicketOut:
-    updated = await TicketManager().update_ticket(db, ticket_id, updates.model_dump(exclude_unset=True))
+    updated = await TicketManager().update_ticket(
+        db,
+        ticket_id,
+        updates.model_dump(exclude_unset=True),
+        modified_by="Gil AI",
+    )
     if not updated:
-        logger.warning("Ticket %s not found or no changes applied", ticket_id)
-        raise HTTPException(status_code=404, detail="Ticket not found or no changes")
+        logger.warning("Ticket %s not found", ticket_id)
+        raise HTTPException(status_code=404, detail="Ticket not found")
     return TicketOut.model_validate(updated)
 
 
@@ -283,10 +288,12 @@ async def update_ticket_json(
     updates: TicketUpdate = Body(...),
     db: AsyncSession = Depends(get_db_with_commit),
 ) -> TicketExpandedOut:
-    updated = await TicketManager().update_ticket(db, ticket_id, updates)
+    updated = await TicketManager().update_ticket(
+        db, ticket_id, updates, modified_by="Gil AI"
+    )
     if not updated:
-        logger.warning("Ticket %s not found or no changes applied", ticket_id)
-        raise HTTPException(status_code=404, detail="Ticket not found or no changes")
+        logger.warning("Ticket %s not found", ticket_id)
+        raise HTTPException(status_code=404, detail="Ticket not found")
     ticket = await TicketManager().get_ticket(db, ticket_id)
     return TicketExpandedOut.model_validate(ticket)
 

@@ -157,6 +157,16 @@ async def test_update_ticket_invalid_field(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_update_ticket_empty_payload(client: AsyncClient):
+    resp = await _create_ticket(client)
+    assert resp.status_code == 201
+    tid = resp.json()["Ticket_ID"]
+
+    resp = await client.put(f"/ticket/{tid}", json={})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_asset_vendor_site_routes(client: AsyncClient):
     asset = await _add_asset()
     vendor = await _add_vendor()

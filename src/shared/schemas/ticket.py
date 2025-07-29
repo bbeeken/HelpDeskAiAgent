@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator
 from typing import Annotated
 from typing import Optional
 from datetime import datetime
@@ -78,6 +78,12 @@ class TicketUpdate(BaseModel):
     Severity_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _ensure_fields_present(cls, values: "TicketUpdate") -> "TicketUpdate":
+        if not values.model_fields_set:
+            raise ValueError("At least one field must be supplied")
+        return values
 
     model_config = ConfigDict(
         extra="forbid",
