@@ -17,6 +17,11 @@ class TicketBase(BaseModel):
     Assigned_Email: Optional[EmailStr] = None
     Severity_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
+    Most_Recent_Service_Scheduled_ID: Optional[int] = None
+    Watchers: Optional[str] = None
+    MetaData: Optional[str] = None
+    ValidFrom: Optional[datetime] = None
+    ValidTo: Optional[datetime] = None
     Resolution: Optional[Annotated[str, Field()]] = None
 
     @field_validator("Assigned_Email", mode="before")
@@ -78,6 +83,11 @@ class TicketUpdate(BaseModel):
     Assigned_Email: Optional[EmailStr] = None
     Severity_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
+    Most_Recent_Service_Scheduled_ID: Optional[int] = None
+    Watchers: Optional[str] = None
+    MetaData: Optional[str] = None
+    ValidFrom: Optional[datetime] = None
+    ValidTo: Optional[datetime] = None
     Resolution: Optional[str] = None
 
     @model_validator(mode="after")
@@ -113,6 +123,11 @@ class TicketIn(TicketBase):
     Assigned_Email: Optional[EmailStr] = None
     Severity_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
+    Most_Recent_Service_Scheduled_ID: Optional[int] = None
+    Watchers: Optional[str] = None
+    MetaData: Optional[str] = None
+    ValidFrom: Optional[datetime] = None
+    ValidTo: Optional[datetime] = None
     Resolution: Optional[Annotated[str, Field()]] = None
     Version: Optional[int] = None
 
@@ -156,6 +171,11 @@ class TicketExpandedOut(TicketOut):
     category_label: Optional[str] = Field(None, alias="Ticket_Category_Label")
     vendor_name: Optional[str] = Field(None, alias="Assigned_Vendor_Name")
     priority_level: Optional[str] = Field(None, alias="Priority_Level")
+    Most_Recent_Service_Scheduled_ID: Optional[int] = None
+    Watchers: Optional[str] = None
+    MetaData: Optional[str] = None
+    ValidFrom: Optional[datetime] = None
+    ValidTo: Optional[datetime] = None
     Site_ID: Optional[int] = None
     Closed_Date: Optional[datetime] = None
     LastModified: Optional[datetime] = None
