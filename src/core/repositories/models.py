@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text, Boolean
 from src.shared.utils.date_format import FormattedDateTime
 from sqlalchemy.orm import DeclarativeBase
 
@@ -28,8 +28,26 @@ class Ticket(Base):
     Closed_Date = Column(FormattedDateTime())
     LastModified = Column(FormattedDateTime())
     LastModfiedBy = Column(String)
-    Version = Column(Integer, default=0)
     Resolution = Column(Text)
+    Most_Recent_Service_Scheduled_ID = Column(Integer, nullable=True)
+    LastCreatedBy = Column(String, nullable=True)
+    Watchers = Column(String, nullable=True)
+    EstimatedCompletionDate = Column(FormattedDateTime(), nullable=True)
+    CustomCompletionDate = Column(FormattedDateTime(), nullable=True)
+    EstimatedCompletionDateAsInt = Column(Integer, nullable=True)
+    RV = Column(String, nullable=True)
+    HasServiceRequest = Column(Boolean, nullable=True)
+    Private = Column(Boolean, nullable=True)
+    Collab_Emails = Column(String, nullable=True)
+    OrderFormHTML = Column(Text, nullable=True)
+    LastModifiedAsInt = Column(Integer, nullable=True)
+    PM = Column(Boolean, nullable=True)
+    Asset_ID_Mutiple = Column(String, nullable=True)
+    MetaData = Column(Text, nullable=True)
+    LastMetaDataUpdateDate = Column(FormattedDateTime(), nullable=True)
+    ClosedBy = Column(String, nullable=True)
+    ValidFrom = Column(FormattedDateTime(), nullable=True)
+    ValidTo = Column(FormattedDateTime(), nullable=True)
 
 
 class Asset(Base):
