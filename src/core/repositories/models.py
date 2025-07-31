@@ -27,6 +27,7 @@ class Ticket(Base):
     Closed_Date = Column(FormattedDateTime())
     LastModified = Column(FormattedDateTime())
     LastModfiedBy = Column(String)
+    Version = Column(Integer, default=0)
     Resolution = Column(Text)
 
 
@@ -137,6 +138,7 @@ class VTicketMasterExpanded(ViewBase):
     LastModified = Column(FormattedDateTime())
 
     LastModfiedBy = Column(String)
+    Version = Column(Integer)
 
     Assigned_Vendor_Name = Column(String)
     Resolution = Column(Text)
