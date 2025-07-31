@@ -18,6 +18,7 @@ class Ticket(Base):
     Asset_ID = Column(Integer)
     Site_ID = Column(Integer)
     Ticket_Category_ID = Column(Integer)
+    Version = Column(Integer, default=1, nullable=False)
 
     Created_Date = Column(FormattedDateTime())
     Assigned_Name = Column(String)
@@ -127,6 +128,7 @@ class VTicketMasterExpanded(ViewBase):
     Site_Label = Column(String)
     Ticket_Category_ID = Column(Integer)
     Ticket_Category_Label = Column(String)
+    Version = Column(Integer)
 
 
     Created_Date = Column(FormattedDateTime())
