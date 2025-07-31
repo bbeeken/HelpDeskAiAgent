@@ -21,7 +21,6 @@ SELECT t.Ticket_ID,
        t.Closed_Date,
        t.LastModified,
        t.LastModfiedBy,
-       t.Version,
        v.Name AS Assigned_Vendor_Name,
        t.Resolution,
        p.Level AS Priority_Level
