@@ -28,6 +28,7 @@ from src.core.services.ticket_management import (
     apply_semantic_filters,
     _PRIORITY_MAP,
 )
+from src.core.services.user_services import UserManager
 from src.core.services.reference_data import ReferenceDataManager
 from src.shared.schemas.ticket import TicketExpandedOut, TicketCreate
 from src.core.repositories.models import (
@@ -608,7 +609,10 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
 
             # Assignment defaults
             if "Assigned_Email" in applied_updates and "Assigned_Name" not in applied_updates:
-                applied_updates["Assigned_Name"] = applied_updates.get("Assigned_Email")
+                user_info = await UserManager().get_user_by_email(applied_updates["Assigned_Email"])
+                display_name = user_info.get("displayName")
+                if display_name and display_name != applied_updates["Assigned_Email"]:
+                    applied_updates["Assigned_Name"] = display_name
 
             try:
                 updated = await TicketManager().update_ticket(
@@ -626,7 +630,7 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
                         ticket_id,
                         message,
                         applied_updates.get("Assigned_Email", "system"),
-                        applied_updates.get("Assigned_Name", applied_updates.get("Assigned_Email", "system")),
+                        applied_updates.get("Assigned_Name", "System"),
                     )
 
                 await db_session.commit()
