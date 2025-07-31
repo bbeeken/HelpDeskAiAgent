@@ -185,16 +185,26 @@ class TicketManager:
         ticket = await db.get(Ticket, ticket_id)
         if not ticket:
             return None
+
+        changed = False
         for key, value in updates.items():
             if hasattr(ticket, key):
-                setattr(ticket, key, value)
-        # Record when the ticket was last modified
+                current = getattr(ticket, key)
+                if current != value:
+                    setattr(ticket, key, value)
+                    changed = True
+
+        if not changed:
+            logger.info("No ticket updates for %s", ticket_id)
+            return ticket
+
+        ticket.Version = (getattr(ticket, "Version", 0) or 0) + 1
         ticket.LastModified = datetime.now(timezone.utc)
         ticket.LastModfiedBy = modified_by
         try:
             await db.flush()
             await db.refresh(ticket)
-            logger.info("Updated ticket %s", ticket_id)
+            logger.info("Updated ticket %s to version %s", ticket_id, ticket.Version)
             return ticket
         except Exception:
             await db.rollback()
