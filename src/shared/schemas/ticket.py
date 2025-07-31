@@ -32,6 +32,7 @@ class TicketCreate(TicketBase):
     """Schema used when creating a new ticket."""
 
     LastModified: Optional[datetime] = None
+    Version: Optional[int] = 1
 
     model_config = ConfigDict(
         str_max_length=None,
@@ -113,12 +114,14 @@ class TicketIn(TicketBase):
     Severity_ID: Optional[int] = None
     Assigned_Vendor_ID: Optional[int] = None
     Resolution: Optional[Annotated[str, Field()]] = None
+    Version: Optional[int] = None
 
     model_config = ConfigDict(extra="forbid", str_max_length=None)
 
 
 class TicketOut(TicketIn):
     Ticket_ID: int
+    Version: int
 
     @field_validator("Ticket_Contact_Email", mode="before")
     def _clean_contact_email(cls, v):
@@ -157,5 +160,6 @@ class TicketExpandedOut(TicketOut):
     Closed_Date: Optional[datetime] = None
     LastModified: Optional[datetime] = None
     LastModfiedBy: Optional[str] = None
+    Version: int
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
