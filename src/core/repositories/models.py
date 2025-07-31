@@ -59,6 +59,7 @@ class TicketAttachment(Base):
     WebURl = Column(String)
     UploadDateTime = Column(FormattedDateTime())
 
+
 class TicketMessage(Base):
     __tablename__ = "Ticket_Messages"
     ID = Column(Integer, primary_key=True, index=True)
@@ -106,14 +107,15 @@ class OnCallShift(Base):
     end_time = Column(FormattedDateTime(), nullable=False)
 
 
-
 class ViewBase(DeclarativeBase):
     """Declarative base for database views."""
+
     pass
 
 
 class VTicketMasterExpanded(ViewBase):
     """Mapped class for the V_Ticket_Master_Expanded view."""
+
     __tablename__ = "V_Ticket_Master_Expanded"
     Ticket_ID = Column(Integer, primary_key=True, index=True)
     Subject = Column(String)
@@ -128,9 +130,6 @@ class VTicketMasterExpanded(ViewBase):
     Site_Label = Column(String)
     Ticket_Category_ID = Column(Integer)
     Ticket_Category_Label = Column(String)
-    Version = Column(Integer)
-
-
     Created_Date = Column(FormattedDateTime())
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
