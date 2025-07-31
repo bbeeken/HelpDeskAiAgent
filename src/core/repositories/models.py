@@ -25,6 +25,13 @@ class Ticket(Base):
     Assigned_Email = Column(String)
     Severity_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
+
+    Most_Recent_Service_Scheduled_ID = Column(Integer)
+    Watchers = Column(Text)
+    MetaData = Column(Text)
+    ValidFrom = Column(FormattedDateTime())
+    ValidTo = Column(FormattedDateTime())
+
     Closed_Date = Column(FormattedDateTime())
     LastModified = Column(FormattedDateTime())
     LastModfiedBy = Column(String)
