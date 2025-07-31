@@ -58,6 +58,8 @@ async def test_create_and_get_ticket(client: AsyncClient):
     resp = await _create_ticket(client)
     assert resp.status_code == 201
     created = resp.json()
+    assert "Version" in created
+    assert created["Version"] == 1
     tid = created["Ticket_ID"]
 
     list_resp = await client.get("/tickets/expanded")
@@ -75,6 +77,7 @@ async def test_create_and_get_ticket(client: AsyncClient):
     ticket_json = get_resp.json()
     assert ticket_json["Subject"] == "API test"
     assert "status_label" in ticket_json
+    assert ticket_json["Version"] == 1
 
 
 @pytest.mark.asyncio
@@ -90,6 +93,7 @@ async def test_update_ticket(client: AsyncClient):
     assert resp.status_code == 201
     ticket = resp.json()
     tid = ticket["Ticket_ID"]
+    assert ticket["Version"] == 1
 
     # LastModified should be None right after creation
     get_resp = await client.get(f"/ticket/{tid}")
@@ -100,11 +104,13 @@ async def test_update_ticket(client: AsyncClient):
     resp = await client.put(f"/ticket/{tid}", json={"Subject": "Updated"})
     assert resp.status_code == 200
     assert resp.json()["Subject"] == "Updated"
+    assert resp.json()["Version"] == 2
 
     get_resp = await client.get(f"/ticket/{tid}")
     assert get_resp.status_code == 200
     assert get_resp.json()["LastModified"] is not None
     assert get_resp.json()["LastModfiedBy"] == "Gil AI"
+    assert get_resp.json()["Version"] == 2
 
 
 @pytest.mark.asyncio
