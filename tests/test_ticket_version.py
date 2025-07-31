@@ -3,16 +3,19 @@ import pytest_asyncio
 from datetime import datetime, UTC
 from httpx import AsyncClient, ASGITransport
 
+
 from main import app
 from src.core.services.ticket_management import TicketManager
 from src.core.repositories.models import Ticket
 from src.infrastructure.database import SessionLocal
+
 
 @pytest_asyncio.fixture
 async def client():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
 
 @pytest.mark.asyncio
 async def test_version_increments_on_update():
@@ -34,6 +37,7 @@ async def test_version_increments_on_update():
         updated = await TicketManager().get_ticket(db, tid)
         assert getattr(updated, "Version", None) == (orig_version or 0) + 1
 
+
 @pytest.mark.asyncio
 async def test_version_unchanged_when_no_real_update():
     async with SessionLocal() as db:
@@ -54,6 +58,7 @@ async def test_version_unchanged_when_no_real_update():
         await db.commit()
         unchanged = await TicketManager().get_ticket(db, tid)
         assert getattr(unchanged, "Version", None) == orig_version
+
 
 @pytest.mark.asyncio
 async def test_assigned_name_not_email_after_mcp_update(client: AsyncClient):

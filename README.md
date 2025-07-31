@@ -123,6 +123,30 @@ Both the `Ticket_Body` and `Resolution` columns are defined using the SQL
 `TEXT` (or `nvarchar(max)`) type so lengthy content can be stored without
 truncation. Ensure any custom migrations preserve this unrestricted text type.
 
+### Tickets_Master columns
+
+The `Tickets_Master` table stores the primary ticket data. Columns include:
+
+- `Ticket_ID`
+- `Subject`
+- `Ticket_Body`
+- `Ticket_Status_ID`
+- `Ticket_Contact_Name`
+- `Ticket_Contact_Email`
+- `Asset_ID`
+- `Site_ID`
+- `Ticket_Category_ID`
+- `Version`
+- `Created_Date`
+- `Assigned_Name`
+- `Assigned_Email`
+- `Severity_ID`
+- `Assigned_Vendor_ID`
+- `Closed_Date`
+- `LastModified`
+- `LastModfiedBy`
+- `Resolution`
+
 ### V_Ticket_Master_Expanded
 
 The API uses the `V_Ticket_Master_Expanded` view to join tickets with
@@ -148,6 +172,7 @@ SELECT t.Ticket_ID,
        s.Label AS Site_Label,
        t.Ticket_Category_ID,
        c.Label AS Ticket_Category_Label,
+       t.Version,
        t.Created_Date,
        t.Assigned_Name,
        t.Assigned_Email,
@@ -156,6 +181,7 @@ SELECT t.Ticket_ID,
        t.Closed_Date,
        t.LastModified,
        t.LastModfiedBy,
+       t.Version,
        v.Name AS Assigned_Vendor_Name,
        t.Resolution,
        p.Level AS Priority_Level

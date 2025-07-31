@@ -95,6 +95,29 @@ Endpoints under `/mcp-tools` are also exposed as HTTP routes with the same names
 
 ## Ticket Schemas
 
+### Tickets_Master columns
+The underlying `Tickets_Master` table contains the following fields:
+
+- `Ticket_ID`
+- `Subject`
+- `Ticket_Body`
+- `Ticket_Status_ID`
+- `Ticket_Contact_Name`
+- `Ticket_Contact_Email`
+- `Asset_ID`
+- `Site_ID`
+- `Ticket_Category_ID`
+- `Version`
+- `Created_Date`
+- `Assigned_Name`
+- `Assigned_Email`
+- `Severity_ID`
+- `Assigned_Vendor_ID`
+- `Closed_Date`
+- `LastModified`
+- `LastModfiedBy`
+- `Resolution`
+
 ### TicketCreate
 
 Use this schema when creating a ticket. The server automatically populates `Created_Date` so it should be omitted from the payload. All other fields match the database columns and most are optional. If `Ticket_Status_ID` is not supplied it defaults to `1` (Open).
