@@ -47,6 +47,7 @@ async def test_tickets_expanded_endpoint(client: AsyncClient):
     assert data["total"] == 1
     item = data["items"][0]
     assert item["Ticket_ID"] == tid
+    assert item["Version"] == 1
     assert "Ticket_Status_Label" in item
     assert "Ticket_Category_Label" in item
     assert "Site_Label" in item
@@ -65,6 +66,7 @@ def test_ticket_expanded_schema():
         "Subject": "s",
         "Ticket_Status_Label": "Open",
         "Site_ID": 1,
+        "Version": 1,
     }
     obj = TicketExpandedOut(**data)
     assert obj.Ticket_ID == 1
@@ -72,6 +74,7 @@ def test_ticket_expanded_schema():
     assert obj.Closed_Date is None
     assert obj.LastModified is None
     assert obj.LastModfiedBy is None
+    assert obj.Version == 1
 
 
 @pytest.mark.asyncio
@@ -138,6 +141,7 @@ def test_ticket_expanded_from_orm_blank_assigned_email():
         Ticket_Contact_Name="n",
         Ticket_Contact_Email="c@example.com",
         Assigned_Email="",
+        Version=1,
     )
     obj = TicketExpandedOut.model_validate(ticket)
     assert obj.Assigned_Email is None
@@ -153,6 +157,7 @@ def test_ticket_expanded_from_orm_blank_contact_email():
         Ticket_Body="b",
         Ticket_Contact_Name="n",
         Ticket_Contact_Email="",
+        Version=1,
     )
     obj = TicketExpandedOut.model_validate(ticket)
     assert obj.Ticket_Contact_Email is None
