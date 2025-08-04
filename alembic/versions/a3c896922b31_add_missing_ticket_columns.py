@@ -44,4 +44,3 @@ def downgrade() -> None:
     op.drop_column('Tickets_Master', 'MetaData')
     op.drop_column('Tickets_Master', 'Watchers')
     op.drop_column('Tickets_Master', 'Most_Recent_Service_Scheduled_ID')
-

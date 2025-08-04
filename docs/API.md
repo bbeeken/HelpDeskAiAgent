@@ -2,6 +2,13 @@
 
 This document lists the available HTTP endpoints provided by the HelpDesk service. Each endpoint includes a brief description and the HTTP method used.
 
+## Site Access Requirements
+
+Non-admin callers must include a `site_id` whenever searching for or modifying
+tickets. The application infers a user's site from the conversation context and
+rejects attempts to create or update tickets for other locations. Only
+administrators may omit the `site_id` or act across multiple sites.
+
 ## Ticket Endpoints
 
 All ticket operations are prefixed with `/ticket` (singular). The old `/tickets`

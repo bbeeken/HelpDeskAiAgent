@@ -26,6 +26,13 @@
 | 6  | Corporate         | 1000    |
 | 7  | Heinz Retail Est. | 2000    |
 
+## 🛡️ Site Access Rules
+
+- Non-admin callers must include a `site_id` when querying or modifying tickets.
+- The system derives the caller's site from the prompt, allowing them to create
+  or update tickets only for that location.
+- Cross-site attempts are rejected unless the caller is an administrator.
+
 ---
 
 ## 🧠 DATA ARCHITECTURE
