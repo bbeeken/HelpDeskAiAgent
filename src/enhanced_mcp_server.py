@@ -30,7 +30,8 @@ from src.core.services.ticket_management import (
 )
 from src.core.services.user_services import UserManager
 from src.core.services.reference_data import ReferenceDataManager
-from src.shared.schemas.ticket import TicketExpandedOut, TicketCreate
+from src.shared.schemas.ticket import TicketExpandedOut, TicketCreate, TicketUpdate
+from pydantic import ValidationError
 from src.core.repositories.models import (
     Priority,
     Ticket,
@@ -551,29 +552,48 @@ async def _search_tickets_enhanced(
 async def _create_ticket(**payload: Any) -> Dict[str, Any]:
     """Create a new ticket and return the created record."""
     try:
+        try:
+            validated = TicketCreate.model_validate(payload)
+        except ValidationError as e:
+            logger.error("Validation failed for create_ticket: %s", e)
+            logger.debug("Invalid create_ticket payload: %s", payload)
+            invalid_fields = {
+                ".".join(str(loc) for loc in err.get("loc", [])): err.get("msg", "invalid")
+                for err in e.errors()
+            }
+            return {
+                "status": "error",
+                "error": {
+                    "message": "Validation failed",
+                    "invalid_fields": invalid_fields,
+                },
+            }
+
+        data_in = validated.model_dump()
         async with db.SessionLocal() as db_session:
-            # Set default timestamps
             now = datetime.now(timezone.utc)
-            payload.setdefault("Created_Date", now)
-            payload.setdefault("LastModified", now)
-            payload.setdefault("LastModfiedBy", "Gil AI")
-            
-            result = await TicketManager().create_ticket(db_session, payload)
+            data_in["Created_Date"] = data_in.get("Created_Date") or now
+            data_in["LastModified"] = data_in.get("LastModified") or now
+            data_in["LastModfiedBy"] = data_in.get("LastModfiedBy") or "Gil AI"
+
+            result = await TicketManager().create_ticket(db_session, data_in)
             if not result.success:
                 await db_session.rollback()
                 raise Exception(result.error or "Failed to create ticket")
-                
+
             await db_session.commit()
-            
-            # Fetch the created ticket with all details
-            ticket = await TicketManager().get_ticket(
-                db_session, result.data.Ticket_ID
-            )
-            data = _format_ticket_by_level(ticket)
-            
+
+            try:
+                ticket = await TicketManager().get_ticket(db_session, result.data.Ticket_ID)
+                data = _format_ticket_by_level(ticket)
+            except Exception as e:
+                logger.error("Error formatting created ticket: %s", e)
+                data = {**data_in, "Ticket_ID": result.data.Ticket_ID}
+
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in create_ticket: {e}")
+        logger.debug("create_ticket payload: %s", payload)
         return {"status": "error", "error": str(e)}
 
 
@@ -581,7 +601,6 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
     """Update an existing ticket."""
     try:
         async with db.SessionLocal() as db_session:
-            # Apply semantic filters to updates
             applied_updates = apply_semantic_filters(updates)
             status_value = applied_updates.get("Ticket_Status_ID")
             if isinstance(status_value, list):
@@ -603,11 +622,28 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
             if not applied_updates:
                 return {"status": "error", "error": "No updates provided"}
 
-            # Closing logic - Status 3 is Closed, not Status 4
+            try:
+                validated = TicketUpdate.model_validate(applied_updates)
+            except ValidationError as e:
+                logger.error("Validation failed for update_ticket: %s", e)
+                logger.debug("Invalid update_ticket payload: %s", updates)
+                invalid_fields = {
+                    ".".join(str(loc) for loc in err.get("loc", [])): err.get("msg", "invalid")
+                    for err in e.errors()
+                }
+                return {
+                    "status": "error",
+                    "error": {
+                        "message": "Validation failed",
+                        "invalid_fields": invalid_fields,
+                    },
+                }
+
+            applied_updates = validated.model_dump(exclude_unset=True)
+
             if applied_updates.get("Ticket_Status_ID") == 3 and "Closed_Date" not in applied_updates:
                 applied_updates["Closed_Date"] = datetime.now(timezone.utc)
 
-            # Assignment defaults
             if "Assigned_Email" in applied_updates and "Assigned_Name" not in applied_updates:
                 user_info = await UserManager().get_user_by_email(applied_updates["Assigned_Email"])
                 display_name = user_info.get("displayName")
@@ -646,6 +682,7 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in update_ticket: {e}")
+        logger.debug("update_ticket payload: %s", updates)
         return {"status": "error", "error": str(e)}
 
 

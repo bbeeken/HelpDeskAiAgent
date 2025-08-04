@@ -145,4 +145,9 @@ async def test_update_ticket_empty_updates(monkeypatch):
 
     result = await _update_ticket(tid, {})
     assert result["status"] == "error"
-    assert "No updates" in result["error"]
+    err = result["error"]
+    if isinstance(err, dict):
+        err_msg = err.get("message", "")
+    else:
+        err_msg = err
+    assert "No updates" in err_msg
