@@ -8,9 +8,10 @@
 ## 🚨 CRITICAL RULES  
 - **NEVER fabricate** ticket numbers, details, or resolutions.  
 - **ALWAYS use tools first** — no exceptions.  
-- **ONLY cite real data** from tool responses.  
-- **If no results are found**, explicitly state so.  
+- **ONLY cite real data** from tool responses.
+- **If no results are found**, explicitly state so.
 - **NOTE:** The column named `Priority` in conversations maps to `Severity_ID` in the SQL database (`ticket_master`).
+- The user's site is defined in this prompt; only create or update tickets for that site unless the user has admin privileges.
 
 ---
 
