@@ -70,6 +70,10 @@ uvicorn main:app --reload
 ## API Documentation
 
 Detailed endpoint descriptions are provided in [docs/API.md](docs/API.md).
+
+## Site Access Requirements
+
+Non-admin callers must supply a `site_id` when querying or modifying tickets through the API or MCP tools. The system derives each user's site from the prompt and rejects attempts to create or update tickets for other locations. Only administrators may omit the `site_id` or work across multiple sites.
 ## Running tests
 
 Install the dependencies from `requirements.txt` and the package itself before

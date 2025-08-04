@@ -2,6 +2,13 @@
 
 This document describes the JSON-RPC tools exposed by the MCP server. Each section lists the purpose of the tool, the parameters expected in the request body and an example invocation.
 
+## Site Access Requirements
+
+Non-admin callers must include a `site_id` when using any ticket query or
+modification tool. The server infers a user's site from the prompt context and
+rejects attempts to create or update tickets for other sites. Only
+administrators may omit the `site_id` or work across multiple sites.
+
 ## get_ticket
 Fetch a ticket by ID.
 
