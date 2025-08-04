@@ -26,7 +26,7 @@ Create a new ticket. Parameters match the `TicketCreate` schema described in [AP
 Example:
 ```bash
 curl -X POST http://localhost:8000/create_ticket \
-  -d '{"Subject": "Printer issue", "Ticket_Contact_Name": "Alice"}'
+  -d '{"Subject": "Printer issue", "Ticket_Body": "Cannot connect to printer", "Ticket_Contact_Name": "Alice", "Ticket_Contact_Email": "alice@example.com"}'
 ```
 
 ## update_ticket
