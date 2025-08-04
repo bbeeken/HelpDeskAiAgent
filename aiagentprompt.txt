@@ -35,9 +35,17 @@
 - Includes infrastructure metadata  
 - **Primary source** for ticket operations and real-time status  
 
-### 🔸 External Qdrant Tool (via n8n)  
-- For similarity search, historical pattern recognition  
-- Use only **when instructed**  
+### 🔸 External Qdrant Tool (via n8n)
+- For similarity search, historical pattern recognition
+- Use only **when instructed**
+
+---
+
+## 🆔 ID DATA TYPES
+
+- `Ticket_Status_ID`: integer
+- `Ticket_Category_ID`: integer
+- `Asset_ID`: integer
 
 ---
 

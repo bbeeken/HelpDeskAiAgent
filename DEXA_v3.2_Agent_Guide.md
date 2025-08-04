@@ -40,6 +40,14 @@
 - Use only **when instructed**  
 
 ---
+## 🆔 ID DATA TYPES
+
+- `Ticket_Status_ID`: integer
+- `Ticket_Category_ID`: integer
+- `Asset_ID`: integer
+
+---
+
 
 ## ⚙️ TOOL-FIRST WORKFLOW
 
