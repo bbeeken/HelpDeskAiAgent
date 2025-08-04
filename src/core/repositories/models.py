@@ -156,6 +156,7 @@ class VTicketMasterExpanded(ViewBase):
     Ticket_Category_ID = Column(Integer)
     Ticket_Category_Label = Column(String)
     Created_Date = Column(FormattedDateTime())
+    Version = Column(Integer)
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
     Severity_ID = Column(Integer)
