@@ -80,6 +80,8 @@ JSON body matching the tool's schema. See
 - `POST /create_ticket` – Create a ticket. Example: see `TicketCreate` schema
 - `POST /update_ticket` – Update a ticket. Example: `{"ticket_id": 1, "updates": {}}`
 - `POST /add_ticket_message` – Add a message to a ticket.
+- `POST /get_ticket_messages` – Messages for a ticket. Example: `{"ticket_id": 123}`
+- `POST /get_ticket_attachments` – Attachments for a ticket. Example: `{"ticket_id": 123}`
 - `POST /search_tickets` – Search tickets. Example: `{"text": "printer", "created_after": "2024-01-01T00:00:00Z"}`. The deprecated
   `/search_tickets_advanced` route was removed.
 - `POST /update_ticket` – Update a ticket or close/assign by modifying fields.
@@ -91,6 +93,8 @@ JSON body matching the tool's schema. See
 
 - `POST /get_ticket_full_context` – Full context for a ticket without user history or nested related tickets. Example: `{"ticket_id": 123}`
 - `POST /get_system_snapshot` – System snapshot. Example: `{}`
+- `POST /get_ticket_stats` – Ticket statistics summary. Example: `{}`
+- `POST /get_workload_analytics` – Technician workload analytics. Example: `{}`
 
 - `POST /advanced_search` – Advanced ticket search. Example: `{"text_search": "printer"}`
 

@@ -88,6 +88,30 @@ curl -X POST http://localhost:8000/add_ticket_message \
   -d '{"ticket_id": 5, "message": "Checking the printer", "sender_name": "Alice"}'
 ```
 
+## get_ticket_messages
+Return messages for a ticket with additional metadata.
+
+Parameters:
+- `ticket_id` – integer ticket ID.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/get_ticket_messages \
+  -d '{"ticket_id": 5}'
+```
+
+## get_ticket_attachments
+Return attachments for a ticket with file metadata.
+
+Parameters:
+- `ticket_id` – integer ticket ID.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/get_ticket_attachments \
+  -d '{"ticket_id": 5}'
+```
+
 ## search_tickets
 Comprehensive ticket search with AI-optimized features and semantic filtering. Supports text queries, user filtering, date ranges, and intelligent result ranking.
 
@@ -291,6 +315,26 @@ Parameters: none.
 Example:
 ```bash
 curl -X POST http://localhost:8000/get_system_snapshot -d '{}'
+```
+
+## get_ticket_stats
+Return ticket statistics grouped by status, priority, site, and category.
+
+Parameters: none.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/get_ticket_stats -d '{}'
+```
+
+## get_workload_analytics
+Return workload analytics for technicians and ticket queues.
+
+Parameters: none.
+
+Example:
+```bash
+curl -X POST http://localhost:8000/get_workload_analytics -d '{}'
 ```
 
 
