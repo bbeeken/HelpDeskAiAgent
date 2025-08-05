@@ -423,20 +423,24 @@ Additional tools are available:
   subject exceeds 100 characters, `"medium"` for bodies over 200 characters or
   subjects over 50 characters, otherwise `"low"`.
 
-* `update_ticket` – modify an existing ticket, including escalation.
+* `update_ticket` – modify an existing ticket, including escalation. Updates
+  may use semantic field names (e.g. `status`, `priority`) or raw column IDs
+  (`Ticket_Status_ID`, `Severity_ID`) as defined in the ticket field mapping
+  table.
   ```bash
   curl -X POST http://localhost:8000/update_ticket \
-    -d '{"ticket_id": 123, "updates": {"Severity_ID": 1}}'
+    -d '{"ticket_id": 123, "updates": {"status": "closed"}}'
   ```
 
 * `sla_metrics` – retrieve SLA performance metrics.
   ```bash
   curl -X POST http://localhost:8000/sla_metrics -d '{}'
   ```
-* `bulk_update_tickets` – apply updates to many tickets at once.
+* `bulk_update_tickets` – apply updates to many tickets at once. The `updates`
+  payload accepts the same semantic names or raw IDs as `update_ticket`.
   ```bash
   curl -X POST http://localhost:8000/bulk_update_tickets \
-    -d '{"ticket_ids": [1,2,3], "updates": {"Assigned_Email": "tech@example.com"}}'
+    -d '{"ticket_ids": [1,2,3], "updates": {"Ticket_Status_ID": 3}}'
   ```
 
 
@@ -445,7 +449,7 @@ The server exposes ten core JSON-RPC tools. Each expects a JSON body matching it
 1. `get_ticket` – `{"ticket_id": 123}`
 2. `list_tickets` – `{"limit": 5}`
 3. `create_ticket` – see `TicketCreate` schema
-4. `update_ticket` – `{"ticket_id": 1, "updates": {}}`
+4. `update_ticket` – `{"ticket_id": 1, "updates": {}}` (semantic or raw fields)
 5. `add_ticket_message` – `{"ticket_id": 1, "message": "Checking", "sender_name": "Agent"}`
 6. `search_tickets` – `{"text": "printer", "status": 1, "days": 0}`
 7. `get_tickets_by_user` – `{"identifier": "user@example.com"}`
@@ -457,8 +461,8 @@ The server exposes the following JSON-RPC tools defined in `ENHANCED_TOOLS`. Eac
 
 - `get_ticket` – `{"ticket_id": 123}`
 - `create_ticket` – see `TicketCreate` schema
-- `update_ticket` – `{"ticket_id": 1, "updates": {}}`
-- `bulk_update_tickets` – `{"ticket_ids": [1,2], "updates": {}}`
+- `update_ticket` – `{"ticket_id": 1, "updates": {}}` (supports semantic names or raw IDs)
+- `bulk_update_tickets` – `{"ticket_ids": [1,2], "updates": {}}` (semantic or raw fields)
 - `add_ticket_message` – `{"ticket_id": 1, "message": "Checking", "sender_name": "Agent"}`
 - `get_ticket_messages` – `{"ticket_id": 123}`
 - `get_ticket_attachments` – `{"ticket_id": 123}`

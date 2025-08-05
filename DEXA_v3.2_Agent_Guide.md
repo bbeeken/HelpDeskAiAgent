@@ -160,30 +160,35 @@ create_ticket(
 ```
 
 #### 4. `update_ticket`
+Use semantic field names or raw IDs (see field mapping table).
+Semantic fields:
+```python
+update_ticket(
+  ticket_id=123,
+  updates={
+    "status": "closed",
+    "priority": "high",
+    "assignee_email": "tech@email.com",
+    "message": "Optional note",
+  }
+)
+```
+
+Raw IDs:
 ```python
 update_ticket(
   ticket_id=123,
   updates={
     "Ticket_Status_ID": 3,
-    "Resolution": "Resolved with...",
     "Severity_ID": 2,
     "Assigned_Email": "tech@email.com",
-    "Subject": "Updated",
-    "Site_ID": site_id,
-    "Ticket_Category_ID": ticket_category_id
-    "status": "closed",
-    "resolution": "Resolved with...",
-    "priority": "high",
-    "assignee_email": "tech@email.com",
-    "Subject": "Updated",
-    "Site_ID": 2,
-    "Ticket_Category_ID": 3,
-    "message": "Optional note"
+    "Resolution": "Resolved with...",
   }
 )
 ```
 
 #### 5. `bulk_update_tickets`
+
 ```python
 bulk_update_tickets(
   ticket_ids=[123, 456],
@@ -377,6 +382,7 @@ Include in escalation:
 
 - Start broad, then narrow search  
 - Always request `include_full_context=true` when investigating  
-- Use `update_ticket()` for **all changes**  
+- Use `update_ticket()` for **all changes**; prefer semantic fields but raw IDs
+  are allowed when referenced from the mapping table
 - Check global impact using analytics  
 - Log actions using `add_ticket_message()`  
