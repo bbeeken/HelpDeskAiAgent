@@ -32,7 +32,7 @@ def fake_server(data):
 
 
 def test_verify_tools_success(capsys):
-    data = {"tools": [{"name": "get_ticket"}, {"name": "search_tickets"}]}
+    data = {"tools": [{"name": name} for name in verify_tools.EXPECTED_TOOLS]}
     with fake_server(data) as url:
         assert verify_tools.verify(url)
     out = capsys.readouterr().out
@@ -40,12 +40,22 @@ def test_verify_tools_success(capsys):
 
 
 def test_verify_tools_missing(capsys):
-    data = {"tools": [{"name": "get_ticket"}]}
+    missing = sorted(verify_tools.EXPECTED_TOOLS)[0]
+    remaining = sorted(verify_tools.EXPECTED_TOOLS - {missing})
+    data = {"tools": [{"name": name} for name in remaining]}
     with fake_server(data) as url:
         assert not verify_tools.verify(url)
     out = capsys.readouterr().out
-    assert "Missing tools: search_tickets" in out
+    assert f"Missing tools: {missing}" in out
     assert "Server tool list:" in out
     start = out.index("[")
     tools_json = out[start:]
-    assert json.loads(tools_json) == [{"name": "get_ticket"}]
+    assert json.loads(tools_json) == [{"name": name} for name in remaining]
+
+
+def test_verify_tools_allow_superset(capsys):
+    data = {"tools": [{"name": name} for name in verify_tools.EXPECTED_TOOLS] + [{"name": "extra_tool"}]}
+    with fake_server(data) as url:
+        assert verify_tools.verify(url, allow_superset=True)
+    out = capsys.readouterr().out
+    assert out.strip() == "All expected tools present."
