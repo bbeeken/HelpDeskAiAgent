@@ -598,7 +598,20 @@ async def _create_ticket(**payload: Any) -> Dict[str, Any]:
 
 
 async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, Any]:
-    """Update an existing ticket."""
+    """Update an existing ticket.
+
+    There are two valid ways to specify update fields:
+
+    1. **Semantic names** such as ``status``, ``priority`` or
+       ``assignee_email``. These human‑friendly keys are translated into the
+       corresponding database columns using the ticket field mapping table in
+       :func:`ticket_management.apply_semantic_filters`.
+    2. **Raw database columns/IDs** like ``Ticket_Status_ID`` or
+       ``Severity_ID`` when the exact numeric values are known.
+
+    The mapping table defines which semantic fields map to which raw columns
+    and acceptable values for each.
+    """
     try:
         async with db.SessionLocal() as db_session:
             applied_updates = apply_semantic_filters(updates)
@@ -691,7 +704,12 @@ async def _bulk_update_tickets(
     updates: Dict[str, Any],
     dry_run: bool = False,
 ) -> Dict[str, Any]:
-    """Apply the same updates to multiple tickets."""
+    """Apply the same updates to multiple tickets.
+
+    The ``updates`` payload follows the same rules as :func:`_update_ticket` and
+    may use either semantic field names (translated via the mapping table) or
+    raw database columns/IDs.
+    """
     try:
         if not ticket_ids:
             return {"status": "error", "error": "No ticket IDs provided"}
@@ -1375,12 +1393,21 @@ ENHANCED_TOOLS: List[Tool] = [
     ),
     Tool(
         name="update_ticket",
-        description="Update an existing ticket (supports semantic values)",
+        description=(
+            "Update an existing ticket using either semantic field names or raw"
+            " IDs; see the field mapping table for supported values"
+        ),
         inputSchema={
             "type": "object",
             "properties": {
                 "ticket_id": {"type": "integer", "description": "The ticket ID to update"},
-                "updates": {"type": "object", "description": "Fields to update (supports semantic values)"},
+                "updates": {
+                    "type": "object",
+                    "description": (
+                        "Fields to change. Accepts semantic keys like 'status' or"
+                        " raw columns such as 'Ticket_Status_ID' (see mapping table)"
+                    ),
+                },
             },
             "required": ["ticket_id", "updates"],
             "examples": [
@@ -1392,12 +1419,21 @@ ENHANCED_TOOLS: List[Tool] = [
     ),
     Tool(
         name="bulk_update_tickets",
-        description="Update multiple tickets at once",
+        description=(
+            "Update multiple tickets at once using semantic fields or raw IDs"
+            " as defined in the field mapping table"
+        ),
         inputSchema={
             "type": "object",
             "properties": {
                 "ticket_ids": {"type": "array", "items": {"type": "integer"}, "description": "List of ticket IDs"},
-                "updates": {"type": "object", "description": "Fields to update on all tickets"},
+                "updates": {
+                    "type": "object",
+                    "description": (
+                        "Fields to apply to each ticket; accepts semantic names or"
+                        " raw columns (see mapping table)"
+                    ),
+                },
                 "dry_run": {"type": "boolean", "default": False, "description": "Preview changes without saving"},
             },
             "required": ["ticket_ids", "updates"],

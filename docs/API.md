@@ -78,13 +78,16 @@ JSON body matching the tool's schema. See
 - `POST /get_ticket` – Get a ticket by ID. Example: `{"ticket_id": 123}`
 - `POST /list_tickets` – List recent tickets. Example: `{"limit": 5}`
 - `POST /create_ticket` – Create a ticket. Example: see `TicketCreate` schema
-- `POST /update_ticket` – Update a ticket. Example: `{"ticket_id": 1, "updates": {}}`
+- `POST /update_ticket` – Update a ticket. Fields may be specified using
+  semantic names or raw IDs per the ticket field mapping table. Example:
+  `{"ticket_id": 1, "updates": {}}`
 - `POST /add_ticket_message` – Add a message to a ticket.
 - `POST /get_ticket_messages` – Messages for a ticket. Example: `{"ticket_id": 123}`
 - `POST /get_ticket_attachments` – Attachments for a ticket. Example: `{"ticket_id": 123}`
 - `POST /search_tickets` – Search tickets. Example: `{"text": "printer", "created_after": "2024-01-01T00:00:00Z"}`. The deprecated
   `/search_tickets_advanced` route was removed.
-- `POST /update_ticket` – Update a ticket or close/assign by modifying fields.
+- `POST /update_ticket` – Update, close, or assign a ticket using semantic
+  fields or raw IDs as defined in the mapping table.
 - `POST /get_tickets_by_user` – Tickets for a user. Example: `{"identifier": "user@example.com"}`
 
 - `POST /get_open_tickets` – List open tickets. Example: `{"days": 30}`
@@ -99,7 +102,8 @@ JSON body matching the tool's schema. See
 - `POST /advanced_search` – Advanced ticket search. Example: `{"text_search": "printer"}`
 
 - `POST /sla_metrics` – SLA metrics summary. Example: `{}`
-- `POST /bulk_update_tickets` – Bulk ticket updates. Example: `{"ticket_ids": [1,2], "updates": {}}`
+- `POST /bulk_update_tickets` – Bulk ticket updates using semantic fields or
+  raw IDs per the mapping table. Example: `{"ticket_ids": [1,2], "updates": {}}`
 
 
 Endpoints under `/mcp-tools` are also exposed as HTTP routes with the same names as the MCP tools. Refer to the OpenAPI schema or `/docs` endpoint when running the application for the full specification.

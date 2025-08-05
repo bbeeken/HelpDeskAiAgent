@@ -41,36 +41,27 @@ Update an existing ticket by ID.
 
 Parameters:
 - `ticket_id` – integer ID of the ticket.
-- `updates` – object of fields to modify.
+- `updates` – object of fields to modify. Two styles are supported:
+  - **Semantic field names** like `status`, `priority`, `assignee_email`,
+    or `resolution`. These are converted to database fields via the ticket
+    field mapping table.
+  - **Raw database columns/IDs** such as `Ticket_Status_ID`,
+    `Severity_ID`, or `Assigned_Email` when the numeric values are known.
 
-`updates` can include semantic fields such as `status`, `priority`,
-`assignee_email`, `assignee_name`, `severity_id` or `resolution` to
-close, assign or escalate a ticket in a single call.
-
-Example:
+Example – semantic update:
 ```bash
 curl -X POST http://localhost:8000/update_ticket \
-  -d '{"ticket_id": 5, "updates": {"Assigned_Email": "tech@example.com"}}'
+  -d '{"ticket_id": 5, "updates": {"status": "closed", "priority": "high"}}'
 ```
 
-
-`updates` can include semantic fields such as `status`, `priority`,
-`assignee_email`, `assignee_name`, `severity_id` or `resolution` to
-close, assign or escalate a ticket in a single call. The former
-`close_ticket` and `assign_ticket` tools have been removed; use these
-fields with `update_ticket` instead.
-
-Example – assign a technician:
+Example – raw ID update:
 ```bash
 curl -X POST http://localhost:8000/update_ticket \
-  -d '{"ticket_id": 5, "updates": {"Assigned_Email": "tech@example.com"}}'
+  -d '{"ticket_id": 5, "updates": {"Ticket_Status_ID": 3, "Severity_ID": 2}}'
 ```
 
-Example – close a ticket:
-```bash
-curl -X POST http://localhost:8000/update_ticket \
-  -d '{"ticket_id": 5, "updates": {"Ticket_Status_ID": 3, "Resolution": "Replaced toner"}}'
-```
+The former `close_ticket` and `assign_ticket` tools have been removed; use
+these fields with `update_ticket` instead.
 
 
 ## add_ticket_message
@@ -386,11 +377,19 @@ Apply updates to multiple tickets.
 
 Parameters:
 - `ticket_ids` – list of ticket IDs.
-- `updates` – fields to apply to each ticket.
+- `updates` – fields to apply to each ticket. Supports the same semantic
+  names and raw column/ID updates described for `update_ticket` and uses the
+  same field mapping table.
 
-Example:
+Example – semantic update:
 ```bash
 curl -X POST http://localhost:8000/bulk_update_tickets \
-  -d '{"ticket_ids": [1,2,3], "updates": {"Assigned_Email": "tech@example.com"}}'
+  -d '{"ticket_ids": [1,2,3], "updates": {"status": "closed"}}'
+```
+
+Example – raw ID update:
+```bash
+curl -X POST http://localhost:8000/bulk_update_tickets \
+  -d '{"ticket_ids": [1,2,3], "updates": {"Ticket_Status_ID": 3}}'
 ```
 
