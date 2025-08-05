@@ -128,3 +128,21 @@ def test_status_string_mappings():
 def test_open_closed_constants():
     assert _OPEN_STATE_IDS == [1, 2, 4, 5, 6, 8]
     assert _CLOSED_STATE_IDS == [3]
+
+
+def test_status_filter_unknown_value():
+    with pytest.raises(ValueError) as exc:
+        apply_semantic_filters({"status": "bogus"})
+    err = exc.value.args[0]
+    assert isinstance(err, dict)
+    assert err["field"] == "status"
+    assert "Unknown" in err["message"]
+
+
+def test_priority_filter_unknown_value():
+    with pytest.raises(ValueError) as exc:
+        apply_semantic_filters({"priority": "urgent"})
+    err = exc.value.args[0]
+    assert isinstance(err, dict)
+    assert err["field"] in {"priority", "priority_level"}
+    assert "Unknown" in err["message"]

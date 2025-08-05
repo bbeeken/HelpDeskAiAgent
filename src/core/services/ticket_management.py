@@ -69,7 +69,14 @@ _PRIORITY_LEVEL_TO_ID = {"Critical": 1, "High": 2, "Medium": 3, "Low": 4}
 
 
 def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
-    """Translate friendly filters into DB column filters."""
+    """Translate friendly filters into DB column filters.
+
+    Raises:
+        ValueError: if any semantic value cannot be resolved to a known
+            mapping. The ``ValueError``'s first argument will contain a
+            structured dictionary with ``field`` and ``message`` keys.
+    """
+
     if not filters:
         return {}
 
@@ -86,21 +93,39 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
                 elif v == "closed":
                     translated["Ticket_Status_ID"] = _CLOSED_STATE_IDS
                 else:
-                    mapped = _STATUS_MAP.get(v, value)
+                    mapped = _STATUS_MAP.get(v)
+                    if mapped is None:
+                        raise ValueError(
+                            {
+                                "field": key,
+                                "message": f"Unknown status '{value}'",
+                                "allowed": sorted({"open", "closed", *list(_STATUS_MAP.keys())}),
+                            }
+                        )
                     translated["Ticket_Status_ID"] = mapped
             elif isinstance(value, list):
                 ids: list[Any] = []
                 for item in value:
-                    if isinstance(item, str) and item.lower() == "open":
-                        ids.extend(_OPEN_STATE_IDS)
-                    elif isinstance(item, str) and item.lower() == "closed":
-                        ids.extend(_CLOSED_STATE_IDS)
-                    elif isinstance(item, str):
-                        mapped = _STATUS_MAP.get(item.lower(), item)
-                        if isinstance(mapped, list):
-                            ids.extend(mapped)
+                    if isinstance(item, str):
+                        lv = item.lower()
+                        if lv == "open":
+                            ids.extend(_OPEN_STATE_IDS)
+                        elif lv == "closed":
+                            ids.extend(_CLOSED_STATE_IDS)
                         else:
-                            ids.append(mapped)
+                            mapped = _STATUS_MAP.get(lv)
+                            if mapped is None:
+                                raise ValueError(
+                                    {
+                                        "field": key,
+                                        "message": f"Unknown status '{item}'",
+                                        "allowed": sorted({"open", "closed", *list(_STATUS_MAP.keys())}),
+                                    }
+                                )
+                            if isinstance(mapped, list):
+                                ids.extend(mapped)
+                            else:
+                                ids.append(mapped)
                     else:
                         ids.append(item)
                 translated["Ticket_Status_ID"] = ids
@@ -112,17 +137,39 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
                 ids: list[Any] = []
                 for item in value:
                     if isinstance(item, str):
-                        canonical = _PRIORITY_MAP.get(item.lower(), item)
-                        ids.append(_PRIORITY_LEVEL_TO_ID.get(canonical, item))
+                        canonical = _PRIORITY_MAP.get(item.lower()) or item
+                        sev_id = _PRIORITY_LEVEL_TO_ID.get(canonical)
+                        if sev_id is None:
+                            raise ValueError(
+                                {
+                                    "field": key,
+                                    "message": f"Unknown priority '{item}'",
+                                    "allowed": sorted({
+                                        *[k for k in _PRIORITY_MAP.keys()],
+                                        *[k.lower() for k in _PRIORITY_LEVEL_TO_ID.keys()],
+                                    }),
+                                }
+                            )
+                        ids.append(sev_id)
                     else:
                         ids.append(item)
                 translated["Severity_ID"] = ids
             else:
                 if isinstance(value, str):
-                    canonical = _PRIORITY_MAP.get(value.lower(), value)
-                    translated["Severity_ID"] = _PRIORITY_LEVEL_TO_ID.get(
-                        canonical, value
-                    )
+                    canonical = _PRIORITY_MAP.get(value.lower()) or value
+                    sev_id = _PRIORITY_LEVEL_TO_ID.get(canonical)
+                    if sev_id is None:
+                        raise ValueError(
+                            {
+                                "field": key,
+                                "message": f"Unknown priority '{value}'",
+                                "allowed": sorted({
+                                    *[k for k in _PRIORITY_MAP.keys()],
+                                    *[k.lower() for k in _PRIORITY_LEVEL_TO_ID.keys()],
+                                }),
+                            }
+                        )
+                    translated["Severity_ID"] = sev_id
                 else:
                     translated["Severity_ID"] = value
 

@@ -601,22 +601,30 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
     """Update an existing ticket."""
     try:
         async with db.SessionLocal() as db_session:
-            applied_updates = apply_semantic_filters(updates)
-            status_value = applied_updates.get("Ticket_Status_ID")
-            if isinstance(status_value, list):
-                if len(status_value) == 1:
-                    applied_updates["Ticket_Status_ID"] = status_value[0]
-                else:
-                    provided = (
-                        updates.get("status")
-                        or updates.get("ticket_status")
-                        or updates.get("Ticket_Status_ID")
-                    )
-                    opts = ", ".join(str(v) for v in status_value)
-                    return {
-                        "status": "error",
-                        "error": f"Ambiguous status value '{provided}'. Valid options: {opts}",
-                    }
+            try:
+                applied_updates = apply_semantic_filters(updates)
+            except ValueError as e:
+                return {"status": "error", "error": e.args[0]}
+
+            field_aliases = {
+                "Ticket_Status_ID": ["status", "ticket_status", "Ticket_Status_ID"],
+                "Severity_ID": ["priority", "priority_level", "Severity_ID"],
+            }
+
+            for field, value in list(applied_updates.items()):
+                if isinstance(value, list):
+                    if len(value) == 1:
+                        applied_updates[field] = value[0]
+                    else:
+                        aliases = field_aliases.get(field, [field])
+                        provided = next((updates[a] for a in aliases if a in updates), value)
+                        opts = ", ".join(str(v) for v in value)
+                        label = aliases[0]
+                        return {
+                            "status": "error",
+                            "error": f"Ambiguous {label} value '{provided}'. Valid options: {opts}",
+                        }
+
             message = applied_updates.pop("message", None)
 
             if not applied_updates:
@@ -699,10 +707,29 @@ async def _bulk_update_tickets(
             return {"status": "error", "error": "No updates provided"}
         async with db.SessionLocal() as db_session:
             mgr = TicketManager()
-            applied_updates = apply_semantic_filters(updates)
-            status_value = applied_updates.get("Ticket_Status_ID")
-            if isinstance(status_value, list) and len(status_value) == 1:
-                applied_updates["Ticket_Status_ID"] = status_value[0]
+            try:
+                applied_updates = apply_semantic_filters(updates)
+            except ValueError as e:
+                return {"status": "error", "error": e.args[0]}
+
+            field_aliases = {
+                "Ticket_Status_ID": ["status", "ticket_status", "Ticket_Status_ID"],
+                "Severity_ID": ["priority", "priority_level", "Severity_ID"],
+            }
+
+            for field, value in list(applied_updates.items()):
+                if isinstance(value, list):
+                    if len(value) == 1:
+                        applied_updates[field] = value[0]
+                    else:
+                        aliases = field_aliases.get(field, [field])
+                        provided = next((updates[a] for a in aliases if a in updates), value)
+                        opts = ", ".join(str(v) for v in value)
+                        label = aliases[0]
+                        return {
+                            "status": "error",
+                            "error": f"Ambiguous {label} value '{provided}'. Valid options: {opts}",
+                        }
 
             updated: list[Dict[str, Any]] = []
             failed: list[Dict[str, Any]] = []
