@@ -151,42 +151,62 @@ get_ticket(
 
 #### 3. `create_ticket`
 ```python
+# Using ID fields
 create_ticket(
-  Subject="Title",
-  Ticket_Body="Description",
-  Ticket_Contact_Name="Name",
-  Ticket_Contact_Email=user.email,
-  Asset_ID=asset_id,
-  Site_ID=site_id,
-  Ticket_Category_ID=ticket_category_id,
-  Severity_ID=severity_id
+  Subject="Printer offline",
+  Ticket_Body="Cannot connect to printer",
+  Ticket_Contact_Name="Alice",
+  Ticket_Contact_Email="alice@example.com",
+  Asset_ID=42,
+  Site_ID=2,
+  Ticket_Category_ID=5,
+  Severity_ID=2
+)
+
+# Using semantic fields
+create_ticket(
+  subject="Printer offline",
+  body="Cannot connect to printer",
+  contact_name="Alice",
+  contact_email="alice@example.com",
+  asset_id=42,
+  site_id=2,
+  ticket_category_id=5,
+  priority="high"
 )
 ```
 
 #### 4. `update_ticket`
 ```python
+# Using semantic fields
+update_ticket(
+  ticket_id=123,
+  updates={
+    "status": "closed",
+    "priority": "high"
+  }
+)
+
+# Using direct IDs
 update_ticket(
   ticket_id=123,
   updates={
     "Ticket_Status_ID": 3,
-    "Resolution": "Resolved with...",
-    "Severity_ID": 2,
-    "Assigned_Email": "tech@email.com",
-    "Subject": "Updated",
-    "Site_ID": site_id,
-    "Ticket_Category_ID": ticket_category_id
-    "status": "closed",
-    "resolution": "Resolved with...",
-    "priority": "high",
-    "assignee_email": "tech@email.com",
-    "Subject": "Updated",
-    "Site_ID": 2,
-    "Ticket_Category_ID": 3,
-    "message": "Optional note"
+    "Severity_ID": 2
   }
 )
 ```
 
+##### Field Mappings for Updates
+
+| Semantic Field   | DB Field         | Valid Values                                           |
+|------------------|-----------------|--------------------------------------------------------|
+| `status`         | `Ticket_Status_ID` | `open` (1), `in_progress` (2), `waiting` (4), `closed` (3) |
+| `priority`       | `Severity_ID`    | `critical` (1), `high` (2), `medium` (3), `low` (4)    |
+| `assignee_email` | `Assigned_Email` | any valid email address                                |
+| `assignee_name`  | `Assigned_Name`  | free text                                             |
+| `subject`        | `Subject`        | free text                                             |
+| `resolution`     | `Resolution`     | free text                                             |
 #### 5. `bulk_update_tickets`
 ```python
 bulk_update_tickets(
@@ -326,6 +346,32 @@ sla = get_analytics(type="sla_performance", params={"days": 2})
 overdue = get_analytics(type="overdue_tickets")
 for ticket_id in overdue['data']:
     details = get_ticket(ticket_id, include_full_context=true)
+```
+
+### 4. Create and Update Ticket
+```python
+# Create using IDs
+ticket = create_ticket(
+    Subject="Printer offline",
+    Ticket_Body="Cannot connect to printer",
+    Ticket_Contact_Name="Alice",
+    Ticket_Contact_Email="alice@example.com",
+    Site_ID=2,
+    Ticket_Category_ID=5,
+    Severity_ID=2
+)
+
+# Update using semantic fields
+update_ticket(
+    ticket_id=ticket["Ticket_ID"],
+    updates={"status": "closed", "priority": "high"}
+)
+
+# Update using direct IDs
+update_ticket(
+    ticket_id=ticket["Ticket_ID"],
+    updates={"Ticket_Status_ID": 3, "Severity_ID": 2}
+)
 ```
 
 ---
