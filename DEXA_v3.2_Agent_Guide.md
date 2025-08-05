@@ -77,8 +77,8 @@ Use `search_tickets` for all queries:
 - Priority & assignment:  
   `search_tickets(priority="high", unassigned_only=true)`
 
-- Creation date range:  
-  `search_tickets(created_after="2024-01-01", created_before="2024-01-31")`
+- Creation date range:
+  `search_tickets(created_after="2024-01-01T00:00:00Z", created_before="2024-01-31T00:00:00Z")`
 
 ---
 
@@ -124,12 +124,12 @@ get_analytics(type="sla_performance")
   priority="high",
   site_id=site_id,
   assigned_to="tech@email.com",
-  unassigned_only=True,
+  unassigned_only=true,
   filters={ "Asset_ID": 42 },
   limit=10,
   sort=["-Created_Date"],
-  include_relevance_score=True,
-  include_highlights=True
+  include_relevance_score=true,
+  include_highlights=true
 )
 ```
 
@@ -171,6 +171,14 @@ update_ticket(
     "Subject": "Updated",
     "Site_ID": site_id,
     "Ticket_Category_ID": ticket_category_id
+    "status": "closed",
+    "resolution": "Resolved with...",
+    "priority": "high",
+    "assignee_email": "tech@email.com",
+    "Subject": "Updated",
+    "Site_ID": 2,
+    "Ticket_Category_ID": 3,
+    "message": "Optional note"
   }
 )
 ```
@@ -179,7 +187,7 @@ update_ticket(
 ```python
 bulk_update_tickets(
   ticket_ids=[123, 456],
-  updates={"assignee": "tech@email.com"}
+  updates={"assignee_email": "tech@email.com"}
 )
 ```
 
@@ -305,7 +313,7 @@ analytics = get_analytics(type="ticket_counts")
 ```python
 urgent = search_tickets(priority="critical", unassigned_only=true)
 workload = get_analytics(type="workload")
-bulk_update_tickets(ticket_ids=[...], updates={"assignee": "senior@tech.com"})
+bulk_update_tickets(ticket_ids=[...], updates={"assignee_email": "senior@tech.com"})
 ```
 
 ### 3. SLA Breach Prevention
