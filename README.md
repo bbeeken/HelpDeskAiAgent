@@ -410,7 +410,7 @@ Additional tools are available:
   unified interface.
   ```bash
   curl -X POST http://localhost:8000/search_tickets \
-    -d '{"text": "printer", "status": 1, "days": 0}'
+    -d '{"text": "printer", "status": "open", "days": 0}'
   ```
 
   The response may include a `relevance_score` and a `highlights` object when a
@@ -447,7 +447,7 @@ The server exposes nine core JSON-RPC tools. Each expects a JSON body matching i
 - `update_ticket` – `{"ticket_id": 1, "updates": {}}`
 - `add_ticket_message` – `{"ticket_id": 1, "message": "Checking", "sender_name": "Agent"}`
 
-- `search_tickets` – `{"text": "printer", "status": 1, "days": 0}`
+- `search_tickets` – `{"text": "printer", "status": "open", "days": 0}`
 
 - `get_tickets_by_user` – `{"identifier": "user@example.com"}`
 - `get_ticket_full_context` – `{"ticket_id": 123}` (no user history or nested related tickets)
