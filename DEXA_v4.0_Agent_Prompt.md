@@ -1,4 +1,6 @@
-# DEXA v4.0 - Help-Desk Agent
+# DEXA v4.0 - Help-Desk Agent Prompt
+
+This file defines the canonical prompt for the DEXA help desk agent. It supersedes all previous versions and should be used when configuring or updating the agent.
 **Integrated SQL + Qdrant Vector Search with Complete Database Mappings**
 
 ## Core Mission
