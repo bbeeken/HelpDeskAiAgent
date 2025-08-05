@@ -151,3 +151,72 @@ async def test_update_ticket_empty_updates(monkeypatch):
     else:
         err_msg = err
     assert "No updates" in err_msg
+
+
+@pytest.mark.asyncio
+async def test_update_ticket_unknown_status():
+    async with db.SessionLocal() as setup:
+        ticket = {
+            "Subject": "S1",
+            "Ticket_Body": "b",
+            "Ticket_Contact_Name": "u",
+            "Ticket_Contact_Email": "u@example.com",
+        }
+        res = await TicketManager().create_ticket(setup, ticket)
+        await setup.commit()
+        tid = res.data.Ticket_ID
+
+    result = await _update_ticket(tid, {"status": "bogus"})
+    assert result["status"] == "error"
+    err = result["error"]
+    if isinstance(err, dict):
+        err_msg = err.get("message", "")
+    else:
+        err_msg = err
+    assert "Unknown" in err_msg
+
+
+@pytest.mark.asyncio
+async def test_update_ticket_ambiguous_priority():
+    async with db.SessionLocal() as setup:
+        ticket = {
+            "Subject": "P1",
+            "Ticket_Body": "b",
+            "Ticket_Contact_Name": "u",
+            "Ticket_Contact_Email": "u@example.com",
+        }
+        res = await TicketManager().create_ticket(setup, ticket)
+        await setup.commit()
+        tid = res.data.Ticket_ID
+
+    result = await _update_ticket(tid, {"priority": [1, "low"]})
+    assert result["status"] == "error"
+    err = result["error"]
+    if isinstance(err, dict):
+        err_msg = err.get("message", "")
+    else:
+        err_msg = err
+    assert "Ambiguous" in err_msg
+
+
+@pytest.mark.asyncio
+async def test_update_ticket_unknown_priority():
+    async with db.SessionLocal() as setup:
+        ticket = {
+            "Subject": "P2",
+            "Ticket_Body": "b",
+            "Ticket_Contact_Name": "u",
+            "Ticket_Contact_Email": "u@example.com",
+        }
+        res = await TicketManager().create_ticket(setup, ticket)
+        await setup.commit()
+        tid = res.data.Ticket_ID
+
+    result = await _update_ticket(tid, {"priority": "urgent"})
+    assert result["status"] == "error"
+    err = result["error"]
+    if isinstance(err, dict):
+        err_msg = err.get("message", "")
+    else:
+        err_msg = err
+    assert "Unknown" in err_msg
