@@ -116,13 +116,13 @@ get_analytics(type="sla_performance")
 
 #### 1. `search_tickets`
 ```python
-search_tickets(
+  search_tickets(
   text="search",
-  user="user@email.com",
+  user=user.email,
   days=7,
   status="open",
   priority="high",
-  site_id=1,
+  site_id=site_id,
   assigned_to="tech@email.com",
   unassigned_only=true,
   filters={ "Asset_ID": 42 },
@@ -151,11 +151,11 @@ create_ticket(
   Subject="Title",
   Ticket_Body="Description",
   Ticket_Contact_Name="Name",
-  Ticket_Contact_Email="user@email.com",
-  Asset_ID=1,
-  Site_ID=2,
-  Ticket_Category_ID=3,
-  Severity_ID=2
+  Ticket_Contact_Email=user.email,
+  Asset_ID=asset_id,
+  Site_ID=site_id,
+  Ticket_Category_ID=ticket_category_id,
+  Severity_ID=severity_id
 )
 ```
 
@@ -164,6 +164,13 @@ create_ticket(
 update_ticket(
   ticket_id=123,
   updates={
+    "Ticket_Status_ID": 3,
+    "Resolution": "Resolved with...",
+    "Severity_ID": 2,
+    "Assigned_Email": "tech@email.com",
+    "Subject": "Updated",
+    "Site_ID": site_id,
+    "Ticket_Category_ID": ticket_category_id
     "status": "closed",
     "resolution": "Resolved with...",
     "priority": "high",

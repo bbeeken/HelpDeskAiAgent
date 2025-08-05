@@ -410,7 +410,7 @@ Additional tools are available:
   unified interface.
   ```bash
   curl -X POST http://localhost:8000/search_tickets \
-    -d '{"text": "printer", "status": 1, "days": 0}'
+    -d '{"text": "printer", "status": "open", "days": 0}'
   ```
 
   The response may include a `relevance_score` and a `highlights` object when a
@@ -453,6 +453,10 @@ The server exposes the following JSON-RPC tools defined in `ENHANCED_TOOLS`. Eac
 - `get_reference_data` – `{"type": "sites"}`
 - `get_ticket_full_context` – `{"ticket_id": 123}`
 - `advanced_search` – `{"text_search": "printer issue"}`
+- `search_tickets` – `{"text": "printer", "status": "open", "days": 0}`
+
+- `get_tickets_by_user` – `{"identifier": "user@example.com"}`
+- `get_ticket_full_context` – `{"ticket_id": 123}` (no user history or nested related tickets)
 - `get_system_snapshot` – `{}`
 - `get_ticket_stats` – `{}`
 - `get_workload_analytics` – `{}`
