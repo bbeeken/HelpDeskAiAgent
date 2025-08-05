@@ -439,19 +439,28 @@ Additional tools are available:
     -d '{"ticket_ids": [1,2,3], "updates": {"Assigned_Email": "tech@example.com"}}'
   ```
 
-The server exposes nine core JSON-RPC tools. Each expects a JSON body matching its schema.
+The server exposes the following JSON-RPC tools defined in `ENHANCED_TOOLS`. Each expects a JSON body matching its schema.
 
 - `get_ticket` – `{"ticket_id": 123}`
-- `list_tickets` – `{"limit": 5}`
 - `create_ticket` – see `TicketCreate` schema
 - `update_ticket` – `{"ticket_id": 1, "updates": {}}`
+- `bulk_update_tickets` – `{"ticket_ids": [1,2], "updates": {}}`
 - `add_ticket_message` – `{"ticket_id": 1, "message": "Checking", "sender_name": "Agent"}`
-
+- `get_ticket_messages` – `{"ticket_id": 123}`
+- `get_ticket_attachments` – `{"ticket_id": 123}`
+- `search_tickets` – `{"text": "printer", "status": "open", "days": 0}`
+- `get_analytics` – `{"type": "overview"}`
+- `get_reference_data` – `{"type": "sites"}`
+- `get_ticket_full_context` – `{"ticket_id": 123}`
+- `advanced_search` – `{"text_search": "printer issue"}`
 - `search_tickets` – `{"text": "printer", "status": "open", "days": 0}`
 
 - `get_tickets_by_user` – `{"identifier": "user@example.com"}`
 - `get_ticket_full_context` – `{"ticket_id": 123}` (no user history or nested related tickets)
 - `get_system_snapshot` – `{}`
+- `get_ticket_stats` – `{}`
+- `get_workload_analytics` – `{}`
+- `sla_metrics` – `{"days": 30}`
 
 See [docs/MCP_TOOLS_GUIDE.md](docs/MCP_TOOLS_GUIDE.md) for detailed descriptions.
 
