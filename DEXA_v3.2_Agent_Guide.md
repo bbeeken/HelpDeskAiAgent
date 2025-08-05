@@ -52,6 +52,10 @@
 - `Ticket_Status_ID`: integer
 - `Ticket_Category_ID`: integer
 - `Asset_ID`: integer
+- `Site_ID`: integer
+- `Severity_ID`: integer
+
+All ID fields are integers.
 
 ---
 
