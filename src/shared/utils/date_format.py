@@ -49,11 +49,21 @@ class FormattedDateTime(TypeDecorator):
     def process_bind_param(self, value, dialect):  # type: ignore[override]
         if value is None:
             return value
+
         if isinstance(value, datetime):
-            return format_db_datetime(value)
-        if isinstance(value, str):
-            return value
-        raise TypeError(f"Unsupported type for FormattedDateTime: {type(value)}")
+            dt = value
+        elif isinstance(value, str):
+            text = value
+            try:
+                dt = parse_db_datetime(text)
+            except ValueError:
+                if text.endswith("Z"):
+                    text = text[:-1] + "+00:00"
+                dt = datetime.fromisoformat(text)
+        else:
+            raise TypeError(f"Unsupported type for FormattedDateTime: {type(value)}")
+
+        return format_db_datetime(dt)
 
     def process_result_value(self, value, dialect):  # type: ignore[override]
         if value is None:
