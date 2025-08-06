@@ -41,7 +41,11 @@ async def test_get_ticket_messages_success(client: AsyncClient):
     resp = await client.post("/get_ticket_messages", json={"ticket_id": tid})
     assert resp.status_code == 200
     data = resp.json()
-    assert data.get("status") in {"success", "error"}
+    assert data.get("status") == "success"
+    assert data.get("ticket_id") == tid
+    assert data.get("count") == 1
+    assert data.get("data")
+    assert data["data"][0]["Message"] == "hello"
 
 
 @pytest.mark.asyncio
@@ -68,7 +72,14 @@ async def test_get_ticket_attachments_success(client: AsyncClient):
         await db.commit()
     resp = await client.post("/get_ticket_attachments", json={"ticket_id": tid})
     assert resp.status_code == 200
-    assert resp.json().get("status") in {"success", "error"}
+    data = resp.json()
+    assert data.get("status") == "success"
+    assert data.get("ticket_id") == tid
+    assert data.get("count") == 1
+    assert data.get("data")
+    att = data["data"][0]
+    assert att["Name"] == "file.txt"
+    assert att["WebURL"] == "http://example.com/file.txt"
 
 
 @pytest.mark.asyncio
@@ -112,7 +123,12 @@ async def test_get_reference_data_priorities_success(client: AsyncClient):
         await db.commit()
     resp = await client.post("/get_reference_data", json={"type": "priorities"})
     assert resp.status_code == 200
-    assert resp.json().get("status") in {"success", "error"}
+    data = resp.json()
+    assert data.get("status") == "success"
+    assert data.get("type") == "priorities"
+    assert data.get("count") == 2
+    levels = {item["level"] for item in data.get("data", [])}
+    assert {"Low", "High"}.issubset(levels)
 
 
 @pytest.mark.asyncio
@@ -153,7 +169,13 @@ async def test_search_tickets_alias_params(client: AsyncClient):
 
     resp = await client.post("/search_tickets", json=payload)
     assert resp.status_code == 200
-    assert resp.json().get("status") in {"success", "error"}
+    data = resp.json()
+    assert data.get("status") == "success"
+    assert any(itm.get("Subject") == "Alias bar" for itm in data.get("data", []))
+    summary_types = set(data["search_summary"]["query_type"])
+    assert {"text_search", "user_filter"}.issubset(summary_types)
+    assert data["execution_metadata"]["text_query"] == "Alias"
+    assert data["execution_metadata"]["user_filter"] == "tester@example.com"
 
 
 @pytest.mark.asyncio
@@ -164,7 +186,11 @@ async def test_search_tickets_unified_user_identifier_alias(client: AsyncClient)
 
     resp = await client.post("/search_tickets", json=payload)
     assert resp.status_code == 200
-    assert resp.json().get("status") in {"success", "error"}
+    data = resp.json()
+    assert data.get("status") == "success"
+    assert data.get("count") == len(data.get("data", []))
+    assert data["execution_metadata"]["user_filter"] == "tester@example.com"
+    assert "user_filter" in data["search_summary"]["query_type"]
 
 
 @pytest.mark.asyncio
@@ -191,7 +217,11 @@ async def test_get_analytics_sla_performance_success(client: AsyncClient):
         json={"type": "sla_performance", "params": {"days": 30}},
     )
     assert resp.status_code == 200
-    assert resp.json().get("status") in {"success", "error"}
+    data = resp.json()
+    assert data.get("status") == "success"
+    assert data.get("time_range_days") == 30
+    assert isinstance(data.get("data"), dict)
+    assert "generated_at" in data
 
 
 @pytest.mark.asyncio
@@ -213,7 +243,13 @@ async def test_bulk_update_tickets_success(client: AsyncClient):
     }
     resp = await client.post("/bulk_update_tickets", json=payload)
     assert resp.status_code == 200
-    assert resp.json().get("status") in {"success", "error"}
+    data = resp.json()
+    assert data.get("status") == "success"
+    assert data.get("total_processed") == 2
+    assert data.get("total_updated") == 2
+    assert data.get("total_failed") == 0
+    assert len(data.get("updated", [])) == 2
+    assert all(t["Assigned_Name"] == "Agent" for t in data["updated"])
 
 
 @pytest.mark.asyncio
