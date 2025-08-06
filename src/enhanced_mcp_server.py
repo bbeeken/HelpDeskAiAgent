@@ -689,7 +689,7 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
                         ticket_id,
                         message,
                         applied_updates.get("Assigned_Email", "system"),
-                        applied_updates.get("Assigned_Name", "System"),
+                        sender_name=applied_updates.get("Assigned_Name"),
                     )
 
                 await db_session.commit()
@@ -808,7 +808,7 @@ async def _add_ticket_message(
                 ticket_id,
                 message,
                 sender_code or sender_name,
-                sender_name,
+                sender_name=sender_name,
             )
             
             await db_session.commit()

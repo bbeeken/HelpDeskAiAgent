@@ -20,4 +20,13 @@ async def test_post_message_db_error(monkeypatch):
         monkeypatch.setattr(db, "rollback", dummy_rollback)
 
         with pytest.raises(DatabaseError):
-            await manager.post_message(db, 1, "oops", "u", "u")
+
+            await manager.post_message(db, 1, "oops", "u")
+
+
+@pytest.mark.asyncio
+async def test_post_message_defaults_sender_name():
+    manager = TicketManager()
+    async with SessionLocal() as db:
+        msg = await manager.post_message(db, 1, "hello", "u")
+        assert msg.SenderUserName == "u"
