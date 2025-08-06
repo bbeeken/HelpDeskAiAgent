@@ -7,6 +7,7 @@ from main import app
 from src.infrastructure.database import SessionLocal
 from src.core.repositories.models import TicketAttachment, Priority, Ticket
 from src.core.services.ticket_management import TicketManager
+from src.shared.utils.date_format import format_db_datetime
 
 
 @pytest_asyncio.fixture
@@ -22,6 +23,7 @@ def _ticket_payload(subject: str = "Tool test") -> dict:
         "Ticket_Body": "Body",
         "Ticket_Contact_Name": "Tester",
         "Ticket_Contact_Email": "tester@example.com",
+        "Created_Date": format_db_datetime(datetime.now(UTC)),
     }
 
 
