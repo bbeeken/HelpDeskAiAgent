@@ -209,6 +209,23 @@ class TicketManager:
     ) -> OperationResult[Ticket]:
         if isinstance(ticket_obj, dict):
             ticket_obj = Ticket(**ticket_obj)
+        # Ensure datetime fields are formatted for DB storage before flushing
+        datetime_fields = [
+            "Created_Date",
+            "Closed_Date",
+            "LastModified",
+            "ValidFrom",
+            "ValidTo",
+            "EstimatedCompletionDate",
+            "CustomCompletionDate",
+            "LastMetaDataUpdateDate",
+        ]
+        for field in datetime_fields:
+            value = getattr(ticket_obj, field, None)
+            if value is not None:
+                dt = parse_search_datetime(value)
+                if dt:
+                    setattr(ticket_obj, field, format_db_datetime(dt))
         db.add(ticket_obj)
         try:
             await db.flush()
@@ -730,7 +747,7 @@ class TicketTools:
             Ticket_Body=description,
             Ticket_Contact_Name=contact.get("name"),
             Ticket_Contact_Email=contact.get("email"),
-            Created_Date=datetime.now(timezone.utc),
+            Created_Date=format_db_datetime(datetime.now(timezone.utc)),
             Ticket_Status_ID=1,
         )
         db_ticket = await TicketManager().create_ticket(self.db, ticket)

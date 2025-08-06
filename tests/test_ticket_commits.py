@@ -1,5 +1,8 @@
 import pytest
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+
+from sqlalchemy import text
 
 import src.infrastructure.database as db
 from src.core.services.ticket_management import TicketManager
@@ -7,6 +10,7 @@ from src.enhanced_mcp_server import (
     _create_ticket,
     _update_ticket,
 )
+from src.shared.utils.date_format import parse_db_datetime
 
 
 async def _patched_session(monkeypatch, commit_counter):
@@ -220,3 +224,40 @@ async def test_update_ticket_unknown_priority():
     else:
         err_msg = err
     assert "Unknown" in err_msg
+
+
+@pytest.mark.asyncio
+async def test_timezone_aware_creation_ms_precision():
+    aware = datetime(2024, 1, 2, 3, 4, 5, 987654, tzinfo=timezone.utc)
+    async with db.SessionLocal() as session:
+        ticket = {
+            "Subject": "TZ",
+            "Ticket_Body": "b",
+            "Ticket_Contact_Name": "u",
+            "Ticket_Contact_Email": "u@example.com",
+            "Created_Date": aware,
+            "Closed_Date": aware,
+        }
+        res = await TicketManager().create_ticket(session, ticket)
+        assert res.success
+        await session.commit()
+        tid = res.data.Ticket_ID
+
+    async with db.SessionLocal() as session:
+        result = await session.execute(
+            text(
+                "SELECT Created_Date, Closed_Date FROM Tickets_Master WHERE Ticket_ID=:id"
+            ),
+            {"id": tid},
+        )
+        created_raw, closed_raw = result.one()
+
+    for raw in (created_raw, closed_raw):
+        frac = raw.split(".")[1]
+        assert len(frac) == 3
+        parsed = parse_db_datetime(raw)
+        assert parsed.microsecond % 1000 == 0
+
+    assert parse_db_datetime(created_raw) == aware.replace(
+        microsecond=(aware.microsecond // 1000) * 1000
+    )
