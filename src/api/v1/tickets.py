@@ -22,6 +22,7 @@ from src.shared.schemas.search_params import TicketSearchParams
 from src.shared.schemas.basic import TicketMessageOut
 from src.shared.schemas.paginated import PaginatedResponse
 from src.core.services.ticket_management import TicketManager
+from src.shared.utils.date_format import format_db_datetime
 
 from .deps import get_db, get_db_with_commit, extract_filters
 
@@ -224,7 +225,7 @@ async def create_ticket_endpoint(
     ticket: TicketCreate, db: AsyncSession = Depends(get_db_with_commit)
 ) -> TicketOut:
     payload = ticket.model_dump()
-    payload["Created_Date"] = datetime.now(timezone.utc)
+    payload["Created_Date"] = format_db_datetime(datetime.now(timezone.utc))
     result = await create_ticket(db, payload)
     if not result.success:
         logger.error("Ticket creation failed: %s", result.error)
@@ -245,7 +246,7 @@ async def create_ticket_json(
     db: AsyncSession = Depends(get_db_with_commit),
 ) -> TicketExpandedOut:
     data = payload.model_dump()
-    data["Created_Date"] = datetime.now(timezone.utc)
+    data["Created_Date"] = format_db_datetime(datetime.now(timezone.utc))
     result = await create_ticket(db, data)
     if not result.success:
         logger.error("Ticket creation failed: %s", result.error)
