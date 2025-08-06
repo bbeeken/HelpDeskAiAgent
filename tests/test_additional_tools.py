@@ -81,7 +81,7 @@ async def test_get_ticket_attachments_error(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_escalate_ticket_success(client: AsyncClient):
+async def test_escalate_ticket_not_found(client: AsyncClient):
     tid = await _create_ticket(client)
 
     payload = {
