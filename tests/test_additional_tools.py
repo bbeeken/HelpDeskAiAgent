@@ -200,7 +200,10 @@ async def test_get_analytics_sla_performance_error(client: AsyncClient):
         "/get_analytics",
         json={"type": "sla_performance", "params": {"days": "bad"}},
     )
-    assert resp.status_code == 200
+    data = resp.json()
+    assert resp.status_code == 422 or data.get("status") == "error"
+    if data.get("status") == "error":
+        assert "error" in data
 
 
 @pytest.mark.asyncio
