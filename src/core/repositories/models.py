@@ -2,6 +2,9 @@ from sqlalchemy import Column, Integer, String, Text, Boolean
 from src.shared.utils.date_format import FormattedDateTime
 from sqlalchemy.orm import DeclarativeBase
 
+# ``FormattedDateTime`` ensures datetime values are stored with millisecond
+# precision and handles formatting transparently.
+
 
 class Base(DeclarativeBase):
     pass
