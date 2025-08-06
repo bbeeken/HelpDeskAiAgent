@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from datetime import datetime, UTC
 from typing import Any, Dict, List
-
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 import sentry_sdk
 from fastapi import Depends, FastAPI, Request, HTTPException
 from fastapi.encoders import jsonable_encoder
@@ -117,6 +118,22 @@ if os.getenv("ENABLE_RATE_LIMITING", "true").lower() not in {"0", "false", "no"}
     app.add_middleware(SlowAPIMiddleware)
 
 
+
+# If a limiter wasn’t injected by a production startup function, create a
+# disabled one so SlowAPI’s middleware doesn’t raise AttributeError in tests.
+if not hasattr(app.state, "limiter"):
+    app.state.limiter = Limiter(
+        key_func=get_remote_address,
+        enabled=False,                 # ← *critical*: no rate-limiting in tests
+    )
+
+# If a limiter wasn’t injected by a production startup function, create a
+# disabled one so SlowAPI’s middleware doesn’t raise AttributeError in tests.
+if not hasattr(app.state, "limiter"):
+    app.state.limiter = Limiter(
+        key_func=get_remote_address,
+        enabled=False,                 # ← *critical*: no rate-limiting in tests
+    )
 @app.middleware("http")
 async def add_correlation_id(request: Request, call_next):
     """Add correlation ID to each request for tracing."""
