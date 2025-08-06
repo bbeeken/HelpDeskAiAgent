@@ -1,9 +1,9 @@
-"""Complete ticket lifecycle management."""
 
 from __future__ import annotations
 
 import logging
 import html
+import re
 from typing import Any, Sequence, Dict, List, Optional
 from dataclasses import dataclass
 from enum import Enum
@@ -12,7 +12,7 @@ from datetime import datetime, timezone, timedelta
 from src.shared.schemas.search_params import TicketSearchParams
 from src.shared.schemas.filters import AdvancedFilters, apply_advanced_filters
 from pydantic import BaseModel
-from sqlalchemy import select, or_, and_, func
+from sqlalchemy import select, or_, and_, func, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.shared.exceptions import DatabaseError
@@ -31,16 +31,17 @@ from src.shared.utils.date_format import format_db_datetime
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Semantic Filtering helpers
+# Semantic Filtering helpers (moved from enhanced_mcp_server)
 # ---------------------------------------------------------------------------
 # Mapping of friendly status terms to their corresponding Ticket_Status_ID values
 # These mappings allow semantic filtering when searching or updating tickets.
 
-# State ID definitions
-_OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
+# Closed states currently map to the single "Closed" status
+# Defined before _STATUS_MAP so the mapping can reference it
 _CLOSED_STATE_IDS = [3]
 
 _STATUS_MAP = {
+
     # Closed and resolved tickets share the same state identifiers
     "closed": _CLOSED_STATE_IDS,
     "resolved": _CLOSED_STATE_IDS,
@@ -51,7 +52,11 @@ _STATUS_MAP = {
     "waiting": 4,
     # Pending/queued tickets
     "pending": 6,
+
 }
+
+_OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
+_CLOSED_STATE_IDS = [3]
 
 _PRIORITY_MAP = {
     "critical": "Critical",
@@ -134,7 +139,7 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
-    """Backward-compatible wrapper for apply_semantic_filters."""
+    """Backward-compatible wrapper for :func:`apply_semantic_filters`."""
     return apply_semantic_filters(filters)
 
 
@@ -147,13 +152,11 @@ class TicketManager:
     async def get_ticket(
         self, db: AsyncSession, ticket_id: int
     ) -> VTicketMasterExpanded | None:
-        """Get a single ticket by ID."""
         return await db.get(VTicketMasterExpanded, ticket_id)
 
     async def create_ticket(
         self, db: AsyncSession, ticket_obj: Ticket | Dict[str, Any]
     ) -> OperationResult[Ticket]:
-        """Create a new ticket."""
         if isinstance(ticket_obj, dict):
             ticket_obj = Ticket(**ticket_obj)
         db.add(ticket_obj)
@@ -169,22 +172,17 @@ class TicketManager:
     async def update_ticket(
         self, db: AsyncSession, ticket_id: int, updates: BaseModel | Dict[str, Any]
     ) -> Ticket | None:
-        """Update an existing ticket."""
         if isinstance(updates, BaseModel):
             updates = updates.model_dump(exclude_unset=True)
-        
         ticket = await db.get(Ticket, ticket_id)
         if not ticket:
             return None
-        
         for key, value in updates.items():
             if hasattr(ticket, key):
                 setattr(ticket, key, value)
-        
         # Record when the ticket was last modified
         ticket.LastModified = datetime.now(timezone.utc)
         ticket.LastModfiedBy = "Gil AI"
-        
         try:
             await db.flush()
             await db.refresh(ticket)
@@ -196,7 +194,6 @@ class TicketManager:
             raise
 
     async def delete_ticket(self, db: AsyncSession, ticket_id: int) -> bool:
-        """Delete a ticket."""
         ticket = await db.get(Ticket, ticket_id)
         if not ticket:
             return False
@@ -221,10 +218,8 @@ class TicketManager:
         limit: int = 10,
         sort: str | List[str] | None = None,
     ) -> Sequence[VTicketMasterExpanded]:
-        """List tickets with advanced filtering and sorting."""
         query = select(VTicketMasterExpanded)
         sorted_applied = False
-        
         if isinstance(filters, AdvancedFilters):
             query = apply_advanced_filters(query, filters, VTicketMasterExpanded)
             sorted_applied = bool(filters.sort)
@@ -238,7 +233,6 @@ class TicketManager:
                     )
             if conditions:
                 query = query.filter(and_(*conditions))
-        
         if sort:
             if isinstance(sort, str):
                 sort = [sort]
@@ -261,15 +255,12 @@ class TicketManager:
             if order_columns:
                 query = query.order_by(*order_columns)
             sorted_applied = True
-        
         if not sorted_applied:
             query = query.order_by(VTicketMasterExpanded.Ticket_ID.desc())
-        
         if skip:
             query = query.offset(skip)
         if limit:
             query = query.limit(limit)
-        
         result = await db.execute(query)
         return result.scalars().all()
 
@@ -302,12 +293,11 @@ class TicketManager:
         sort: list[str] | None = None,
     ) -> tuple[List[VTicketMasterExpanded], int]:
         """Unified ticket search supporting advanced parameters."""
-        
+
         sanitized = self._sanitize_search_input(query) if query else ""
-        
+
         stmt = select(VTicketMasterExpanded)
-        
-        # Text search
+
         if sanitized:
             escaped = self._escape_like_pattern(sanitized)
             like = f"%{escaped}%"
@@ -317,8 +307,7 @@ class TicketManager:
                     VTicketMasterExpanded.Ticket_Body.ilike(like, escape="\\"),
                 )
             )
-        
-        # User search
+
         if user:
             ident = user.lower().strip()
             stmt = stmt.filter(
@@ -329,19 +318,17 @@ class TicketManager:
                     func.lower(VTicketMasterExpanded.Assigned_Email) == ident,
                 )
             )
-        
-        # Process params
+
         filters_dict = params.model_dump(exclude_none=True) if params else {}
         sort_value = filters_dict.pop("sort", None)
         param_after = filters_dict.pop("created_after", None)
         param_before = filters_dict.pop("created_before", None)
-        
+
         if created_after is None:
             created_after = param_after
         if created_before is None:
             created_before = param_before
-        
-        # Apply semantic filters
+
         if status is not None:
             filters_dict.update(apply_semantic_filters({"status": status}))
         if priority is not None:
@@ -352,11 +339,10 @@ class TicketManager:
             filters_dict["Assigned_Email"] = assigned_to
         if filters:
             filters_dict.update(apply_semantic_filters(filters))
-        
+
         if unassigned_only:
             stmt = stmt.filter(VTicketMasterExpanded.Assigned_Email.is_(None))
-        
-        # Apply filters
+
         for key, value in filters_dict.items():
             if hasattr(VTicketMasterExpanded, key):
                 col = getattr(VTicketMasterExpanded, key)
@@ -364,25 +350,20 @@ class TicketManager:
                     stmt = stmt.filter(col.in_(value))
                 else:
                     stmt = stmt.filter(col == value)
-        
-        # Date filtering
+
         if created_after:
             if isinstance(created_after, str):
                 created_after = parse_search_datetime(created_after)
             stmt = stmt.filter(VTicketMasterExpanded.Created_Date >= created_after)
         elif days is not None and days >= 0:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-            # Normalize to millisecond precision for SQL Server
-            if cutoff.microsecond % 1000:
-                cutoff = cutoff.replace(microsecond=(cutoff.microsecond // 1000) * 1000)
             stmt = stmt.filter(VTicketMasterExpanded.Created_Date >= cutoff)
-        
+
         if created_before:
             if isinstance(created_before, str):
                 created_before = parse_search_datetime(created_before)
             stmt = stmt.filter(VTicketMasterExpanded.Created_Date <= created_before)
-        
-        # Sorting
+
         order_list: list[Any] = []
         if sort:
             for key in sort:
@@ -407,24 +388,24 @@ class TicketManager:
                 order_list.append(VTicketMasterExpanded.Created_Date.desc())
         else:
             order_list.append(VTicketMasterExpanded.Created_Date.desc())
-        
+
         if order_list:
             stmt = stmt.order_by(*order_list)
-        
-        # Count total before pagination
+
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total_count = await db.scalar(count_stmt) or 0
-        
-        # Apply pagination
+
         if skip:
             stmt = stmt.offset(skip)
         if limit:
             stmt = stmt.limit(limit)
-        
-        # Execute query
-        result = await db.execute(stmt)
-        records = list(result.scalars().all())
-        
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+# Normalize to millisecond precision for SQL Server
+        if cutoff.microsecond % 1000:
+            cutoff = cutoff.replace(microsecond=(cutoff.microsecond // 1000) * 1000)
+            result = await db.execute(stmt)
+            records = list(result.scalars().all())
+
         return records, total_count
 
     async def get_tickets_by_user(
@@ -437,10 +418,7 @@ class TicketManager:
         status: str | None = None,
         filters: Dict[str, Any] | None = None,
     ) -> List[VTicketMasterExpanded]:
-        """Get all tickets associated with a user."""
         ident = identifier.lower()
-        
-        # Find tickets where user is contact or assignee
         contact_stmt = select(VTicketMasterExpanded.Ticket_ID).filter(
             or_(
                 func.lower(VTicketMasterExpanded.Ticket_Contact_Name) == ident,
@@ -451,8 +429,6 @@ class TicketManager:
         )
         result = await db.execute(contact_stmt)
         ticket_ids = {row[0] for row in result.all()}
-        
-        # Find tickets where user sent messages
         msg_stmt = select(TicketMessage.Ticket_ID).filter(
             or_(
                 func.lower(TicketMessage.SenderUserName) == ident,
@@ -461,35 +437,30 @@ class TicketManager:
         )
         result = await db.execute(msg_stmt)
         ticket_ids.update(row[0] for row in result.all())
-        
         if not ticket_ids:
             return []
-        
-        # Build query for tickets
         query = select(VTicketMasterExpanded).filter(
             VTicketMasterExpanded.Ticket_ID.in_(ticket_ids)
-        )
+        )  # noqa: E501
         query = query.order_by(VTicketMasterExpanded.Ticket_ID)
-        
-        # Apply status filter
         if status:
             s = status.lower()
             if s == "open":
+
                 query = query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_(_OPEN_STATE_IDS)
                 )
             elif s == "closed":
-                query = query.filter(
-                    VTicketMasterExpanded.Ticket_Status_ID.in_(_CLOSED_STATE_IDS)
-                )
+
+                query = query.filter(VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7]))
+
             elif s in {"in_progress", "progress"}:
                 query = query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_(
                         _STATUS_MAP["in_progress"]
                     )
                 )
-        
-        # Apply additional filters
+
         if filters:
             conditions = []
             for key, value in filters.items():
@@ -500,13 +471,10 @@ class TicketManager:
                     )
             if conditions:
                 query = query.filter(and_(*conditions))
-        
-        # Apply pagination
         if skip:
             query = query.offset(skip)
         if limit is not None:
             query = query.limit(limit)
-        
         result = await db.execute(query)
         return list(result.scalars().all())
 
@@ -518,40 +486,30 @@ class TicketManager:
         days: int = 7,
         limit: int = 10,
     ) -> List[VTicketMasterExpanded]:
-        """Get tickets within a specific timeframe."""
         query = select(VTicketMasterExpanded)
-        
-        # Apply status filter
         if status:
             s = status.lower()
             if s == "open":
+
                 query = query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_(_OPEN_STATE_IDS)
                 )
             elif s == "closed":
-                query = query.filter(
-                    VTicketMasterExpanded.Ticket_Status_ID.in_(_CLOSED_STATE_IDS)
-                )
+
+                query = query.filter(VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7]))
             elif s in {"in_progress", "progress"}:
                 query = query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_(
                         _STATUS_MAP["in_progress"]
                     )
                 )
-        
-        # Apply time filter
+
         if days is not None and days > 0:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-            # Normalize to millisecond precision for SQL Server
-            if cutoff.microsecond % 1000:
-                cutoff = cutoff.replace(microsecond=(cutoff.microsecond // 1000) * 1000)
             query = query.filter(VTicketMasterExpanded.Created_Date >= cutoff)
-        
         query = query.order_by(VTicketMasterExpanded.Created_Date.desc())
-        
         if limit:
             query = query.limit(limit)
-        
         result = await db.execute(query)
         return list(result.scalars().all())
 
@@ -561,7 +519,6 @@ class TicketManager:
     async def get_messages(
         self, db: AsyncSession, ticket_id: int
     ) -> List[TicketMessage]:
-        """Get all messages for a ticket."""
         result = await db.execute(
             select(TicketMessage)
             .filter(TicketMessage.Ticket_ID == ticket_id)
@@ -574,15 +531,14 @@ class TicketManager:
         db: AsyncSession,
         ticket_id: int,
         message: str,
-        sender_code: str | None = None,
-        sender_name: str | None = None,
+        sender_code: str,
+        sender_name: str,
     ) -> TicketMessage:
-        """Post a new message to a ticket."""
         msg = TicketMessage(
             Ticket_ID=ticket_id,
             Message=message,
-            SenderUserCode=sender_code or "GilAI@heinzcorps.com",
-            SenderUserName=sender_name or "Gil AI",
+            SenderUserCode="GilAI@heinzcorps.com",
+            SenderUserName="Gil AI",
             DateTimeStamp=datetime.now(timezone.utc),
         )
         db.add(msg)
@@ -599,7 +555,6 @@ class TicketManager:
     async def get_attachments(
         self, db: AsyncSession, ticket_id: int
     ) -> List[TicketAttachment]:
-        """Get all attachments for a ticket."""
         result = await db.execute(
             select(TicketAttachment).filter(TicketAttachment.Ticket_ID == ticket_id)
         )
@@ -610,7 +565,6 @@ class TicketManager:
 # Simplified smart search and creation helpers from TicketTools
 # ----------------------------------------------------------------------
 class TicketPriority(str, Enum):
-    """Ticket priority levels."""
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -618,7 +572,6 @@ class TicketPriority(str, Enum):
 
 
 class TicketStatus(str, Enum):
-    """Ticket status values."""
     OPEN = "open"
     IN_PROGRESS = "in_progress"
     WAITING_ON_USER = "waiting_on_user"
@@ -628,7 +581,6 @@ class TicketStatus(str, Enum):
 
 @dataclass
 class TicketSearchResult:
-    """Structured ticket search result."""
     ticket_id: int
     subject: str
     summary: str
@@ -639,7 +591,6 @@ class TicketSearchResult:
     relevance_score: float
 
     def to_llm_format(self) -> Dict[str, Any]:
-        """Convert to LLM-friendly format."""
         return {
             "id": self.ticket_id,
             "title": self.subject,
@@ -657,7 +608,6 @@ class TicketTools:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.manager = TicketManager()
 
     async def search_tickets_smart(
         self,
@@ -665,34 +615,30 @@ class TicketTools:
         include_closed: bool = False,
         limit: int = 10,
     ) -> Dict[str, Any]:
-        """Smart ticket search with relevance scoring."""
         like = f"%{query}%"
         stmt = select(VTicketMasterExpanded).filter(
-            or_(
-                VTicketMasterExpanded.Subject.ilike(like),
-                VTicketMasterExpanded.Ticket_Body.ilike(like),
-            )
+            VTicketMasterExpanded.Subject.ilike(like)
+            | VTicketMasterExpanded.Ticket_Body.ilike(like)
         )
-        
         if not include_closed:
-            stmt = stmt.filter(
-                ~VTicketMasterExpanded.Ticket_Status_ID.in_(_CLOSED_STATE_IDS)
-            )
-        
+            stmt = stmt.join(
+                TicketStatusModel,
+                VTicketMasterExpanded.Ticket_Status_ID == TicketStatusModel.ID,
+                isouter=True,
+            ).filter(~TicketStatusModel.ID.in_(_CLOSED_STATE_IDS))
         stmt = stmt.limit(limit)
         result = await self.db.execute(stmt)
         tickets = result.scalars().all()
-        
         search_results: List[TicketSearchResult] = []
         for ticket in tickets:
             search_results.append(
                 TicketSearchResult(
                     ticket_id=ticket.Ticket_ID,
-                    subject=ticket.Subject or "",
+                    subject=ticket.Subject,
                     summary=(
                         (ticket.Ticket_Body[:200] + "...")
                         if ticket.Ticket_Body and len(ticket.Ticket_Body) > 200
-                        else (ticket.Ticket_Body or "")
+                        else ticket.Ticket_Body
                     ),
                     status=ticket.Ticket_Status_Label or "Unknown",
                     priority=ticket.Priority_Level or "Medium",
@@ -705,7 +651,6 @@ class TicketTools:
                     relevance_score=1.0,
                 )
             )
-        
         return {
             "query": query,
             "results_count": len(search_results),
@@ -718,16 +663,16 @@ class TicketTools:
         description: str,
         contact: Dict[str, str],
     ) -> OperationResult[Ticket]:
-        """Create a ticket with intelligent defaults."""
         ticket = Ticket(
             Subject=title,
             Ticket_Body=description,
             Ticket_Contact_Name=contact.get("name"),
             Ticket_Contact_Email=contact.get("email"),
             Created_Date=datetime.now(timezone.utc),
-            Ticket_Status_ID=1,  # Default to "Open"
+            Ticket_Status_ID=1,
         )
-        return await self.manager.create_ticket(self.db, ticket)
+        db_ticket = await TicketManager().create_ticket(self.db, ticket)
+        return db_ticket
 
 
 __all__ = [
@@ -738,6 +683,4 @@ __all__ = [
     "TicketSearchResult",
     "_OPEN_STATE_IDS",
     "_CLOSED_STATE_IDS",
-    "apply_semantic_filters",
-    "_apply_semantic_filters",
 ]
