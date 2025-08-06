@@ -2,10 +2,16 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from datetime import datetime, UTC, timedelta
+from sqlalchemy import select
 
 from main import app
 from src.infrastructure.database import SessionLocal
-from src.core.repositories.models import TicketAttachment, Priority, Ticket
+from src.core.repositories.models import (
+    TicketAttachment,
+    Priority,
+    Ticket,
+    TicketMessage,
+)
 from src.core.services.ticket_management import TicketManager
 
 
@@ -58,6 +64,31 @@ async def test_get_ticket_messages_error(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_ticket_message_stores_millisecond_precision(client: AsyncClient):
+    """Messages should persist creation dates only to millisecond precision."""
+    tid = await _create_ticket(client)
+    payload = {"message": "hi", "sender_code": "u", "sender_name": "User"}
+    resp = await client.post(f"/ticket/{tid}/messages", json=payload)
+    assert resp.status_code == 200
+
+    async with SessionLocal() as db:
+        msg_result = await db.execute(
+            select(TicketMessage).filter(TicketMessage.Ticket_ID == tid)
+        )
+        msg = msg_result.scalars().first()
+        assert msg is not None
+        assert msg.DateTimeStamp.tzinfo is not None
+        assert msg.DateTimeStamp.microsecond % 1000 == 0
+
+        ticket_result = await db.execute(
+            select(Ticket.Created_Date).filter(Ticket.Ticket_ID == tid)
+        )
+        created = ticket_result.scalar_one()
+        assert created.tzinfo is not None
+        assert created.microsecond % 1000 == 0
+
+
+@pytest.mark.asyncio
 async def test_get_ticket_attachments_success(client: AsyncClient):
     tid = await _create_ticket(client)
     now = datetime.now(UTC)
@@ -89,6 +120,45 @@ async def test_get_ticket_attachments_error(client: AsyncClient):
     data = resp.json()
     assert "path" in data
     assert "payload" in data
+
+
+@pytest.mark.asyncio
+async def test_ticket_attachment_stores_millisecond_precision(
+    client: AsyncClient,
+):
+    """Attachments should persist upload dates only to millisecond precision."""
+    tid = await _create_ticket(client)
+    aware = datetime(2024, 1, 1, 12, 0, 0, 654321, tzinfo=UTC)
+
+    async with SessionLocal() as db:
+        att = TicketAttachment(
+            Ticket_ID=tid,
+            Name="precise.txt",
+            WebURl="http://example.com/precise.txt",
+            UploadDateTime=aware,
+        )
+        db.add(att)
+        await db.commit()
+        await db.refresh(att)
+
+        assert att.UploadDateTime.tzinfo is not None
+        assert att.UploadDateTime.microsecond % 1000 == 0
+
+        ticket_result = await db.execute(
+            select(Ticket.Created_Date).filter(Ticket.Ticket_ID == tid)
+        )
+        created = ticket_result.scalar_one()
+        assert created.tzinfo is not None
+        assert created.microsecond % 1000 == 0
+
+    resp = await client.post("/get_ticket_attachments", json={"ticket_id": tid})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data.get("status") == "success"
+    assert data.get("count") == 1
+    uploaded = data["data"][0]["UploadDateTime"]
+    parsed = datetime.fromisoformat(uploaded)
+    assert parsed.microsecond % 1000 == 0
 
 
 @pytest.mark.asyncio
