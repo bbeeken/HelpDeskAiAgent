@@ -29,11 +29,6 @@ class Ticket(Base):
     Severity_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
 
-    Most_Recent_Service_Scheduled_ID = Column(Integer)
-    Watchers = Column(Text)
-    MetaData = Column(Text)
-    ValidFrom = Column(FormattedDateTime())
-    ValidTo = Column(FormattedDateTime())
 
     Closed_Date = Column(FormattedDateTime())
     LastModified = Column(FormattedDateTime())
@@ -41,7 +36,7 @@ class Ticket(Base):
     Resolution = Column(Text)
     Most_Recent_Service_Scheduled_ID = Column(Integer, nullable=True)
     LastCreatedBy = Column(String, nullable=True)
-    Watchers = Column(String, nullable=True)
+    Watchers = Column(Text, nullable=True)
     EstimatedCompletionDate = Column(FormattedDateTime(), nullable=True)
     CustomCompletionDate = Column(FormattedDateTime(), nullable=True)
     EstimatedCompletionDateAsInt = Column(Integer, nullable=True)
