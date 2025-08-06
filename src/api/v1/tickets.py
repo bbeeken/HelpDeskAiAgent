@@ -38,7 +38,7 @@ tickets_router = APIRouter(prefix="/tickets", tags=["tickets"])
 class MessageIn(BaseModel):
     message: str = Field(..., example="Thanks for the update")
     sender_code: str = Field(..., example="USR123")
-    sender_name: str = Field(..., example="John Doe")
+    sender_name: Optional[str] = Field(None, example="John Doe")
 
 
 class SearchBody(BaseModel):
@@ -323,7 +323,7 @@ async def add_ticket_message(
     db: AsyncSession = Depends(get_db_with_commit),
 ) -> TicketMessageOut:
     created = await TicketManager().post_message(
-        db, ticket_id, msg.message, msg.sender_code, msg.sender_name
+        db, ticket_id, msg.message, msg.sender_code, sender_name=msg.sender_name
     )
     return TicketMessageOut.model_validate(created)
 

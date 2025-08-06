@@ -611,13 +611,13 @@ class TicketManager:
         ticket_id: int,
         message: str,
         sender_code: str,
-        sender_name: str,
+        sender_name: Optional[str] = None,
     ) -> TicketMessage:
         msg = TicketMessage(
             Ticket_ID=ticket_id,
             Message=message,
             SenderUserCode=sender_code,
-            SenderUserName=sender_name,
+            SenderUserName=sender_name if sender_name is not None else sender_code,
             DateTimeStamp=datetime.now(timezone.utc),
         )
         db.add(msg)
