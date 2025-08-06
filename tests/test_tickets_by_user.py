@@ -117,9 +117,9 @@ async def test_tickets_by_user_tool():
     server = create_enhanced_server()
     tool = next(x for x in server._tools if x.name == "search_tickets")
     res = await tool._implementation(user="tool@example.com")
-    assert res["status"] in {"success", "error"}
+    assert res["status"] == "success"
     ids = {r["Ticket_ID"] for r in res.get("data", [])}
-    assert t.Ticket_ID in ids
+    assert ids == {t.Ticket_ID}
 
 
 @pytest.mark.asyncio
