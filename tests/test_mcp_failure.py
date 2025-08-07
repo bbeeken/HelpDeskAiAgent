@@ -8,7 +8,7 @@ from main import app
 
 @pytest.mark.asyncio
 async def test_mcp_initialization_failure(monkeypatch):
-    async def boom(self, *args, **kwargs):
+    def boom(self, *args, **kwargs):
         raise RuntimeError("fail")
 
     monkeypatch.setattr(FastApiMCP, "mount", boom)
@@ -18,4 +18,8 @@ async def test_mcp_initialization_failure(monkeypatch):
         assert not getattr(app.state, "mcp_ready", False)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             resp = await ac.get("/tools")
+            assert resp.status_code == 503
+
+            # Subpaths like /mcp/messages/123 should also be blocked
+            resp = await ac.post("/mcp/messages/123", json={})
             assert resp.status_code == 503

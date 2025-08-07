@@ -173,16 +173,20 @@ EXCLUDED_TOOLS = set()
 EXPOSED_TOOLS = [t for t in TOOLS if t.name not in EXCLUDED_TOOLS]
 
 # Paths that require the MCP server to be initialized
-MCP_ENDPOINTS = (
+# Use prefix matching so subpaths (e.g., /mcp/messages/123) are also protected
+MCP_ENDPOINT_PREFIXES = (
     [f"/{tool.name}" for tool in EXPOSED_TOOLS]
-    + ["/tools", "/health/mcp", "/mcp", "/mcp/messages/"]
+    + ["/tools", "/health/mcp", "/mcp", "/mcp/messages"]
 )
 
 
 @app.middleware("http")
 async def verify_mcp_initialized(request: Request, call_next):
     """Ensure MCP server is ready before handling MCP requests."""
-    if request.url.path in MCP_ENDPOINTS and not getattr(app.state, "mcp_ready", False):
+    if (
+        any(request.url.path.startswith(ep) for ep in MCP_ENDPOINT_PREFIXES)
+        and not getattr(app.state, "mcp_ready", False)
+    ):
         logger.warning("MCP server not ready - rejecting request to %s", request.url.path)
         return JSONResponse(status_code=503, content={"detail": "MCP server unavailable"})
     try:
