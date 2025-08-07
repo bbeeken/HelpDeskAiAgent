@@ -24,7 +24,7 @@ class AdvancedQueryManager:
     async def query_tickets_advanced(self, query: AdvancedQuery) -> QueryResult:
         """Execute advanced ticket query with rich results."""
 
-        start_time = datetime.now()
+        start_time = datetime.now(timezone.utc)
 
         # Build base query
         stmt = select(VTicketMasterExpanded)
@@ -155,7 +155,7 @@ class AdvancedQueryManager:
             ticket_dicts.append(ticket_dict)
 
         # Calculate execution time
-        end_time = datetime.now()
+        end_time = datetime.now(timezone.utc)
         execution_time = (end_time - start_time).total_seconds() * 1000
 
         # Generate aggregations
