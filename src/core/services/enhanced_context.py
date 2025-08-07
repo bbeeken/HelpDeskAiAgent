@@ -19,7 +19,7 @@ from src.core.repositories.models import (
     Site,
     TicketCategory,
     TicketStatus,
-    Priority,
+    PriorityLevel,
 )
 from src.shared.schemas.agent_data import (
     TicketFullContext, SystemSnapshot, UserCompleteProfile

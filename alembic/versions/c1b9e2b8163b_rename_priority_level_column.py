@@ -21,8 +21,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.alter_column("Priority_Levels", "Level", new_column_name="Label")
+    op.alter_column("Priority_Levels", "Label", existing_type=sa.String(), nullable=False)
 
 
 def downgrade() -> None:
+    op.alter_column("Priority_Levels", "Label", existing_type=sa.String(), nullable=True)
     op.alter_column("Priority_Levels", "Label", new_column_name="Level")
 
