@@ -631,7 +631,7 @@ class TicketManager:
         ticket_id: int,
         message: str,
         sender_code: str,
-        sender_name: Optional[str] = None,
+        sender_name: str | None = None,
     ) -> TicketMessage:
         msg = TicketMessage(
             Ticket_ID=ticket_id,
