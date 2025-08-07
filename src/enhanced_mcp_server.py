@@ -34,7 +34,7 @@ from src.core.services.reference_data import ReferenceDataManager
 from src.shared.schemas.ticket import TicketExpandedOut, TicketCreate, TicketUpdate
 from pydantic import ValidationError
 from src.core.repositories.models import (
-    Priority,
+    PriorityLevel,
     Ticket,
     TicketStatus,
     VTicketMasterExpanded,
@@ -1133,7 +1133,7 @@ async def _get_reference_data_unified(
                 field = "Ticket_Category_ID"
                 ids = [r.ID for r in records]
             elif type == "priorities":
-                result = await db_session.execute(select(Priority).order_by(Priority.ID))
+                result = await db_session.execute(select(PriorityLevel).order_by(PriorityLevel.ID))
                 records = result.scalars().all()
                 total_count = len(records)
                 if skip:

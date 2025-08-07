@@ -12,7 +12,7 @@ from tests.conftest import app_lifespan  # noqa: F401
 from src.infrastructure.database import SessionLocal
 from src.core.repositories.models import (
     TicketAttachment,
-    Priority,
+    PriorityLevel,
     Ticket,
     TicketMessage,
 )
@@ -222,8 +222,8 @@ async def test_escalate_ticket_error(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_get_reference_data_priorities_success(client: AsyncClient):
     async with SessionLocal() as db:
-        p1 = Priority(Label="Low")
-        p2 = Priority(Label="High")
+        p1 = PriorityLevel(Label="Low")
+        p2 = PriorityLevel(Label="High")
         db.add_all([p1, p2])
         await db.commit()
     resp = await client.post("/get_reference_data", json={"type": "priorities"})

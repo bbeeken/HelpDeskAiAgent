@@ -117,10 +117,10 @@ class TicketStatus(Base):
     Label = Column(String)
 
 
-class Priority(Base):
+class PriorityLevel(Base):
     __tablename__ = "Priority_Levels"
     ID = Column(Integer, primary_key=True, index=True)
-    Label = Column(String)
+    Label = Column(String, nullable=False)
 
 
 class OnCallShift(Base):
