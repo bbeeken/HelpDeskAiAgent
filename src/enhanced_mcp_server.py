@@ -1137,7 +1137,7 @@ async def _get_reference_data_unified(
                 if limit:
                     records = records[:limit]
                 field = "Priority_Level"
-                ids = [r.Level for r in records]
+                ids = [r.Label for r in records]
             elif type == "statuses":
                 result = await db_session.execute(select(TicketStatus).order_by(TicketStatus.ID))
                 records = result.scalars().all()
@@ -1165,10 +1165,10 @@ async def _get_reference_data_unified(
                 if type == "priorities":
                     item = {
                         "id": r.ID,
-                        "level": r.Level,
-                        "semantic_name": _PRIORITY_MAP.get(r.Level.lower(), r.Level) if r.Level else None,
+                        "level": r.Label,
+                        "semantic_name": _PRIORITY_MAP.get(r.Label.lower(), r.Label) if r.Label else None,
                     }
-                    key = r.Level
+                    key = r.Label
                 else:
                     key = r.ID
 
