@@ -24,7 +24,7 @@ SELECT t.Ticket_ID,
        t.LastModfiedBy,
        v.Name AS Assigned_Vendor_Name,
        t.Resolution,
-       p.Level AS Priority_Level
+       p.Label AS Priority_Level
 FROM Tickets_Master t
 LEFT JOIN Ticket_Status ts ON ts.ID = t.Ticket_Status_ID
 LEFT JOIN Assets a ON a.ID = t.Asset_ID

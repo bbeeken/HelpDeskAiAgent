@@ -71,8 +71,8 @@ def clear_analytics_cache():
 @pytest_asyncio.fixture
 async def sample_priorities():
     async with mssql.SessionLocal() as db:
-        low = Priority(Level="Low")
-        high = Priority(Level="High")
+        low = Priority(Label="Low")
+        high = Priority(Label="High")
         db.add_all([low, high])
         await db.commit()
         await db.refresh(low)

@@ -207,8 +207,8 @@ async def test_escalate_ticket_error(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_get_reference_data_priorities_success(client: AsyncClient):
     async with SessionLocal() as db:
-        p1 = Priority(Level="Low")
-        p2 = Priority(Level="High")
+        p1 = Priority(Label="Low")
+        p2 = Priority(Label="High")
         db.add_all([p1, p2])
         await db.commit()
     resp = await client.post("/get_reference_data", json={"type": "priorities"})
