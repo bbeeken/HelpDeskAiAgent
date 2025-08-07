@@ -187,31 +187,6 @@ async def test_asset_vendor_site_routes(client: AsyncClient):
     assert resp.json()[0]["ID"] == site.ID
 
 
-@pytest_asyncio.fixture
-async def ticket_attachments(client: AsyncClient):
-    resp = await _create_ticket(client)
-    assert resp.status_code == 201
-    tid = resp.json()["Ticket_ID"]
-    now = datetime.now(UTC)
-    async with SessionLocal() as db:
-        att1 = TicketAttachment(
-            Ticket_ID=tid,
-            Name="file1.txt",
-            WebURl="http://example.com/file1.txt",
-            UploadDateTime=now,
-        )
-        att2 = TicketAttachment(
-            Ticket_ID=tid,
-            Name="file2.txt",
-            WebURl="http://example.com/file2.txt",
-            UploadDateTime=now,
-        )
-        db.add_all([att1, att2])
-        await db.commit()
-        await db.refresh(att1)
-        await db.refresh(att2)
-    return tid, [att1, att2]
-
 
 @pytest.mark.asyncio
 async def test_ticket_attachments_endpoint(
