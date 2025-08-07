@@ -267,11 +267,11 @@ async def create_ticket_endpoint(
                 "Ticket creation failed for %s=%r: %s", field, value, result.error
             )
             raise HTTPException(
-                status_code=500,
+                status_code=503,
                 detail=f"{result.error} (field {field}={value})",
             )
         logger.error("Ticket creation failed: %s", result.error)
-        raise HTTPException(status_code=500, detail=result.error or "ticket create failed")
+        raise HTTPException(status_code=503, detail=result.error or "ticket create failed")
     return TicketOut.model_validate(result.data)
 
 
@@ -298,11 +298,11 @@ async def create_ticket_json(
                 "Ticket creation failed for %s=%r: %s", field, value, result.error
             )
             raise HTTPException(
-                status_code=500,
+                status_code=503,
                 detail=f"{result.error} (field {field}={value})",
             )
         logger.error("Ticket creation failed: %s", result.error)
-        raise HTTPException(status_code=500, detail=result.error or "ticket create failed")
+        raise HTTPException(status_code=503, detail=result.error or "ticket create failed")
     ticket = await TicketManager().get_ticket(db, result.data.Ticket_ID)
     return TicketExpandedOut.model_validate(ticket)
 
@@ -360,6 +360,10 @@ async def update_ticket_json(
 async def list_ticket_messages(
     ticket_id: int, db: AsyncSession = Depends(get_db)
 ) -> List[TicketMessageOut]:
+    ticket = await TicketManager().get_ticket(db, ticket_id)
+    if not ticket:
+        logger.warning("Ticket %s not found", ticket_id)
+        raise HTTPException(status_code=404, detail="Ticket not found")
     msgs = await TicketManager().get_messages(db, ticket_id)
     return [TicketMessageOut.model_validate(m) for m in msgs]
 
@@ -374,6 +378,10 @@ async def add_ticket_message(
     msg: MessageIn,
     db: AsyncSession = Depends(get_db_with_commit),
 ) -> TicketMessageOut:
+    ticket = await TicketManager().get_ticket(db, ticket_id)
+    if not ticket:
+        logger.warning("Ticket %s not found", ticket_id)
+        raise HTTPException(status_code=404, detail="Ticket not found")
     created = await TicketManager().post_message(
         db, ticket_id, msg.message, msg.sender_code, sender_name=msg.sender_name
     )
