@@ -199,10 +199,33 @@ async def test_search_datetime_and_days_filters():
 
 
 @pytest.mark.asyncio
-async def test_search_tickets_without_days_does_not_raise():
+async def test_search_days_none_returns_all():
+    async with SessionLocal() as db:
+        old = Ticket(
+            Subject="DayNone",
+            Ticket_Body="old",
+            Created_Date=datetime.now(UTC) - timedelta(days=5),
+            Ticket_Status_ID=1,
+        )
+        new = Ticket(
+            Subject="DayNone",
+            Ticket_Body="new",
+            Created_Date=datetime.now(UTC),
+            Ticket_Status_ID=1,
+        )
+        await TicketManager().create_ticket(db, old)
+        await TicketManager().create_ticket(db, new)
+        await db.commit()
+
+        res, _ = await TicketManager().search_tickets(db, "DayNone", days=None)
+        assert {r.Ticket_ID for r in res} == {old.Ticket_ID, new.Ticket_ID}
+
+
+@pytest.mark.asyncio
+async def test_search_days_invalid_value():
     async with SessionLocal() as db:
         t = Ticket(
-            Subject="NoDays",
+            Subject="BadDays",
             Ticket_Body="body",
             Created_Date=datetime.now(UTC),
             Ticket_Status_ID=1,
@@ -210,9 +233,5 @@ async def test_search_tickets_without_days_does_not_raise():
         await TicketManager().create_ticket(db, t)
         await db.commit()
 
-        try:
-            res, _ = await TicketManager().search_tickets(db, "NoDays")
-        except TypeError as exc:
-            pytest.fail(f"search_tickets raised TypeError: {exc}")
-
-        assert any(r.Ticket_ID == t.Ticket_ID for r in res)
+        with pytest.raises(ValueError):
+            await TicketManager().search_tickets(db, "BadDays", days="oops")
