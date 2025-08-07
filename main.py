@@ -262,7 +262,7 @@ async def handle_validation(request: Request, exc: ValidationError):
         details=exc.details,
         timestamp=datetime.now(UTC),
     )
-    return JSONResponse(status_code=400, content=jsonable_encoder(resp))
+    return JSONResponse(status_code=422, content=jsonable_encoder(resp))
 
 
 @app.exception_handler(DatabaseError)
@@ -274,7 +274,7 @@ async def handle_database(request: Request, exc: DatabaseError):
         details=exc.details,
         timestamp=datetime.now(UTC),
     )
-    return JSONResponse(status_code=500, content=jsonable_encoder(resp))
+    return JSONResponse(status_code=503, content=jsonable_encoder(resp))
 
 
 @app.exception_handler(Exception)
@@ -423,7 +423,8 @@ async def health(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
         health_status["status"] = "unhealthy"
         logger.error("Database health check failed: %s", e)
 
-    return JSONResponse(content=health_status)
+    status_code = 200 if health_status["status"] == "healthy" else 503
+    return JSONResponse(status_code=status_code, content=health_status)
 
 
 @app.get("/health/mcp", tags=["system"])

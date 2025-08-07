@@ -41,7 +41,7 @@ async def tickets_by_status_endpoint(db: AsyncSession = Depends(get_db)) -> List
     result = await tickets_by_status(db)
     if not result.success:
         logger.error("tickets_by_status failed: %s", result.error)
-        raise HTTPException(status_code=500, detail=result.error or "analytics failure")
+        raise HTTPException(status_code=503, detail=result.error or "analytics failure")
     return result.data
 
 
