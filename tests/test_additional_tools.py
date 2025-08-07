@@ -1,9 +1,10 @@
 import pytest
 import pytest_asyncio
+import base64
 from httpx import AsyncClient, ASGITransport
 from datetime import datetime, UTC, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 
 from main import app
@@ -16,7 +17,7 @@ from src.core.repositories.models import (
 )
 from src.core.services.ticket_management import TicketManager
 
-from src.shared.utils.date_format import format_db_datetime
+from src.shared.utils.date_format import format_db_datetime, parse_db_datetime
 
 
 
@@ -118,6 +119,9 @@ async def test_get_ticket_attachments_success(client: AsyncClient):
             Name="file.txt",
             WebURl="http://example.com/file.txt",
             UploadDateTime=now,
+            FileContent="content",
+            Binary=False,
+            ContentBytes=None,
         )
         db.add(att)
         await db.commit()
@@ -131,6 +135,9 @@ async def test_get_ticket_attachments_success(client: AsyncClient):
     att = data["data"][0]
     assert att["Name"] == "file.txt"
     assert att["WebURL"] == "http://example.com/file.txt"
+    assert att["FileContent"] == "content"
+    assert att["Binary"] is False
+    assert att["ContentBytes"] is None
 
 
 @pytest.mark.asyncio
@@ -156,6 +163,9 @@ async def test_ticket_attachment_stores_millisecond_precision(
             Name="precise.txt",
             WebURl="http://example.com/precise.txt",
             UploadDateTime=aware,
+            FileContent="precise",
+            Binary=True,
+            ContentBytes=b"precise-bytes",
         )
         db.add(att)
         await db.commit()
@@ -179,6 +189,10 @@ async def test_ticket_attachment_stores_millisecond_precision(
     uploaded = data["data"][0]["UploadDateTime"]
     parsed = datetime.fromisoformat(uploaded)
     assert parsed.microsecond % 1000 == 0
+    returned = data["data"][0]
+    assert returned["FileContent"] == "precise"
+    assert returned["Binary"] is True
+    assert base64.b64decode(returned["ContentBytes"]) == b"precise-bytes"
 
 
 @pytest.mark.asyncio

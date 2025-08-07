@@ -6,6 +6,7 @@ import json
 import os
 import logging
 import re
+import base64
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
@@ -865,7 +866,7 @@ async def _get_ticket_attachments(ticket_id: int) -> Dict[str, Any]:
     try:
         async with db.SessionLocal() as db_session:
             atts = await TicketManager().get_attachments(db_session, ticket_id)
-            
+
             data = [
                 {
                     "ID": a.ID,
@@ -873,6 +874,9 @@ async def _get_ticket_attachments(ticket_id: int) -> Dict[str, Any]:
                     "Name": a.Name,
                     "WebURL": a.WebURl,  # Note: keeping original field name
                     "UploadDateTime": a.UploadDateTime.isoformat() if a.UploadDateTime else None,
+                    "FileContent": a.FileContent,
+                    "Binary": a.Binary,
+                    "ContentBytes": base64.b64encode(a.ContentBytes).decode("utf-8") if a.ContentBytes else None,
                     "file_type": os.path.splitext(a.Name)[1].lstrip(".").lower() if a.Name else "unknown",
                     "file_name_without_extension": os.path.splitext(a.Name)[0] if a.Name else ""
                 }

@@ -1,6 +1,7 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
 from main import app
+import base64
 from src.core.repositories.models import Asset, Vendor, Site, TicketAttachment
 from src.infrastructure.database import SessionLocal
 from datetime import datetime, UTC
@@ -215,12 +216,18 @@ async def ticket_attachments(client: AsyncClient):
             Name="file1.txt",
             WebURl="http://example.com/file1.txt",
             UploadDateTime=now,
+            FileContent="content1",
+            Binary=False,
+            ContentBytes=None,
         )
         att2 = TicketAttachment(
             Ticket_ID=tid,
             Name="file2.txt",
             WebURl="http://example.com/file2.txt",
             UploadDateTime=now,
+            FileContent="content2",
+            Binary=True,
+            ContentBytes=b"binary2",
         )
         db.add_all([att1, att2])
         await db.commit()
@@ -237,25 +244,16 @@ async def test_ticket_attachments_endpoint(
     resp = await client.get(f"/lookup/ticket/{tid}/attachments")
     assert resp.status_code == 200
     data = sorted(resp.json(), key=lambda d: d["ID"])
-    expected = sorted(
-        [
-            {
-                "ID": att.ID,
-                "Ticket_ID": tid,
-                "Name": att.Name,
-                "WebURl": att.WebURl,
-            }
-            for att in created
-        ],
-        key=lambda d: d["ID"],
-    )
-    result = [
-        {
-            "ID": item["ID"],
-            "Ticket_ID": item["Ticket_ID"],
-            "Name": item["Name"],
-            "WebURl": item["WebURl"],
-        }
-        for item in data
-    ]
-    assert result == expected
+    created_sorted = sorted(created, key=lambda a: a.ID)
+    assert len(data) == len(created_sorted)
+    for item, att in zip(data, created_sorted):
+        assert item["ID"] == att.ID
+        assert item["Ticket_ID"] == tid
+        assert item["Name"] == att.Name
+        assert item["WebURl"] == att.WebURl
+        assert item["FileContent"] == att.FileContent
+        assert item["Binary"] == att.Binary
+        if att.ContentBytes:
+            assert base64.b64decode(item["ContentBytes"]) == att.ContentBytes
+        else:
+            assert item["ContentBytes"] is None

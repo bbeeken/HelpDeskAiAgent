@@ -48,6 +48,9 @@ def upgrade() -> None:
         sa.Column('Name', sa.String(), nullable=True),
         sa.Column('WebURl', sa.String(), nullable=True),
         sa.Column('UploadDateTime', sa.DateTime(), nullable=True),
+        sa.Column('FileContent', sa.Text(), nullable=False),
+        sa.Column('Binary', sa.Boolean(), nullable=False, server_default=sa.text('0')),
+        sa.Column('ContentBytes', sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint('ID'),
     )
     op.create_index(
