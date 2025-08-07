@@ -46,23 +46,22 @@ def parse_search_datetime(value: datetime | str | None) -> datetime | None:
     if isinstance(value, datetime):
         dt = value
     else:
-        date_str = value
+        date_str = value.strip()
         try:
             # First attempt database-specific format
             dt = parse_db_datetime(date_str)
         except ValueError:
-            dt = None
-        if dt is None:
             try:
                 if date_str.endswith("Z"):
                     date_str = date_str[:-1] + "+00:00"
                 dt = datetime.fromisoformat(date_str)
-            except ValueError:
-                raise ValueError(f"Invalid datetime format: {date_str}")
+            except ValueError as exc:
+                raise ValueError(f"Invalid datetime format: {value}") from exc
 
     # Normalize microseconds to milliseconds precision to match DB expectations
-    if dt.microsecond % 1000:
-        dt = dt.replace(microsecond=(dt.microsecond // 1000) * 1000)
+    micro = (dt.microsecond // 1000) * 1000
+    if dt.microsecond != micro:
+        dt = dt.replace(microsecond=micro)
 
     return dt
 

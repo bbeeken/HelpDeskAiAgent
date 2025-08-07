@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ast
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any, List, Optional, Dict
 
@@ -60,6 +62,31 @@ async def create_ticket(db: AsyncSession, obj: Dict) -> Any:
     elif isinstance(created, datetime):
         obj["Created_Date"] = format_db_datetime(created)
     return await TicketManager().create_ticket(db, obj)
+
+
+def _extract_data_error_field(error: str) -> tuple[str, Any] | None:
+    """Attempt to pull the offending column and value from a DB error message."""
+    if not error:
+        return None
+    # Try to capture parameters dictionary from the error string
+    params: Dict[str, Any] | None = None
+    match_params = re.search(r"parameters:\s*({.*?})", error)
+    if match_params:
+        try:
+            params = ast.literal_eval(match_params.group(1))
+        except Exception:
+            params = None
+    # Look for explicit column mention first
+    match_col = re.search(r'column "([^"]+)"', error)
+    if match_col:
+        col = match_col.group(1)
+        if isinstance(params, dict) and col in params:
+            return col, params[col]
+        return col, None
+    if isinstance(params, dict) and params:
+        # Fallback to first parameter if no column found
+        return next(iter(params.items()))
+    return None
 
 
 @ticket_router.get(
@@ -233,6 +260,16 @@ async def create_ticket_endpoint(
     payload["Created_Date"] = format_db_datetime(datetime.now(timezone.utc))
     result = await create_ticket(db, payload)
     if not result.success:
+        field_val = _extract_data_error_field(result.error or "")
+        if field_val:
+            field, value = field_val
+            logger.error(
+                "Ticket creation failed for %s=%r: %s", field, value, result.error
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=f"{result.error} (field {field}={value})",
+            )
         logger.error("Ticket creation failed: %s", result.error)
         raise HTTPException(status_code=500, detail=result.error or "ticket create failed")
     return TicketOut.model_validate(result.data)
@@ -254,6 +291,16 @@ async def create_ticket_json(
     data["Created_Date"] = format_db_datetime(datetime.now(timezone.utc))
     result = await create_ticket(db, data)
     if not result.success:
+        field_val = _extract_data_error_field(result.error or "")
+        if field_val:
+            field, value = field_val
+            logger.error(
+                "Ticket creation failed for %s=%r: %s", field, value, result.error
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=f"{result.error} (field {field}={value})",
+            )
         logger.error("Ticket creation failed: %s", result.error)
         raise HTTPException(status_code=500, detail=result.error or "ticket create failed")
     ticket = await TicketManager().get_ticket(db, result.data.Ticket_ID)

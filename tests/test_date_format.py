@@ -24,3 +24,9 @@ def test_formatted_datetime_truncates_string_input():
     typ = FormattedDateTime()
     text = "2023-01-02 03:04:05.987654"
     assert typ.process_bind_param(text, None) == "2023-01-02 03:04:05.987"
+
+
+def test_parse_search_datetime_trims_microseconds():
+    text = "2025-08-06 02:20:22.485621"
+    dt = parse_search_datetime(text)
+    assert format_db_datetime(dt) == "2025-08-06 02:20:22.485"

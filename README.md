@@ -71,6 +71,14 @@ uvicorn main:app --reload
 
 Detailed endpoint descriptions are provided in [docs/API.md](docs/API.md).
 
+## Datetime Formatting
+
+Timestamps must use UTC with millisecond precision (`YYYY-MM-DD HH:MM:SS.mmm`).
+Use `format_db_datetime`, `parse_search_datetime`, and the `FormattedDateTime`
+SQLAlchemy type to ensure values conform to this requirement. See
+[docs/DATETIME_FORMAT.md](docs/DATETIME_FORMAT.md) for examples and common
+pitfalls.
+
 ## Site Access Requirements
 
 Non-admin callers must supply a `site_id` when querying or modifying tickets through the API or MCP tools. The system derives each user's site from the prompt and rejects attempts to create or update tickets for other locations. Only administrators may omit the `site_id` or work across multiple sites.
