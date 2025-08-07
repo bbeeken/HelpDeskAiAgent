@@ -22,7 +22,7 @@ from sqlalchemy import select, func, or_
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from .mcp_server import Tool
+from .mcp_server import Tool, create_enhanced_server
 from src.infrastructure import database as db
 from src.core.services.ticket_management import (
     TicketManager,
@@ -1769,11 +1769,27 @@ def run_server() -> None:
     anyio.run(_main)
 
 
+def create_app():
+    from fastapi import FastAPI
+    app = FastAPI()
+    server = create_enhanced_server()
+    app.state.mcp_server = server
+    app.state.mcp_ready = True
+
+    @app.on_event("startup")
+    async def startup_mcp():
+        app.state.mcp_server = create_enhanced_server()
+        app.state.mcp_ready = True
+
+    return app
+
+
 __all__ = [
     "MCPServerConfig",
     "get_config",
     "set_config",
     "ENHANCED_TOOLS",
     "create_server",
-    "run_server"
+    "run_server",
+    "create_app",
 ]

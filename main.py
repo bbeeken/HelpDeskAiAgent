@@ -26,6 +26,7 @@ from src.infrastructure.database import engine
 from src.shared.exceptions import DatabaseError, ErrorResponse, NotFoundError, ValidationError
 from limiter import limiter
 from src.mcp_server import Tool, create_enhanced_server
+from src.enhanced_mcp_server import create_app
 from src.tool_list import TOOLS
 logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
@@ -105,13 +106,16 @@ async def lifespan(app: FastAPI):
 
 
 # Create FastAPI application
+
 app = FastAPI(
     title="Truck Stop MCP Helpdesk API",
     version=APP_VERSION,
     lifespan=lifespan
 )
 app.state.async_engine = engine
+
 app.state.mcp_ready = False
+app.router.on_startup.clear()
 
 
 @app.on_event("shutdown")
