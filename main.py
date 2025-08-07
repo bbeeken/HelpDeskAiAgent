@@ -17,7 +17,7 @@ from jsonschema import Draft7Validator, ValidationError as JsonSchemaError
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 
 from src.api.v1 import get_db, register_routes
 from config import ERROR_TRACKING_DSN
@@ -110,7 +110,15 @@ app = FastAPI(
     version=APP_VERSION,
     lifespan=lifespan
 )
+app.state.async_engine = engine
 app.state.mcp_ready = False
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    engine = app.state.async_engine
+    if isinstance(engine, AsyncEngine):
+        await engine.dispose()
 
 # Add middleware (order matters!)
 if os.getenv("ENABLE_RATE_LIMITING", "true").lower() not in {"0", "false", "no"}:
