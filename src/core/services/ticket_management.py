@@ -450,10 +450,15 @@ class TicketManager:
         if created_after:
             created_after_dt = parse_search_datetime(created_after)
             stmt = stmt.filter(VTicketMasterExpanded.Created_Date >= created_after_dt)
-        elif days is not None and days >= 0:
-            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-            cutoff = parse_search_datetime(cutoff)
-            stmt = stmt.filter(VTicketMasterExpanded.Created_Date >= cutoff)
+        elif days is not None:
+            if isinstance(days, int) and days >= 0:
+                cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+                cutoff = parse_search_datetime(cutoff)
+                stmt = stmt.filter(
+                    VTicketMasterExpanded.Created_Date >= cutoff
+                )
+            else:
+                raise ValueError("days must be a non-negative integer")
 
         if created_before:
             created_before_dt = parse_search_datetime(created_before)

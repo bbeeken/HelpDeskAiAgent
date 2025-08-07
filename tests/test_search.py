@@ -196,3 +196,23 @@ async def test_search_datetime_and_days_filters():
 
         res, _ = await TicketManager().search_tickets(db, "MicroDate", days=2)
         assert {r.Ticket_ID for r in res} == {new.Ticket_ID}
+
+
+@pytest.mark.asyncio
+async def test_search_tickets_without_days_does_not_raise():
+    async with SessionLocal() as db:
+        t = Ticket(
+            Subject="NoDays",
+            Ticket_Body="body",
+            Created_Date=datetime.now(UTC),
+            Ticket_Status_ID=1,
+        )
+        await TicketManager().create_ticket(db, t)
+        await db.commit()
+
+        try:
+            res, _ = await TicketManager().search_tickets(db, "NoDays")
+        except TypeError as exc:
+            pytest.fail(f"search_tickets raised TypeError: {exc}")
+
+        assert any(r.Ticket_ID == t.Ticket_ID for r in res)
