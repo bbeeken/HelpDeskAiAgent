@@ -2,11 +2,13 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from datetime import datetime, UTC, timedelta
+from sqlalchemy import text
 
 from main import app
 from src.infrastructure.database import SessionLocal
 from src.core.repositories.models import TicketAttachment, Priority, Ticket
 from src.core.services.ticket_management import TicketManager
+from src.shared.utils.date_format import parse_db_datetime
 
 
 @pytest_asyncio.fixture
@@ -29,6 +31,20 @@ async def _create_ticket(client: AsyncClient, subject: str = "Tool test") -> int
     resp = await client.post("/ticket", json=_ticket_payload(subject))
     assert resp.status_code == 201
     return resp.json()["Ticket_ID"]
+
+
+@pytest.mark.asyncio
+async def test_create_ticket_ms_precision(client: AsyncClient):
+    tid = await _create_ticket(client)
+    async with SessionLocal() as session:
+        result = await session.execute(
+            text("SELECT Created_Date FROM Tickets_Master WHERE Ticket_ID=:id"),
+            {"id": tid},
+        )
+        created_raw = result.scalar_one()
+    # Ensure string is parseable and has millisecond precision
+    parse_db_datetime(created_raw)
+    assert len(created_raw.split(".")[1]) == 3
 
 
 @pytest.mark.asyncio
