@@ -525,7 +525,7 @@ class TicketManager:
             )
         )
         result = await db.execute(contact_stmt)
-        ticket_ids = {row[0] for row in result.all()}
+        ticket_ids = result.scalars().all()
         msg_stmt = select(TicketMessage.Ticket_ID).filter(
             or_(
                 func.lower(TicketMessage.SenderUserName) == ident,
@@ -533,9 +533,10 @@ class TicketManager:
             )
         )
         result = await db.execute(msg_stmt)
-        ticket_ids.update(row[0] for row in result.all())
+        ticket_ids += result.scalars().all()
         if not ticket_ids:
             return []
+        ticket_ids = list(dict.fromkeys(ticket_ids))
         query = select(VTicketMasterExpanded).filter(
             VTicketMasterExpanded.Ticket_ID.in_(ticket_ids)
         )  # noqa: E501

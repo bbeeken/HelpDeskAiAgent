@@ -64,10 +64,30 @@ async def test_get_tickets_by_user_function():
         db.add(msg)
         await db.commit()
         res = await TicketManager().get_tickets_by_user(db, "USER@EXAMPLE.COM")
-        ids = {r.Ticket_ID for r in res}
-        assert ids == {t1.Ticket_ID, t2.Ticket_ID, t3.Ticket_ID, t4.Ticket_ID}
+        ids = [r.Ticket_ID for r in res]
+        assert ids == [t1.Ticket_ID, t2.Ticket_ID, t3.Ticket_ID, t4.Ticket_ID]
+
+        t5 = Ticket(
+            Subject="E",
+            Ticket_Body="b",
+            Ticket_Status_ID=1,
+            Ticket_Contact_Email="user@example.com",
+            Created_Date=now,
+        )
+        await TicketManager().create_ticket(db, t5)
+        await db.commit()
+        res = await TicketManager().get_tickets_by_user(db, "user@example.com")
+        ids = [r.Ticket_ID for r in res]
+        assert ids == [
+            t1.Ticket_ID,
+            t2.Ticket_ID,
+            t3.Ticket_ID,
+            t4.Ticket_ID,
+            t5.Ticket_ID,
+        ]
+
         limited = await TicketManager().get_tickets_by_user(db, "user@example.com", skip=1, limit=1)
-        assert len(limited) == 1
+        assert [t.Ticket_ID for t in limited] == [t2.Ticket_ID]
         closed_only = await TicketManager().get_tickets_by_user(
             db, "user@example.com", status="closed"
         )
@@ -98,6 +118,21 @@ async def test_tickets_by_user_endpoint():
         ids = [item["Ticket_ID"] for item in data["items"]]
         assert t.Ticket_ID in ids
 
+        async with SessionLocal() as db:
+            t_new = Ticket(
+                Subject="E2",
+                Ticket_Body="b",
+                Ticket_Status_ID=1,
+                Ticket_Contact_Name="U2",
+                Ticket_Contact_Email="endpoint@example.com",
+                Created_Date=now,
+            )
+            await TicketManager().create_ticket(db, t_new)
+            await db.commit()
+        resp = await ac.get("/tickets/by_user", params={"identifier": "endpoint@example.com"})
+        ids = [item["Ticket_ID"] for item in resp.json()["items"]]
+        assert t_new.Ticket_ID in ids
+
 
 @pytest.mark.asyncio
 async def test_tickets_by_user_tool():
@@ -120,6 +155,21 @@ async def test_tickets_by_user_tool():
     assert res["status"] == "success"
     ids = {r["Ticket_ID"] for r in res.get("data", [])}
     assert ids == {t.Ticket_ID}
+
+    async with SessionLocal() as db:
+        t2 = Ticket(
+            Subject="Tool2",
+            Ticket_Body="b",
+            Ticket_Status_ID=1,
+            Ticket_Contact_Name="T2",
+            Ticket_Contact_Email="tool@example.com",
+            Created_Date=now,
+        )
+        await TicketManager().create_ticket(db, t2)
+        await db.commit()
+    res = await tool._implementation(user="tool@example.com")
+    ids = {r["Ticket_ID"] for r in res.get("data", [])}
+    assert ids == {t.Ticket_ID, t2.Ticket_ID}
 
 
 @pytest.mark.asyncio
