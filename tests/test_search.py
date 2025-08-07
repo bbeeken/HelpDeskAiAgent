@@ -17,7 +17,7 @@ from main import app
 async def _setup_models():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
 
 
 @pytest_asyncio.fixture(scope="module", autouse=True)
