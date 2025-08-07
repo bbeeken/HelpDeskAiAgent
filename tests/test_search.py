@@ -17,8 +17,7 @@ from main import app
 async def _setup_models():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        await conn.exec_driver_sql("DROP VIEW IF EXISTS V_Ticket_Master_Expanded")
-        await conn.exec_driver_sql(CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL)
+    
 
 
 @pytest_asyncio.fixture(scope="module", autouse=True)
