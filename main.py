@@ -17,7 +17,7 @@ from jsonschema import Draft7Validator, ValidationError as JsonSchemaError
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 
 from src.api.v1 import get_db, register_routes
 from config import ERROR_TRACKING_DSN
@@ -106,14 +106,23 @@ async def lifespan(app: FastAPI):
 
 
 # Create FastAPI application
-app = create_app()
-app.title = "Truck Stop MCP Helpdesk API"
-app.version = APP_VERSION
-app.router.lifespan_context = lifespan
-# Override initial MCP state to be managed during lifespan
-app.state.mcp_server = None
+
+app = FastAPI(
+    title="Truck Stop MCP Helpdesk API",
+    version=APP_VERSION,
+    lifespan=lifespan
+)
+app.state.async_engine = engine
+
 app.state.mcp_ready = False
 app.router.on_startup.clear()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    engine = app.state.async_engine
+    if isinstance(engine, AsyncEngine):
+        await engine.dispose()
 
 # Add middleware (order matters!)
 if os.getenv("ENABLE_RATE_LIMITING", "true").lower() not in {"0", "false", "no"}:
@@ -257,7 +266,7 @@ async def handle_validation(request: Request, exc: ValidationError):
         details=exc.details,
         timestamp=datetime.now(UTC),
     )
-    return JSONResponse(status_code=400, content=jsonable_encoder(resp))
+    return JSONResponse(status_code=422, content=jsonable_encoder(resp))
 
 
 @app.exception_handler(DatabaseError)
@@ -269,7 +278,7 @@ async def handle_database(request: Request, exc: DatabaseError):
         details=exc.details,
         timestamp=datetime.now(UTC),
     )
-    return JSONResponse(status_code=500, content=jsonable_encoder(resp))
+    return JSONResponse(status_code=503, content=jsonable_encoder(resp))
 
 
 @app.exception_handler(Exception)
@@ -418,7 +427,8 @@ async def health(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
         health_status["status"] = "unhealthy"
         logger.error("Database health check failed: %s", e)
 
-    return JSONResponse(content=health_status)
+    status_code = 200 if health_status["status"] == "healthy" else 503
+    return JSONResponse(status_code=status_code, content=health_status)
 
 
 @app.get("/health/mcp", tags=["system"])

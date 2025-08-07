@@ -8,10 +8,11 @@ from sqlalchemy import select, text
 
 
 from main import app
+from tests.conftest import app_lifespan  # noqa: F401
 from src.infrastructure.database import SessionLocal
 from src.core.repositories.models import (
     TicketAttachment,
-    Priority,
+    PriorityLevel,
     Ticket,
     TicketMessage,
 )
@@ -22,8 +23,8 @@ from src.shared.utils.date_format import format_db_datetime, parse_db_datetime
 
 
 @pytest_asyncio.fixture
-async def client():
-    transport = ASGITransport(app=app)
+async def client(app_lifespan):  # rely on autouse lifespan setup
+    transport = ASGITransport(app=app, lifespan="on")
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
@@ -221,8 +222,8 @@ async def test_escalate_ticket_error(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_get_reference_data_priorities_success(client: AsyncClient):
     async with SessionLocal() as db:
-        p1 = Priority(Label="Low")
-        p2 = Priority(Label="High")
+        p1 = PriorityLevel(Label="Low")
+        p2 = PriorityLevel(Label="High")
         db.add_all([p1, p2])
         await db.commit()
     resp = await client.post("/get_reference_data", json={"type": "priorities"})

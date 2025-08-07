@@ -34,6 +34,6 @@ async def test_health_handles_db_failure(monkeypatch):
     transport = ASGITransport(app=app, raise_app_exceptions=False)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get("/health")
-        assert resp.status_code == 200
+        assert resp.status_code == 503
         data = resp.json()
         assert data["checks"]["database"]["status"] == "unhealthy"
