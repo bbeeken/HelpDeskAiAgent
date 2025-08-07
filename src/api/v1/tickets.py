@@ -56,6 +56,11 @@ class SearchBody(BaseModel):
 
 async def create_ticket(db: AsyncSession, obj: Dict) -> Any:
     """Wrapper around TicketManager.create_ticket for easier testing."""
+    created = obj.get("Created_Date")
+    if created is None:
+        obj["Created_Date"] = format_db_datetime(datetime.now(timezone.utc))
+    elif isinstance(created, datetime):
+        obj["Created_Date"] = format_db_datetime(created)
     return await TicketManager().create_ticket(db, obj)
 
 

@@ -251,8 +251,22 @@ class TicketManager:
             return None
 
         changed = False
+        datetime_fields = [
+            "Created_Date",
+            "Closed_Date",
+            "LastModified",
+            "ValidFrom",
+            "ValidTo",
+            "EstimatedCompletionDate",
+            "CustomCompletionDate",
+            "LastMetaDataUpdateDate",
+        ]
         for key, value in updates.items():
             if hasattr(ticket, key):
+                if key in datetime_fields and value is not None:
+                    dt = parse_search_datetime(value)
+                    if dt:
+                        value = format_db_datetime(dt)
                 current = getattr(ticket, key)
                 if current != value:
                     setattr(ticket, key, value)
@@ -263,7 +277,7 @@ class TicketManager:
             return ticket
 
         ticket.Version = (getattr(ticket, "Version", 0) or 0) + 1
-        ticket.LastModified = datetime.now(timezone.utc)
+        ticket.LastModified = format_db_datetime(datetime.now(timezone.utc))
         ticket.LastModfiedBy = modified_by
         try:
             await db.flush()
@@ -618,7 +632,7 @@ class TicketManager:
             Message=message,
             SenderUserCode=sender_code,
             SenderUserName=sender_name if sender_name is not None else sender_code,
-            DateTimeStamp=datetime.now(timezone.utc),
+            DateTimeStamp=format_db_datetime(datetime.now(timezone.utc)),
         )
         db.add(msg)
         try:
