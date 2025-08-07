@@ -517,6 +517,7 @@ class TicketManager:
         filters: Dict[str, Any] | None = None,
     ) -> List[VTicketMasterExpanded]:
         ident = identifier.lower()
+
         contact_stmt = select(VTicketMasterExpanded.Ticket_ID).filter(
             or_(
                 func.lower(VTicketMasterExpanded.Ticket_Contact_Name) == ident,
@@ -526,7 +527,8 @@ class TicketManager:
             )
         )
         result = await db.execute(contact_stmt)
-        ticket_ids = result.scalars().all()
+        contact_ids = set(result.scalars().all())
+
         msg_stmt = select(TicketMessage.Ticket_ID).filter(
             or_(
                 func.lower(TicketMessage.SenderUserName) == ident,
@@ -534,14 +536,17 @@ class TicketManager:
             )
         )
         result = await db.execute(msg_stmt)
-        ticket_ids += result.scalars().all()
+        message_ids = set(result.scalars().all())
+
+        ticket_ids = contact_ids | message_ids
         if not ticket_ids:
             return []
-        ticket_ids = list(dict.fromkeys(ticket_ids))
-        query = select(VTicketMasterExpanded).filter(
-            VTicketMasterExpanded.Ticket_ID.in_(ticket_ids)
-        )  # noqa: E501
-        query = query.order_by(VTicketMasterExpanded.Ticket_ID)
+
+        query = (
+            select(VTicketMasterExpanded)
+            .filter(VTicketMasterExpanded.Ticket_ID.in_(ticket_ids))
+            .order_by(VTicketMasterExpanded.Ticket_ID)
+        )
         if status:
             s = status.lower()
             if s == "open":
@@ -574,6 +579,7 @@ class TicketManager:
             query = query.offset(skip)
         if limit is not None:
             query = query.limit(limit)
+
         result = await db.execute(query)
         return list(result.scalars().all())
 
