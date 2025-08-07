@@ -1,6 +1,7 @@
 """Enhanced context retrieval for agent consumption."""
 
 import logging
+import base64
 from datetime import datetime, timezone, timedelta
 from .system_utilities import parse_search_datetime
 from typing import List, Dict, Any, Optional
@@ -258,6 +259,9 @@ class EnhancedContextManager:
                 "Name": att.Name,
                 "WebURl": att.WebURl,
                 "UploadDateTime": att.UploadDateTime,
+                "FileContent": att.FileContent,
+                "Binary": att.Binary,
+                "ContentBytes": base64.b64encode(att.ContentBytes).decode("utf-8") if att.ContentBytes else None,
                 "file_size_estimate": len(att.Name) * 1024  # Rough estimate
             }
             for att in attachments

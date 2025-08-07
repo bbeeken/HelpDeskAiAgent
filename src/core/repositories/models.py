@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean
+from sqlalchemy import Column, Integer, String, Text, Boolean, LargeBinary
 from src.shared.utils.date_format import FormattedDateTime
 from sqlalchemy.orm import DeclarativeBase
 
@@ -81,6 +81,9 @@ class TicketAttachment(Base):
     Name = Column(String)
     WebURl = Column(String)
     UploadDateTime = Column(FormattedDateTime())
+    FileContent = Column(Text, nullable=False)
+    Binary = Column(Boolean, default=False, nullable=False)
+    ContentBytes = Column(LargeBinary, nullable=True)
 
 
 class TicketMessage(Base):
