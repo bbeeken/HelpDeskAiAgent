@@ -582,7 +582,7 @@ async def _create_ticket(**payload: Any) -> Dict[str, Any]:
             result = await TicketManager().create_ticket(db_session, data_in)
             if not result.success:
                 await db_session.rollback()
-                raise Exception(result.error or "Failed to create ticket")
+                raise RuntimeError(result.error or "Failed to create ticket")
 
             await db_session.commit()
 
