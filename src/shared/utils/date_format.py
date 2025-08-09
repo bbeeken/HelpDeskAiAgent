@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone
 
 DB_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
 
@@ -70,6 +70,8 @@ class FormattedDateTime(TypeDecorator):
             return None
         if isinstance(value, datetime):
             return value
+        if isinstance(value, date) and not isinstance(value, datetime):
+            return datetime.combine(value, datetime.min.time(), tzinfo=timezone.utc)
         if isinstance(value, str):
             return parse_db_datetime(value)
         raise TypeError(f"Unexpected DB value type: {type(value)}")

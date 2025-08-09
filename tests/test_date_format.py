@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import datetime, date, UTC
 
 from src.core.services.system_utilities import parse_search_datetime
 from src.shared.utils.date_format import format_db_datetime, FormattedDateTime
@@ -30,3 +30,12 @@ def test_parse_search_datetime_trims_microseconds():
     text = "2025-08-06 02:20:22.485621"
     dt = parse_search_datetime(text)
     assert format_db_datetime(dt) == "2025-08-06 02:20:22.485"
+
+
+def test_process_result_value_converts_date_to_datetime():
+    typ = FormattedDateTime()
+    value = date(2024, 7, 5)
+    result = typ.process_result_value(value, None)
+    assert isinstance(result, datetime)
+    assert result == datetime(2024, 7, 5, tzinfo=UTC)
+    assert result.microsecond % 1000 == 0
