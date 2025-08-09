@@ -7,6 +7,8 @@ from contextvars import ContextVar
 from datetime import datetime, UTC
 from typing import Any, Dict, List
 
+import inspect
+import httpx
 import sentry_sdk
 from fastapi import Depends, FastAPI, Request, HTTPException
 from fastapi.encoders import jsonable_encoder
@@ -29,6 +31,17 @@ from src.mcp_server import Tool, create_enhanced_server
 from src.enhanced_mcp_server import create_app
 from src.tool_list import TOOLS
 logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+
+# Ensure compatibility with older ASGITransport API expecting a 'lifespan'
+# parameter. Newer versions of httpx removed this argument, so we patch the
+# class to accept it when absent.
+if "lifespan" not in inspect.signature(httpx.ASGITransport.__init__).parameters:
+    _orig_asgi_init = httpx.ASGITransport.__init__
+
+    def _patched_asgi_init(self, *args, lifespan="auto", **kwargs):
+        return _orig_asgi_init(self, *args, **kwargs)
+
+    httpx.ASGITransport.__init__ = _patched_asgi_init
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)

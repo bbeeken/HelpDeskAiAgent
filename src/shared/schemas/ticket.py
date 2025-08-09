@@ -1,4 +1,13 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator
+import base64
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    Field,
+    ConfigDict,
+    field_validator,
+    model_validator,
+    field_serializer,
+)
 from typing import Annotated
 from typing import Optional
 from datetime import datetime
@@ -89,6 +98,19 @@ class TicketUpdate(BaseModel):
     ValidFrom: Optional[datetime] = None
     ValidTo: Optional[datetime] = None
     Resolution: Optional[str] = None
+    RV: Optional[bytes] = None
+
+    @field_validator("RV", mode="before")
+    def _decode_rv(cls, v):
+        if isinstance(v, str):
+            return base64.b64decode(v)
+        return v
+
+    @field_serializer("RV", when_used="json")
+    def _encode_rv(self, v, _info):
+        if v is None:
+            return None
+        return base64.b64encode(v).decode()
 
     @model_validator(mode="after")
     def _ensure_fields_present(cls, values: "TicketUpdate") -> "TicketUpdate":
@@ -130,6 +152,19 @@ class TicketIn(TicketBase):
     ValidTo: Optional[datetime] = None
     Resolution: Optional[Annotated[str, Field()]] = None
     Version: Optional[int] = None
+    RV: Optional[bytes] = None
+
+    @field_validator("RV", mode="before")
+    def _decode_rv(cls, v):
+        if isinstance(v, str):
+            return base64.b64decode(v)
+        return v
+
+    @field_serializer("RV", when_used="json")
+    def _encode_rv(self, v, _info):
+        if v is None:
+            return None
+        return base64.b64encode(v).decode()
 
     model_config = ConfigDict(extra="forbid", str_max_length=None)
 
