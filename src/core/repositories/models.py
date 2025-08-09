@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, LargeBinary
+from sqlalchemy import Column, Integer, String, Text, Boolean, LargeBinary, Date
 from src.shared.utils.date_format import FormattedDateTime
 from sqlalchemy.orm import DeclarativeBase
 
@@ -37,8 +37,8 @@ class Ticket(Base):
     Most_Recent_Service_Scheduled_ID = Column(Integer, nullable=True)
     LastCreatedBy = Column(String, nullable=True)
     Watchers = Column(Text, nullable=True)
-    EstimatedCompletionDate = Column(FormattedDateTime(), nullable=True)
-    CustomCompletionDate = Column(FormattedDateTime(), nullable=True)
+    EstimatedCompletionDate = Column(Date(), nullable=True)
+    CustomCompletionDate = Column(Date(), nullable=True)
     EstimatedCompletionDateAsInt = Column(Integer, nullable=True)
     RV = Column(String, nullable=True)
     HasServiceRequest = Column(Boolean, nullable=True)
