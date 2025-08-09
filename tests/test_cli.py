@@ -1,6 +1,7 @@
 import argparse
 import io
 import json
+import logging
 
 import pytest
 import httpx
@@ -58,3 +59,13 @@ async def test_create_ticket_cli_http_error(cli_setup, capsys, monkeypatch):
     monkeypatch.setattr(cli.sys, "stdin", io.StringIO("{}"))
     await cli.create_ticket(argparse.Namespace())
     assert capsys.readouterr().out == ""
+
+
+@pytest.mark.asyncio
+async def test_create_ticket_cli_invalid_json(cli_setup, capsys, caplog, monkeypatch):
+    monkeypatch.setattr(cli.sys, "stdin", io.StringIO("{bad json"))
+    with caplog.at_level(logging.ERROR):
+        await cli.create_ticket(argparse.Namespace())
+    captured = capsys.readouterr()
+    assert "Invalid JSON input" in captured.err
+    assert "Invalid JSON input" in caplog.text

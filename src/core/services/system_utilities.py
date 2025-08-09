@@ -74,7 +74,13 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 async def create_ticket(_args: argparse.Namespace) -> None:
     """Read JSON from STDIN and post to /ticket."""
-    payload = json.load(sys.stdin)
+    try:
+        payload = json.load(sys.stdin)
+    except json.JSONDecodeError as exc:
+        logger.exception("Invalid JSON input: %s", exc)
+        sys.stderr.write("Invalid JSON input\n")
+        sys.stderr.flush()
+        return
     async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
         try:
             resp = await client.post("/ticket", json=payload)
