@@ -52,7 +52,7 @@ async def test_search_endpoint_handles_long_ticket_body():
             Ticket_Contact_Name="n",
             Ticket_Contact_Email="e@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         await TicketManager().create_ticket(db, bad)
         await db.commit()
@@ -109,13 +109,13 @@ async def test_search_created_date_filters():
             Subject="DateFilter",
             Ticket_Body="old",
             Created_Date=datetime(2023, 1, 1, tzinfo=UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         new = Ticket(
             Subject="DateFilter",
             Ticket_Body="new",
             Created_Date=datetime(2023, 1, 10, tzinfo=UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         await TicketManager().create_ticket(db, old)
         await TicketManager().create_ticket(db, new)
@@ -139,13 +139,13 @@ async def test_search_created_after_string_precision():
             Subject="DatePrecision",
             Ticket_Body="old",
             Created_Date=datetime(2023, 1, 1, tzinfo=UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         new = Ticket(
             Subject="DatePrecision",
             Ticket_Body="new",
             Created_Date=datetime(2023, 1, 10, tzinfo=UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         await TicketManager().create_ticket(db, old)
         await TicketManager().create_ticket(db, new)
@@ -174,13 +174,13 @@ async def test_search_datetime_and_days_filters():
             Subject="MicroDate",
             Ticket_Body="old",
             Created_Date=datetime.now(UTC) - timedelta(days=5),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         new = Ticket(
             Subject="MicroDate",
             Ticket_Body="new",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         await TicketManager().create_ticket(db, old)
         await TicketManager().create_ticket(db, new)
@@ -205,13 +205,13 @@ async def test_search_days_none_returns_all():
             Subject="DayNone",
             Ticket_Body="old",
             Created_Date=datetime.now(UTC) - timedelta(days=5),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         new = Ticket(
             Subject="DayNone",
             Ticket_Body="new",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         await TicketManager().create_ticket(db, old)
         await TicketManager().create_ticket(db, new)
@@ -228,7 +228,7 @@ async def test_search_days_invalid_value():
             Subject="BadDays",
             Ticket_Body="body",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         await TicketManager().create_ticket(db, t)
         await db.commit()

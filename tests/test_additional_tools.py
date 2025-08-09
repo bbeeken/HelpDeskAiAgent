@@ -24,7 +24,7 @@ from src.shared.utils.date_format import format_db_datetime, parse_db_datetime
 
 @pytest_asyncio.fixture
 async def client(app_lifespan):  # rely on autouse lifespan setup
-    transport = ASGITransport(app=app, lifespan="on")
+    transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 

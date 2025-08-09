@@ -19,20 +19,20 @@ async def test_open_status_filter_matches_multiple_states():
     async with SessionLocal() as db:
         now = datetime.now(UTC)
         statuses = [
-            (1, "Open"),
-            (2, "In Progress"),
-            (3, "Closed"),
-            (4, "Waiting"),
+            ("1", "Open"),
+            ("2", "In Progress"),
+            ("3", "Closed"),
+            ("4", "Waiting"),
         ]
         for sid, label in statuses:
             if not await db.get(TicketStatus, sid):
                 db.add(TicketStatus(ID=sid, Label=label))
         await db.commit()
 
-        t1 = Ticket(Subject="A", Ticket_Body="b", Created_Date=now, Ticket_Status_ID=1)
-        t2 = Ticket(Subject="B", Ticket_Body="b", Created_Date=now, Ticket_Status_ID=2)
-        t3 = Ticket(Subject="C", Ticket_Body="b", Created_Date=now, Ticket_Status_ID=3)
-        t4 = Ticket(Subject="D", Ticket_Body="b", Created_Date=now, Ticket_Status_ID=4)
+        t1 = Ticket(Subject="A", Ticket_Body="b", Created_Date=now, Ticket_Status_ID="1")
+        t2 = Ticket(Subject="B", Ticket_Body="b", Created_Date=now, Ticket_Status_ID="2")
+        t3 = Ticket(Subject="C", Ticket_Body="b", Created_Date=now, Ticket_Status_ID="3")
+        t4 = Ticket(Subject="D", Ticket_Body="b", Created_Date=now, Ticket_Status_ID="4")
 
         for t in (t1, t2, t3, t4):
             await TicketManager().create_ticket(db, t)
@@ -81,7 +81,7 @@ async def test_assignee_email_and_name_filters():
             Ticket_Contact_Email="e",
             Assigned_Email="tech@example.com",
             Assigned_Name="Tech",
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
             Created_Date=now,
         )
         t2 = Ticket(
@@ -91,7 +91,7 @@ async def test_assignee_email_and_name_filters():
             Ticket_Contact_Email="e",
             Assigned_Email="other@example.com",
             Assigned_Name="Other",
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
             Created_Date=now,
         )
         await TicketManager().create_ticket(db, t1)
@@ -115,9 +115,9 @@ def test_status_string_mappings():
     mapping_expectations = {
         "open": _OPEN_STATE_IDS,
         "closed": _CLOSED_STATE_IDS,
-        "in_progress": [2, 5],
-        "progress": [2, 5],
-        "pending": 6,
+        "in_progress": ["2", "5"],
+        "progress": ["2", "5"],
+        "pending": "6",
         "resolved": _STATUS_MAP["resolved"],
     }
     for status, expected in mapping_expectations.items():
@@ -126,8 +126,8 @@ def test_status_string_mappings():
 
 
 def test_open_closed_constants():
-    assert _OPEN_STATE_IDS == [1, 2, 4, 5, 6, 8]
-    assert _CLOSED_STATE_IDS == [3]
+    assert _OPEN_STATE_IDS == ["1", "2", "4", "5", "6", "8"]
+    assert _CLOSED_STATE_IDS == ["3"]
 
 
 def test_status_filter_unknown_value():

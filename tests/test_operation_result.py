@@ -17,7 +17,7 @@ async def test_create_ticket_returns_operation_result():
             Ticket_Contact_Name="n",
             Ticket_Contact_Email="e@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         result = await TicketManager().create_ticket(db, ticket)
         await db.commit()

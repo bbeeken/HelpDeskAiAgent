@@ -319,7 +319,7 @@ class EnhancedOperationsManager:
                 estimated_impact={"risk": "high", "reason": "ticket_not_found"},
             )
 
-        status_id = parameters.get("status_id", 4)
+        status_id = str(parameters.get("status_id", "4"))
         resolution = parameters.get("resolution")
         try:
             TicketUpdate(Ticket_Status_ID=status_id, Resolution=resolution)
@@ -335,7 +335,7 @@ class EnhancedOperationsManager:
                 estimated_impact={"risk": "high", "reason": "invalid_parameters"},
             )
 
-        if ticket.Ticket_Status_ID == status_id:
+        if str(ticket.Ticket_Status_ID) == status_id:
             warnings.append("ticket already closed")
 
         if not resolution:
@@ -384,7 +384,7 @@ class EnhancedOperationsManager:
     async def _execute_ticket_closure(self, ticket_id: int, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Execute ticket closure."""
         resolution = parameters.get("resolution", "Resolved")
-        status_id = parameters.get("status_id", 4)  # Assuming 4 = Closed
+        status_id = str(parameters.get("status_id", "4"))  # Assuming 4 = Closed
 
         update_data = TicketUpdate(
             Ticket_Status_ID=status_id,

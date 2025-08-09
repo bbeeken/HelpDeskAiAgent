@@ -94,13 +94,13 @@ async def test_dynamic_create_ticket():
             "Ticket_Body": "Created via tool",
             "Ticket_Contact_Name": "Tester",
             "Ticket_Contact_Email": "tester@example.com",
-            "Ticket_Status_ID": 2,
+            "Ticket_Status_ID": "2",
         }
         resp = await client.post("/create_ticket", json=payload)
         assert resp.status_code == 200
         data = resp.json()
         assert data.get("status") == "success"
-        assert data["data"]["Ticket_Status_ID"] == 2
+        assert data["data"]["Ticket_Status_ID"] == "2"
         assert data["data"]["LastModified"] is not None
         assert data["data"]["LastModfiedBy"] == "Gil AI"
 

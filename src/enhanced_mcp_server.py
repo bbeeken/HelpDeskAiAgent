@@ -665,7 +665,7 @@ async def _update_ticket(ticket_id: int, updates: Dict[str, Any]) -> Dict[str, A
 
             applied_updates = validated.model_dump(exclude_unset=True)
 
-            if applied_updates.get("Ticket_Status_ID") == 3 and "Closed_Date" not in applied_updates:
+            if applied_updates.get("Ticket_Status_ID") == "3" and "Closed_Date" not in applied_updates:
                 applied_updates["Closed_Date"] = datetime.now(timezone.utc)
 
             if "Assigned_Email" in applied_updates and "Assigned_Name" not in applied_updates:

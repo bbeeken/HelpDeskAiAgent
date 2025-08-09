@@ -62,7 +62,7 @@ class AdvancedQueryManager:
             status_conditions = []
             for status in query.status_filter:
                 if isinstance(status, int):
-                    status_conditions.append(VTicketMasterExpanded.Ticket_Status_ID == status)
+                    status_conditions.append(VTicketMasterExpanded.Ticket_Status_ID == str(status))
                 else:
                     status_conditions.append(VTicketMasterExpanded.Ticket_Status_Label.ilike(f"%{status}%"))
             conditions.append(or_(*status_conditions))

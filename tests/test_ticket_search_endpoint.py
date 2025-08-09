@@ -17,7 +17,7 @@ async def test_ticket_search_route_returns_results():
             Ticket_Contact_Name="Tester",
             Ticket_Contact_Email="tester@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         await TicketManager().create_ticket(db, t)
         await db.commit()
@@ -40,7 +40,7 @@ async def test_ticket_search_route_accepts_json():
             Ticket_Contact_Name="Tester",
             Ticket_Contact_Email="tester@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         await TicketManager().create_ticket(db, t)
         await db.commit()

@@ -13,14 +13,14 @@ from src.mcp_server import create_enhanced_server
 async def test_get_tickets_by_user_function():
     async with SessionLocal() as db:
         now = datetime.now(UTC)
-        for sid, label in [(1, "Open"), (3, "Closed")]:
+        for sid, label in [("1", "Open"), ("3", "Closed")]:
             if not await db.get(TicketStatus, sid):
                 db.add(TicketStatus(ID=sid, Label=label))
         await db.commit()
         t1 = Ticket(
             Subject="A",
             Ticket_Body="b",
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
             Ticket_Contact_Name="X",
             Ticket_Contact_Email="user@example.com",
             Created_Date=now,
@@ -28,7 +28,7 @@ async def test_get_tickets_by_user_function():
         t2 = Ticket(
             Subject="B",
             Ticket_Body="b",
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
             Ticket_Contact_Name="Y",
             Ticket_Contact_Email="y@example.com",
             Assigned_Email="user@example.com",
@@ -37,7 +37,7 @@ async def test_get_tickets_by_user_function():
         t3 = Ticket(
             Subject="C",
             Ticket_Body="b",
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
             Ticket_Contact_Name="Z",
             Ticket_Contact_Email="z@example.com",
             Created_Date=now,
@@ -48,7 +48,7 @@ async def test_get_tickets_by_user_function():
         t4 = Ticket(
             Subject="D",
             Ticket_Body="b",
-            Ticket_Status_ID=3,
+            Ticket_Status_ID="3",
             Ticket_Contact_Email="user@example.com",
             Created_Date=now,
         )
@@ -70,7 +70,7 @@ async def test_get_tickets_by_user_function():
         t5 = Ticket(
             Subject="E",
             Ticket_Body="b",
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
             Ticket_Contact_Email="user@example.com",
             Created_Date=now,
         )
@@ -104,7 +104,7 @@ async def test_tickets_by_user_endpoint():
             t = Ticket(
                 Subject="E",
                 Ticket_Body="b",
-                Ticket_Status_ID=1,
+                Ticket_Status_ID="1",
                 Ticket_Contact_Name="U",
                 Ticket_Contact_Email="endpoint@example.com",
                 Created_Date=now,
@@ -122,7 +122,7 @@ async def test_tickets_by_user_endpoint():
             t_new = Ticket(
                 Subject="E2",
                 Ticket_Body="b",
-                Ticket_Status_ID=1,
+                Ticket_Status_ID="1",
                 Ticket_Contact_Name="U2",
                 Ticket_Contact_Email="endpoint@example.com",
                 Created_Date=now,
@@ -141,7 +141,7 @@ async def test_tickets_by_user_tool():
         t = Ticket(
             Subject="Tool",
             Ticket_Body="b",
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
             Ticket_Contact_Name="T",
             Ticket_Contact_Email="tool@example.com",
             Created_Date=now,
@@ -160,7 +160,7 @@ async def test_tickets_by_user_tool():
         t2 = Ticket(
             Subject="Tool2",
             Ticket_Body="b",
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
             Ticket_Contact_Name="T2",
             Ticket_Contact_Email="tool@example.com",
             Created_Date=now,
@@ -178,14 +178,14 @@ async def test_status_and_filtering():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         now = datetime.now(UTC)
         async with SessionLocal() as db:
-            for sid, label in [(1, "Open"), (3, "Closed")]:
+            for sid, label in [("1", "Open"), ("3", "Closed")]:
                 if not await db.get(TicketStatus, sid):
                     db.add(TicketStatus(ID=sid, Label=label))
             await db.commit()
             open_t = Ticket(
                 Subject="OpenF",
                 Ticket_Body="b",
-                Ticket_Status_ID=1,
+                Ticket_Status_ID="1",
                 Ticket_Contact_Email="filter@example.com",
                 Site_ID=1,
                 Created_Date=now,
@@ -193,7 +193,7 @@ async def test_status_and_filtering():
             closed_t = Ticket(
                 Subject="ClosedF",
                 Ticket_Body="b",
-                Ticket_Status_ID=3,
+                Ticket_Status_ID="3",
                 Ticket_Contact_Email="filter@example.com",
                 Site_ID=2,
                 Created_Date=now,
