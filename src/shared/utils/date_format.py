@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, date, timezone
+
+from datetime import date, datetime, timezone, time
 
 DB_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
 
@@ -33,6 +34,23 @@ def parse_db_datetime(text: str) -> datetime:
     return dt
 
 
+def normalize_to_utc_minute(value: datetime | date) -> datetime:
+    """Normalize ``value`` to a UTC ``datetime`` with minute precision.
+
+    If ``value`` is a :class:`~datetime.date`, it is combined with midnight and
+    treated as UTC. Seconds and microseconds are removed from the result.
+    """
+
+    if isinstance(value, datetime):
+        dt = value.astimezone(timezone.utc) if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    elif isinstance(value, date):
+        dt = datetime.combine(value, time(), tzinfo=timezone.utc)
+    else:  # pragma: no cover - defensive; function is typed
+        raise TypeError(f"Unsupported type for normalize_to_utc_minute: {type(value)}")
+
+    return dt.replace(second=0, microsecond=0)
+
+
 try:
     from sqlalchemy.types import TypeDecorator, String
 except Exception:  # pragma: no cover - SQLAlchemy not available
@@ -52,6 +70,8 @@ class FormattedDateTime(TypeDecorator):
 
         if isinstance(value, datetime):
             dt = value
+        elif isinstance(value, date):
+            dt = normalize_to_utc_minute(value)
         elif isinstance(value, str):
             text = value
             try:

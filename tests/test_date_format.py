@@ -1,7 +1,11 @@
 from datetime import datetime, date, UTC
 
 from src.core.services.system_utilities import parse_search_datetime
-from src.shared.utils.date_format import format_db_datetime, FormattedDateTime
+from src.shared.utils.date_format import (
+    format_db_datetime,
+    FormattedDateTime,
+    normalize_to_utc_minute,
+)
 
 
 def test_parse_search_datetime_db_format():
@@ -32,6 +36,7 @@ def test_parse_search_datetime_trims_microseconds():
     assert format_db_datetime(dt) == "2025-08-06 02:20:22.485"
 
 
+
 def test_process_result_value_converts_date_to_datetime():
     typ = FormattedDateTime()
     value = date(2024, 7, 5)
@@ -39,3 +44,15 @@ def test_process_result_value_converts_date_to_datetime():
     assert isinstance(result, datetime)
     assert result == datetime(2024, 7, 5, tzinfo=UTC)
     assert result.microsecond % 1000 == 0
+
+def test_normalize_to_utc_minute_handles_date():
+    d = date(2024, 5, 7)
+    dt = normalize_to_utc_minute(d)
+    assert dt == datetime(2024, 5, 7, tzinfo=UTC)
+
+
+def test_formatted_datetime_binds_date_midnight():
+    typ = FormattedDateTime()
+    d = date(2024, 5, 7)
+    assert typ.process_bind_param(d, None) == "2024-05-07 00:00:00.000"
+

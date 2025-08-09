@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
-from sqlalchemy import select, func, and_, or_, text
+from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.repositories.models import VTicketMasterExpanded, TicketMessage, TicketAttachment
@@ -24,7 +24,7 @@ class AdvancedQueryManager:
     async def query_tickets_advanced(self, query: AdvancedQuery) -> QueryResult:
         """Execute advanced ticket query with rich results."""
 
-        start_time = datetime.now()
+        start_time = datetime.now(timezone.utc)
 
         # Build base query
         stmt = select(VTicketMasterExpanded)
@@ -149,13 +149,18 @@ class AdvancedQueryManager:
                     ticket_dict["user_profile"] = await self.context_manager.user_manager.get_user_by_email(
                         ticket.Ticket_Contact_Email
                     )
-                except:
+                except Exception as exc:
+                    logger.exception(
+                        "Error retrieving user profile for %s: %s",
+                        ticket.Ticket_Contact_Email,
+                        exc,
+                    )
                     ticket_dict["user_profile"] = None
 
             ticket_dicts.append(ticket_dict)
 
         # Calculate execution time
-        end_time = datetime.now()
+        end_time = datetime.now(timezone.utc)
         execution_time = (end_time - start_time).total_seconds() * 1000
 
         # Generate aggregations
