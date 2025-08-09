@@ -84,7 +84,7 @@ async def test_close_ticket_commits_once(monkeypatch):
     await _patched_session(monkeypatch, counter)
     result = await _update_ticket(tid, {"resolution": "done", "status": "closed"})
     assert result["status"] == "success"
-    assert result["data"]["Ticket_Status_ID"] == 3
+    assert result["data"]["Ticket_Status_ID"] == "3"
     assert counter[0] == 1
 
 

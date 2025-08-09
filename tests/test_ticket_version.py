@@ -26,7 +26,7 @@ async def test_version_increments_on_update():
             Ticket_Contact_Name="User",
             Ticket_Contact_Email="user@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         result = await TicketManager().create_ticket(db, ticket)
         await db.commit()
@@ -47,7 +47,7 @@ async def test_version_unchanged_when_no_real_update():
             Ticket_Contact_Name="User",
             Ticket_Contact_Email="user@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         result = await TicketManager().create_ticket(db, ticket)
         await db.commit()
@@ -69,7 +69,7 @@ async def test_assigned_name_not_email_after_mcp_update(client: AsyncClient):
             Ticket_Contact_Name="User",
             Ticket_Contact_Email="user@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         await TicketManager().create_ticket(db, ticket)
         await db.commit()

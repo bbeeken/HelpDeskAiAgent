@@ -18,7 +18,7 @@ async def _add_sample_ticket():
             Ticket_Contact_Name="C",
             Ticket_Contact_Email="c@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID=1,
+            Ticket_Status_ID="1",
         )
         await TicketManager().create_ticket(session, t)
         await session.commit()

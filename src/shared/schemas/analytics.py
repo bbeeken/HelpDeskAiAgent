@@ -4,7 +4,7 @@ from datetime import date
 
 
 class StatusCount(BaseModel):
-    status_id: Optional[int]
+    status_id: Optional[str]
     status_label: Optional[str]
     count: int
 

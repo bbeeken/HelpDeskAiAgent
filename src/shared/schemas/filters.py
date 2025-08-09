@@ -13,7 +13,7 @@ class AdvancedFilters:
 
     created_from: Optional[datetime] = None
     created_to: Optional[datetime] = None
-    status_ids: Optional[List[int]] = None
+    status_ids: Optional[List[str]] = None
     site_ids: Optional[List[int]] = None
     assigned: Optional[bool] = None
     sort: Optional[Sequence[str]] = None
