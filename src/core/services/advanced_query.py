@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
-from sqlalchemy import select, func, and_, or_, text
+from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.repositories.models import VTicketMasterExpanded, TicketMessage, TicketAttachment
