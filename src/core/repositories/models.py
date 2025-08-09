@@ -40,7 +40,7 @@ class Ticket(Base):
     EstimatedCompletionDate = Column(FormattedDateTime(), nullable=True)
     CustomCompletionDate = Column(FormattedDateTime(), nullable=True)
     EstimatedCompletionDateAsInt = Column(Integer, nullable=True)
-    RV = Column(String, nullable=True)
+    RV = Column(LargeBinary, nullable=True)
     HasServiceRequest = Column(Boolean, nullable=True)
     Private = Column(Boolean, nullable=True)
     Collab_Emails = Column(String, nullable=True)
