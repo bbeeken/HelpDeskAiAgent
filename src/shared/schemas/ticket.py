@@ -19,6 +19,8 @@ class TicketBase(BaseModel):
     Most_Recent_Service_Scheduled_ID: Optional[str] = None
     Watchers: Optional[str] = None
     MetaData: Optional[str] = None
+    HasServiceRequest: Optional[bool] = None
+    Private: Optional[bool] = None
     EstimatedCompletionDate: Optional[date] = None
     CustomCompletionDate: Optional[date] = None
     ValidFrom: Optional[datetime] = None
@@ -30,6 +32,15 @@ class TicketBase(BaseModel):
         if isinstance(v, str) and not v.strip():
             return None
         return v
+
+
+    @field_validator("HasServiceRequest", "Private", mode="before")
+    def _parse_yn_bool(cls, v):
+        if isinstance(v, str):
+            if v.upper() == "Y":
+                return True
+            if v.upper() == "N":
+                return False
 
     @field_validator("EstimatedCompletionDate", "CustomCompletionDate", mode="before")
     def _coerce_date(cls, v: Any):
@@ -43,6 +54,7 @@ class TicketBase(BaseModel):
                 v = v.split("T", 1)[0]
             if " " in v:
                 v = v.split(" ", 1)[0]
+
         return v
 
     model_config = ConfigDict(str_max_length=None)
@@ -101,6 +113,8 @@ class TicketUpdate(BaseModel):
     Most_Recent_Service_Scheduled_ID: Optional[str] = None
     Watchers: Optional[str] = None
     MetaData: Optional[str] = None
+    HasServiceRequest: Optional[bool] = None
+    Private: Optional[bool] = None
     EstimatedCompletionDate: Optional[date] = None
     CustomCompletionDate: Optional[date] = None
     ValidFrom: Optional[datetime] = None
@@ -112,6 +126,15 @@ class TicketUpdate(BaseModel):
         if not values.model_fields_set:
             raise ValueError("At least one field must be supplied")
         return values
+
+    @field_validator("HasServiceRequest", "Private", mode="before")
+    def _parse_yn_bool(cls, v):
+        if isinstance(v, str):
+            if v.upper() == "Y":
+                return True
+            if v.upper() == "N":
+                return False
+        return v
 
     model_config = ConfigDict(
         extra="forbid",

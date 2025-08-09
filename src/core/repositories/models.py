@@ -11,6 +11,7 @@ from sqlalchemy import (
     text,
 )
 
+
 from src.shared.utils.date_format import FormattedDateTime
 from sqlalchemy.orm import DeclarativeBase
 
@@ -20,6 +21,23 @@ from sqlalchemy.orm import DeclarativeBase
 
 class Base(DeclarativeBase):
     pass
+
+
+class YNBoolean(TypeDecorator):
+    """Store boolean values as single-character ``'Y'``/``'N'`` strings."""
+
+    impl = String(1)
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return "Y" if value else "N"
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return value == "Y"
 
 
 class Ticket(Base):
@@ -62,8 +80,8 @@ class Ticket(Base):
     )
 
     RV = Column(String, nullable=True)
-    HasServiceRequest = Column(Boolean, nullable=True)
-    Private = Column(Boolean, nullable=True)
+    HasServiceRequest = Column(YNBoolean(), nullable=True)
+    Private = Column(YNBoolean(), nullable=True)
     Collab_Emails = Column(String, nullable=True)
     OrderFormHTML = Column(Text, nullable=True)
     LastModifiedAsInt = Column(
