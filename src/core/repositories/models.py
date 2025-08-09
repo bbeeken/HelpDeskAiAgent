@@ -1,4 +1,16 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, LargeBinary, Date
+
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    Boolean,
+    LargeBinary,
+    Computed,
+    func,
+    text,
+)
+
 from src.shared.utils.date_format import FormattedDateTime
 from sqlalchemy.orm import DeclarativeBase
 
@@ -37,22 +49,47 @@ class Ticket(Base):
     Most_Recent_Service_Scheduled_ID = Column(Integer, nullable=True)
     LastCreatedBy = Column(String, nullable=True)
     Watchers = Column(Text, nullable=True)
-    EstimatedCompletionDate = Column(Date(), nullable=True)
-    CustomCompletionDate = Column(Date(), nullable=True)
-    EstimatedCompletionDateAsInt = Column(Integer, nullable=True)
+
+    EstimatedCompletionDate = Column(FormattedDateTime(), nullable=True)
+    CustomCompletionDate = Column(FormattedDateTime(), nullable=True)
+    EstimatedCompletionDateAsInt = Column(
+        Integer,
+        Computed(
+            "CAST(strftime('%s', EstimatedCompletionDate) AS INTEGER)",
+            persisted=True,
+        ),
+        nullable=True,
+    )
+
     RV = Column(String, nullable=True)
     HasServiceRequest = Column(Boolean, nullable=True)
     Private = Column(Boolean, nullable=True)
     Collab_Emails = Column(String, nullable=True)
     OrderFormHTML = Column(Text, nullable=True)
-    LastModifiedAsInt = Column(Integer, nullable=True)
+    LastModifiedAsInt = Column(
+        Integer,
+        Computed(
+            "CAST(strftime('%s', LastModified) AS INTEGER)",
+            persisted=True,
+        ),
+        nullable=True,
+    )
     PM = Column(Boolean, nullable=True)
     Asset_ID_Mutiple = Column(String, nullable=True)
     MetaData = Column(Text, nullable=True)
     LastMetaDataUpdateDate = Column(FormattedDateTime(), nullable=True)
     ClosedBy = Column(String, nullable=True)
-    ValidFrom = Column(FormattedDateTime(), nullable=True)
-    ValidTo = Column(FormattedDateTime(), nullable=True)
+    ValidFrom = Column(
+        FormattedDateTime(),
+        nullable=False,
+        server_default=text("STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"),
+    )
+    ValidTo = Column(
+        FormattedDateTime(),
+        nullable=False,
+        server_default=text("STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"),
+        onupdate=text("STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"),
+    )
 
 
 class Asset(Base):
