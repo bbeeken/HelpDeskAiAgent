@@ -1,7 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator
-from typing import Annotated
-from typing import Optional
-from datetime import datetime
+from typing import Annotated, Optional, Any
+from datetime import datetime, date
 
 
 class TicketBase(BaseModel):
@@ -20,6 +19,8 @@ class TicketBase(BaseModel):
     Most_Recent_Service_Scheduled_ID: Optional[int] = None
     Watchers: Optional[str] = None
     MetaData: Optional[str] = None
+    EstimatedCompletionDate: Optional[date] = None
+    CustomCompletionDate: Optional[date] = None
     ValidFrom: Optional[datetime] = None
     ValidTo: Optional[datetime] = None
     Resolution: Optional[Annotated[str, Field()]] = None
@@ -28,6 +29,20 @@ class TicketBase(BaseModel):
     def _clean_assigned_email(cls, v):
         if isinstance(v, str) and not v.strip():
             return None
+        return v
+
+    @field_validator("EstimatedCompletionDate", "CustomCompletionDate", mode="before")
+    def _coerce_date(cls, v: Any):
+        if isinstance(v, datetime):
+            return v.date()
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return None
+            if "T" in v:
+                v = v.split("T", 1)[0]
+            if " " in v:
+                v = v.split(" ", 1)[0]
         return v
 
     model_config = ConfigDict(str_max_length=None)
@@ -86,6 +101,8 @@ class TicketUpdate(BaseModel):
     Most_Recent_Service_Scheduled_ID: Optional[int] = None
     Watchers: Optional[str] = None
     MetaData: Optional[str] = None
+    EstimatedCompletionDate: Optional[date] = None
+    CustomCompletionDate: Optional[date] = None
     ValidFrom: Optional[datetime] = None
     ValidTo: Optional[datetime] = None
     Resolution: Optional[str] = None
@@ -108,6 +125,20 @@ class TicketUpdate(BaseModel):
         },
     )
 
+    @field_validator("EstimatedCompletionDate", "CustomCompletionDate", mode="before")
+    def _coerce_date(cls, v: Any):
+        if isinstance(v, datetime):
+            return v.date()
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return None
+            if "T" in v:
+                v = v.split("T", 1)[0]
+            if " " in v:
+                v = v.split(" ", 1)[0]
+        return v
+
 
 class TicketIn(TicketBase):
     Subject: Optional[Annotated[str, Field(max_length=255)]] = None
@@ -126,12 +157,28 @@ class TicketIn(TicketBase):
     Most_Recent_Service_Scheduled_ID: Optional[int] = None
     Watchers: Optional[str] = None
     MetaData: Optional[str] = None
+    EstimatedCompletionDate: Optional[date] = None
+    CustomCompletionDate: Optional[date] = None
     ValidFrom: Optional[datetime] = None
     ValidTo: Optional[datetime] = None
     Resolution: Optional[Annotated[str, Field()]] = None
     Version: Optional[int] = None
 
     model_config = ConfigDict(extra="forbid", str_max_length=None)
+
+    @field_validator("EstimatedCompletionDate", "CustomCompletionDate", mode="before")
+    def _coerce_date(cls, v: Any):
+        if isinstance(v, datetime):
+            return v.date()
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return None
+            if "T" in v:
+                v = v.split("T", 1)[0]
+            if " " in v:
+                v = v.split(" ", 1)[0]
+        return v
 
 
 class TicketOut(TicketIn):
