@@ -11,6 +11,8 @@ from sqlalchemy import (
     text,
 )
 
+from sqlalchemy.types import TypeDecorator
+
 
 from src.shared.utils.date_format import FormattedDateTime
 from sqlalchemy.orm import DeclarativeBase
