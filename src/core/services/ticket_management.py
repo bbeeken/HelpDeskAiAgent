@@ -651,7 +651,6 @@ class TicketManager:
             Message=message,
             SenderUserCode=sender_code,
             SenderUserName=sender_name if sender_name is not None else sender_code,
-            DateTimeStamp=format_db_datetime(datetime.now(timezone.utc)),
         )
         db.add(msg)
         try:
