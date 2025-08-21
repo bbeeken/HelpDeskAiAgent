@@ -160,7 +160,10 @@ class TicketMessage(Base):
     SenderUserCode = Column(String)
     SenderUserName = Column(String)
 
-    DateTimeStamp = Column(FormattedDateTime())
+    DateTimeStamp = Column(
+        FormattedDateTime(),
+        server_default=text("(strftime('%Y-%m-%d %H:%M:%f', 'now'))"),
+    )
 
 
 class Site(Base):
