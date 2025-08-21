@@ -216,8 +216,8 @@ async def ticket_attachments(client: AsyncClient):
             Name="file1.txt",
             WebURl="http://example.com/file1.txt",
             UploadDateTime=now,
-            FileContent="content1",
-            Binary=False,
+            FileContent=b"content1",
+            Binary=None,
             ContentBytes=None,
         )
         att2 = TicketAttachment(
@@ -225,8 +225,8 @@ async def ticket_attachments(client: AsyncClient):
             Name="file2.txt",
             WebURl="http://example.com/file2.txt",
             UploadDateTime=now,
-            FileContent="content2",
-            Binary=True,
+            FileContent=b"content2",
+            Binary=b"binary2",
             ContentBytes=b"binary2",
         )
         db.add_all([att1, att2])
@@ -251,8 +251,11 @@ async def test_ticket_attachments_endpoint(
         assert item["Ticket_ID"] == tid
         assert item["Name"] == att.Name
         assert item["WebURl"] == att.WebURl
-        assert item["FileContent"] == att.FileContent
-        assert item["Binary"] == att.Binary
+        assert base64.b64decode(item["FileContent"]) == att.FileContent
+        if att.Binary:
+            assert base64.b64decode(item["Binary"]) == att.Binary
+        else:
+            assert item["Binary"] is None
         if att.ContentBytes:
             assert base64.b64decode(item["ContentBytes"]) == att.ContentBytes
         else:

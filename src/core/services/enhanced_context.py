@@ -259,8 +259,8 @@ class EnhancedContextManager:
                 "Name": att.Name,
                 "WebURl": att.WebURl,
                 "UploadDateTime": att.UploadDateTime,
-                "FileContent": att.FileContent,
-                "Binary": att.Binary,
+                "FileContent": base64.b64encode(att.FileContent).decode("utf-8") if att.FileContent else None,
+                "Binary": base64.b64encode(att.Binary).decode("utf-8") if att.Binary else None,
                 "ContentBytes": base64.b64encode(att.ContentBytes).decode("utf-8") if att.ContentBytes else None,
                 "file_size_estimate": len(att.Name) * 1024  # Rough estimate
             }

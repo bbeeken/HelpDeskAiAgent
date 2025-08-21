@@ -48,9 +48,14 @@ def upgrade() -> None:
         sa.Column('Ticket_ID', sa.Integer(), nullable=True),
         sa.Column('Name', sa.String(), nullable=True),
         sa.Column('WebURl', sa.String(), nullable=True),
-        sa.Column('UploadDateTime', sa.DateTime(), nullable=True),
-        sa.Column('FileContent', sa.Text(), nullable=False),
-        sa.Column('Binary', sa.Boolean(), nullable=False, server_default=sa.text('0')),
+        sa.Column(
+            'UploadDateTime',
+            sa.DateTime(),
+            nullable=False,
+            server_default=sa.text("STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"),
+        ),
+        sa.Column('FileContent', sa.LargeBinary(), nullable=False),
+        sa.Column('Binary', sa.LargeBinary(), nullable=True),
         sa.Column('ContentBytes', sa.LargeBinary(), nullable=True),
         sa.PrimaryKeyConstraint('ID'),
     )

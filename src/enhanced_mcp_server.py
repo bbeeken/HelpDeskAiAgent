@@ -869,8 +869,8 @@ async def _get_ticket_attachments(ticket_id: int) -> Dict[str, Any]:
                     "Name": a.Name,
                     "WebURL": a.WebURl,  # Note: keeping original field name
                     "UploadDateTime": a.UploadDateTime.isoformat() if a.UploadDateTime else None,
-                    "FileContent": a.FileContent,
-                    "Binary": a.Binary,
+                    "FileContent": base64.b64encode(a.FileContent).decode("utf-8") if a.FileContent else None,
+                    "Binary": base64.b64encode(a.Binary).decode("utf-8") if a.Binary else None,
                     "ContentBytes": base64.b64encode(a.ContentBytes).decode("utf-8") if a.ContentBytes else None,
                     "file_type": os.path.splitext(a.Name)[1].lstrip(".").lower() if a.Name else "unknown",
                     "file_name_without_extension": os.path.splitext(a.Name)[0] if a.Name else ""
