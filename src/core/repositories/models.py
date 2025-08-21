@@ -7,7 +7,6 @@ from sqlalchemy import (
     Boolean,
     LargeBinary,
     Computed,
-    func,
     text,
 )
 
@@ -25,8 +24,8 @@ class Base(DeclarativeBase):
     pass
 
 
-class YNBoolean(TypeDecorator):
-    """Store boolean values as single-character ``'Y'``/``'N'`` strings."""
+class BitBoolean(TypeDecorator):
+    """Store boolean values as ``'1'``/``'0'`` strings."""
 
     impl = String(1)
     cache_ok = True
@@ -34,12 +33,12 @@ class YNBoolean(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        return "Y" if value else "N"
+        return "1" if value else "0"
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        return value == "Y"
+        return value == "1"
 
 
 class Ticket(Base):
@@ -91,8 +90,8 @@ class Ticket(Base):
     )
 
     RV = Column(String, nullable=True)
-    HasServiceRequest = Column(YNBoolean(), nullable=True)
-    Private = Column(YNBoolean(), nullable=True)
+    HasServiceRequest = Column(BitBoolean(), nullable=True)
+    Private = Column(BitBoolean(), nullable=True)
     Collab_Emails = Column(String, nullable=True)
     OrderFormHTML = Column(Text, nullable=True)
     LastModifiedAsInt = Column(

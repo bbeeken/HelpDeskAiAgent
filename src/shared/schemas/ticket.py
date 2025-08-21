@@ -35,12 +35,18 @@ class TicketBase(BaseModel):
 
 
     @field_validator("HasServiceRequest", "Private", mode="before")
-    def _parse_yn_bool(cls, v):
+    def _parse_bit_bool(cls, v):
         if isinstance(v, str):
+            v = v.strip()
+            if v == "1":
+                return True
+            if v == "0":
+                return False
             if v.upper() == "Y":
                 return True
             if v.upper() == "N":
                 return False
+        return v
 
     @field_validator("EstimatedCompletionDate", "CustomCompletionDate", mode="before")
     def _coerce_date(cls, v: Any):
@@ -128,8 +134,13 @@ class TicketUpdate(BaseModel):
         return values
 
     @field_validator("HasServiceRequest", "Private", mode="before")
-    def _parse_yn_bool(cls, v):
+    def _parse_bit_bool(cls, v):
         if isinstance(v, str):
+            v = v.strip()
+            if v == "1":
+                return True
+            if v == "0":
+                return False
             if v.upper() == "Y":
                 return True
             if v.upper() == "N":
