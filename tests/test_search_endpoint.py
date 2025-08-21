@@ -18,7 +18,7 @@ async def test_search_returns_long_ticket_body():
             Ticket_Contact_Name="T",
             Ticket_Contact_Email="t@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
         )
         invalid = Ticket(
             Subject="Query",
@@ -26,7 +26,7 @@ async def test_search_returns_long_ticket_body():
             Ticket_Contact_Name="T",
             Ticket_Contact_Email="t@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(db, valid)
         await TicketManager().create_ticket(db, invalid)
@@ -55,7 +55,7 @@ async def test_search_filters_and_sort():
             Ticket_Contact_Name="T",
             Ticket_Contact_Email="t@example.com",
             Created_Date=datetime(2023, 1, 1, tzinfo=UTC),
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
             Site_ID=1,
         )
         second = Ticket(
@@ -64,7 +64,7 @@ async def test_search_filters_and_sort():
             Ticket_Contact_Name="T",
             Ticket_Contact_Email="t@example.com",
             Created_Date=datetime(2023, 1, 2, tzinfo=UTC),
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
             Site_ID=2,
         )
         await TicketManager().create_ticket(db, first)
@@ -77,7 +77,7 @@ async def test_search_filters_and_sort():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get(
             "/tickets/search",
-            params={"q": "Query", "Site_ID": 1, "Ticket_Status_ID": "1", "sort": "oldest"},
+            params={"q": "Query", "Site_ID": 1, "Ticket_Status_ID": 1, "sort": "oldest"},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -97,7 +97,7 @@ async def test_search_accepts_json():
             Ticket_Contact_Name="T",
             Ticket_Contact_Email="t@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(db, t)
         await db.commit()
@@ -118,13 +118,13 @@ async def test_search_created_date_filters_endpoint():
             Subject="DateFilter",
             Ticket_Body="old",
             Created_Date=datetime(2023, 1, 1, tzinfo=UTC),
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
         )
         new = Ticket(
             Subject="DateFilter",
             Ticket_Body="new",
             Created_Date=datetime(2023, 1, 10, tzinfo=UTC),
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(db, old)
         await TicketManager().create_ticket(db, new)

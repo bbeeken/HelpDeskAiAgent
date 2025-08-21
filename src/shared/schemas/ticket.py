@@ -6,12 +6,12 @@ from datetime import datetime, date
 class TicketBase(BaseModel):
     Subject: Annotated[str, Field(max_length=255)]
     Ticket_Body: Annotated[str, Field()]
-    Ticket_Status_ID: Optional[str] = "1"
+    Ticket_Status_ID: Optional[int] = 1
     Ticket_Contact_Name: Annotated[str, Field(max_length=255)]
     Ticket_Contact_Email: EmailStr
     Asset_ID: Optional[str] = None
     Site_ID: Optional[int] = None
-    Ticket_Category_ID: Optional[str] = None
+    Ticket_Category_ID: Optional[int] = None
     Assigned_Name: Optional[Annotated[str, Field(max_length=255)]] = None
     Assigned_Email: Optional[EmailStr] = None
     Severity_ID: Optional[int] = None
@@ -83,7 +83,7 @@ class TicketCreate(TicketBase):
                     "Ticket_Contact_Email": "jane@example.com",
                     "Asset_ID": "5",
                     "Site_ID": 2,
-                    "Ticket_Category_ID": "1",
+                    "Ticket_Category_ID": 1,
                 },
                 {
                     "Subject": "Website down",
@@ -92,7 +92,7 @@ class TicketCreate(TicketBase):
                     "Ticket_Contact_Email": "alice@example.com",
                     "Assigned_Name": "Bob Ops",
                     "Assigned_Email": "bob.ops@example.com",
-                    "Ticket_Status_ID": "1",
+                    "Ticket_Status_ID": 1,
                     "Site_ID": 3,
                     "Severity_ID": 3,
                 },
@@ -106,12 +106,12 @@ class TicketUpdate(BaseModel):
 
     Subject: Optional[str] = None
     Ticket_Body: Optional[str] = None
-    Ticket_Status_ID: Optional[str] = None
+    Ticket_Status_ID: Optional[int] = None
     Ticket_Contact_Name: Optional[str] = None
     Ticket_Contact_Email: Optional[EmailStr] = None
     Asset_ID: Optional[str] = None
     Site_ID: Optional[int] = None
-    Ticket_Category_ID: Optional[str] = None
+    Ticket_Category_ID: Optional[int] = None
     Assigned_Name: Optional[str] = None
     Assigned_Email: Optional[EmailStr] = None
     Severity_ID: Optional[int] = None
@@ -153,8 +153,8 @@ class TicketUpdate(BaseModel):
         json_schema_extra={
             "examples": [
                 {"Subject": "Updated"},
-                {"Assigned_Name": "Agent", "Ticket_Status_ID": "2"},
-                {"Ticket_Status_ID": "3"},
+                {"Assigned_Name": "Agent", "Ticket_Status_ID": 2},
+                {"Ticket_Status_ID": 3},
             ]
         },
     )
@@ -177,12 +177,12 @@ class TicketUpdate(BaseModel):
 class TicketIn(TicketBase):
     Subject: Optional[Annotated[str, Field(max_length=255)]] = None
     Ticket_Body: Optional[Annotated[str, Field()]] = None
-    Ticket_Status_ID: Optional[str] = None
+    Ticket_Status_ID: Optional[int] = None
     Ticket_Contact_Name: Optional[Annotated[str, Field(max_length=255)]] = None
     Ticket_Contact_Email: Optional[EmailStr] = None
     Asset_ID: Optional[str] = None
     Site_ID: Optional[int] = None
-    Ticket_Category_ID: Optional[str] = None
+    Ticket_Category_ID: Optional[int] = None
     Created_Date: Optional[datetime] = None
     Assigned_Name: Optional[Annotated[str, Field(max_length=255)]] = None
     Assigned_Email: Optional[EmailStr] = None
@@ -233,7 +233,7 @@ class TicketOut(TicketIn):
                 "Ticket_ID": 1,
                 "Subject": "Printer not working",
                 "Ticket_Body": "The office printer is jammed",
-                "Ticket_Status_ID": "1",
+                "Ticket_Status_ID": 1,
                 "Ticket_Contact_Name": "Jane Doe",
                 "Ticket_Contact_Email": "jane@example.com",
                 "Created_Date": "2024-01-01T12:00:00Z",

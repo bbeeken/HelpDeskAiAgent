@@ -46,12 +46,12 @@ class Ticket(Base):
     Ticket_ID = Column(Integer, primary_key=True, index=True)
     Subject = Column(String)
     Ticket_Body = Column(Text)
-    Ticket_Status_ID = Column(String(50))
+    Ticket_Status_ID = Column(Integer)
     Ticket_Contact_Name = Column(String)
     Ticket_Contact_Email = Column(String)
     Asset_ID = Column(String(50))
     Site_ID = Column(Integer)
-    Ticket_Category_ID = Column(String(50))
+    Ticket_Category_ID = Column(Integer)
     Version = Column(Integer, default=1, nullable=False)
 
     Created_Date = Column(
@@ -181,13 +181,13 @@ class Site(Base):
 
 class TicketCategory(Base):
     __tablename__ = "Ticket_Categories"
-    ID = Column(String(50), primary_key=True, index=True)
+    ID = Column(Integer, primary_key=True, index=True)
     Label = Column(String)
 
 
 class TicketStatus(Base):
     __tablename__ = "Ticket_Status"
-    ID = Column(String(50), primary_key=True, index=True)
+    ID = Column(Integer, primary_key=True, index=True)
     Label = Column(String)
 
 
@@ -220,7 +220,7 @@ class VTicketMasterExpanded(ViewBase):
     Ticket_ID = Column(Integer, primary_key=True, index=True)
     Subject = Column(String)
     Ticket_Body = Column(Text)
-    Ticket_Status_ID = Column(String(50))
+    Ticket_Status_ID = Column(Integer)
     Ticket_Status_Label = Column(String)
     Ticket_Contact_Name = Column(String)
     Ticket_Contact_Email = Column(String)
@@ -228,7 +228,7 @@ class VTicketMasterExpanded(ViewBase):
     Asset_Label = Column(String)
     Site_ID = Column(Integer)
     Site_Label = Column(String)
-    Ticket_Category_ID = Column(String(50))
+    Ticket_Category_ID = Column(Integer)
     Ticket_Category_Label = Column(String)
     Created_Date = Column(FormattedDateTime())
     Version = Column(Integer)

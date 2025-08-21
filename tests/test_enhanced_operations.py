@@ -15,7 +15,7 @@ async def test_validate_ticket_update_success():
             Ticket_Contact_Name="n",
             Ticket_Contact_Email="e@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(db, ticket)
         await db.commit()
@@ -36,7 +36,7 @@ async def test_validate_ticket_update_invalid_field():
             Ticket_Contact_Name="n",
             Ticket_Contact_Email="e@example.com",
             Created_Date=datetime.now(UTC),
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
         )
         await TicketManager().create_ticket(db, ticket)
         await db.commit()

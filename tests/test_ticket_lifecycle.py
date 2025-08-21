@@ -24,7 +24,7 @@ def test_ticket_full_lifecycle():
 
     update_resp = client.put(
         f"/ticket/{tid}",
-        json={"Assigned_Name": "Agent", "Ticket_Status_ID": "2"},
+        json={"Assigned_Name": "Agent", "Ticket_Status_ID": 2},
     )
     assert update_resp.status_code == 200
     assert update_resp.json()["Assigned_Name"] == "Agent"
@@ -38,9 +38,9 @@ def test_ticket_full_lifecycle():
     assert msgs.status_code == 200
     assert msgs.json()[0]["Message"] == "hello"
 
-    close_resp = client.put(f"/ticket/{tid}", json={"Ticket_Status_ID": "3"})
+    close_resp = client.put(f"/ticket/{tid}", json={"Ticket_Status_ID": 3})
     assert close_resp.status_code == 200
-    assert close_resp.json()["Ticket_Status_ID"] == "3"
+    assert close_resp.json()["Ticket_Status_ID"] == 3
 
 
 def test_update_ticket_not_found():
