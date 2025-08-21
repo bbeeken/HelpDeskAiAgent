@@ -13,7 +13,7 @@ def test_create_ticket_logs_dataerror_field(monkeypatch, caplog):
     async def fail_create(db, obj):
         err = (
             '(psycopg2.errors.InvalidDatetimeFormat) invalid input syntax for type '
-            'timestamp: "bad" [parameters: {"ValidFrom": "bad"}]'
+            'timestamp: "bad" [parameters: {"Created_Date": "bad"}]'
         )
         return OperationResult(success=False, error=err)
 
@@ -29,9 +29,9 @@ def test_create_ticket_logs_dataerror_field(monkeypatch, caplog):
     with caplog.at_level(logging.ERROR):
         resp = client.post("/ticket", json=payload)
 
-    assert resp.status_code == 500
+    assert resp.status_code == 503
     detail = resp.json()["detail"]
-    assert "ValidFrom" in detail
+    assert "Created_Date" in detail
     assert "bad" in detail
-    assert any("ValidFrom" in r.message and "bad" in r.message for r in caplog.records)
+    assert any("Created_Date" in r.message and "bad" in r.message for r in caplog.records)
 

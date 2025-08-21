@@ -23,8 +23,6 @@ class TicketBase(BaseModel):
     Private: Optional[bool] = None
     EstimatedCompletionDate: Optional[date] = None
     CustomCompletionDate: Optional[date] = None
-    ValidFrom: Optional[datetime] = None
-    ValidTo: Optional[datetime] = None
     Resolution: Optional[Annotated[str, Field()]] = None
 
     @field_validator("Assigned_Email", mode="before")
@@ -123,8 +121,6 @@ class TicketUpdate(BaseModel):
     Private: Optional[bool] = None
     EstimatedCompletionDate: Optional[date] = None
     CustomCompletionDate: Optional[date] = None
-    ValidFrom: Optional[datetime] = None
-    ValidTo: Optional[datetime] = None
     Resolution: Optional[str] = None
 
     @model_validator(mode="after")
@@ -193,8 +189,6 @@ class TicketIn(TicketBase):
     MetaData: Optional[str] = None
     EstimatedCompletionDate: Optional[date] = None
     CustomCompletionDate: Optional[date] = None
-    ValidFrom: Optional[datetime] = None
-    ValidTo: Optional[datetime] = None
     Resolution: Optional[Annotated[str, Field()]] = None
     Version: Optional[int] = None
 
@@ -255,8 +249,6 @@ class TicketExpandedOut(TicketOut):
     Most_Recent_Service_Scheduled_ID: Optional[str] = None
     Watchers: Optional[str] = None
     MetaData: Optional[str] = None
-    ValidFrom: Optional[datetime] = None
-    ValidTo: Optional[datetime] = None
     Site_ID: Optional[int] = None
     Closed_Date: Optional[datetime] = None
     LastModified: Optional[datetime] = None

@@ -89,7 +89,6 @@ class Ticket(Base):
         nullable=True,
     )
 
-    RV = Column(String, nullable=True)
     HasServiceRequest = Column(BitBoolean(), nullable=True)
     Private = Column(BitBoolean(), nullable=True)
     Collab_Emails = Column(String, nullable=True)
@@ -107,17 +106,6 @@ class Ticket(Base):
     MetaData = Column(Text, nullable=True)
     LastMetaDataUpdateDate = Column(FormattedDateTime(), nullable=True)
     ClosedBy = Column(String, nullable=True)
-    ValidFrom = Column(
-        FormattedDateTime(),
-        nullable=False,
-        server_default=text("STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"),
-    )
-    ValidTo = Column(
-        FormattedDateTime(),
-        nullable=False,
-        server_default=text("STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"),
-        onupdate=text("STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"),
-    )
 
 
 class Asset(Base):
