@@ -15,7 +15,7 @@ from sqlalchemy import func, select, or_
 from src.core.repositories.models import Ticket, TicketStatus, Site
 from src.core.services.ticket_management import _OPEN_STATE_IDS
 
-_CLOSED_STATE_IDS = ["3"]
+_CLOSED_STATE_IDS = [3]
 
 from src.shared.schemas.analytics import (
     StatusCount,
@@ -143,7 +143,7 @@ async def sla_breaches(
     db: AsyncSession,
     sla_days: int = 2,
     filters: Optional[Dict[str, Any]] = None,
-    status_ids: Optional[Union[List[str], str]] = None,
+    status_ids: Optional[Union[List[int], int]] = None,
 ) -> int:
     """Count tickets older than `sla_days` with optional filtering."""
     logger.info(
@@ -157,7 +157,7 @@ async def sla_breaches(
     query = select(func.count(Ticket.Ticket_ID)).filter(Ticket.Created_Date < cutoff)
 
     if status_ids is not None:
-        if isinstance(status_ids, str):
+        if isinstance(status_ids, int):
             status_ids = [status_ids]
         query = query.filter(Ticket.Ticket_Status_ID.in_(status_ids))
     else:
@@ -213,7 +213,7 @@ async def tickets_waiting_on_user(db: AsyncSession) -> List[WaitingOnUserCount]:
             Ticket.Ticket_Contact_Email,
             func.count(Ticket.Ticket_ID),
         )
-        .filter(Ticket.Ticket_Status_ID == "4")
+        .filter(Ticket.Ticket_Status_ID == 4)
         .group_by(Ticket.Ticket_Contact_Email)
     )
     return [

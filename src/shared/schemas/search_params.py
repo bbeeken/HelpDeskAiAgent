@@ -12,7 +12,7 @@ class TicketSearchParams(BaseModel):
     Ticket_ID: Optional[int] = None
     Subject: Optional[str] = None
     Ticket_Body: Optional[str] = None
-    Ticket_Status_ID: Optional[str] = None
+    Ticket_Status_ID: Optional[int] = None
     Ticket_Status_Label: Optional[str] = None
     Ticket_Contact_Name: Optional[str] = None
     Ticket_Contact_Email: Optional[str] = None
@@ -20,7 +20,7 @@ class TicketSearchParams(BaseModel):
     Asset_Label: Optional[str] = None
     Site_ID: Optional[int] = None
     Site_Label: Optional[str] = None
-    Ticket_Category_ID: Optional[str] = None
+    Ticket_Category_ID: Optional[int] = None
     Ticket_Category_Label: Optional[str] = None
     Created_Date: Optional[datetime] = None
     Assigned_Name: Optional[str] = None

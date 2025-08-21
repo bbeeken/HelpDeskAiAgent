@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 # Closed states currently map to the single "Closed" status
 # Defined before _STATUS_MAP so the mapping can reference it
-_CLOSED_STATE_IDS = ["3"]
+_CLOSED_STATE_IDS = [3]
 
 _STATUS_MAP = {
 
@@ -47,16 +47,16 @@ _STATUS_MAP = {
     "closed": _CLOSED_STATE_IDS,
     "resolved": _CLOSED_STATE_IDS,
     # Tickets actively being worked may fall under multiple progress states
-    "in_progress": ["2", "5"],
-    "progress": ["2", "5"],
+    "in_progress": [2, 5],
+    "progress": [2, 5],
     # Waiting on user response
-    "waiting": "4",
+    "waiting": 4,
     # Pending/queued tickets
-    "pending": "6",
+    "pending": 6,
 
 }
 
-_OPEN_STATE_IDS = ["1", "2", "4", "5", "6", "8"]
+_OPEN_STATE_IDS = [1, 2, 4, 5, 6, 8]
 
 _PRIORITY_MAP = {
     "critical": "Critical",
@@ -127,10 +127,10 @@ def apply_semantic_filters(filters: Dict[str, Any]) -> Dict[str, Any]:
                             else:
                                 ids.append(mapped)
                     else:
-                        ids.append(str(item))
+                        ids.append(int(item))
                 translated["Ticket_Status_ID"] = ids
             else:
-                translated["Ticket_Status_ID"] = str(value)
+                translated["Ticket_Status_ID"] = int(value)
 
         elif k in {"priority", "priority_level"}:
             if isinstance(value, list):
@@ -562,7 +562,7 @@ class TicketManager:
                 )
             elif s == "closed":
 
-                query = query.filter(VTicketMasterExpanded.Ticket_Status_ID.in_(["3", "7"]))
+                query = query.filter(VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7]))
 
             elif s in {"in_progress", "progress"}:
                 query = query.filter(
@@ -607,7 +607,7 @@ class TicketManager:
                 )
             elif s == "closed":
 
-                query = query.filter(VTicketMasterExpanded.Ticket_Status_ID.in_(["3", "7"]))
+                query = query.filter(VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7]))
             elif s in {"in_progress", "progress"}:
                 query = query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_(
@@ -779,7 +779,7 @@ class TicketTools:
             Ticket_Body=description,
             Ticket_Contact_Name=contact.get("name"),
             Ticket_Contact_Email=contact.get("email"),
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
         )
         db_ticket = await TicketManager().create_ticket(self.db, ticket)
         return db_ticket

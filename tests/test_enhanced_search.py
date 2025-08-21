@@ -16,7 +16,7 @@ async def test_enhanced_search_direct_parameters():
             Ticket_Body="HP printer shows error code 42",
             Ticket_Contact_Name="User1",
             Ticket_Contact_Email="user1@example.com",
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
             Severity_ID=2,
             Site_ID=1,
             Created_Date=datetime.now(UTC),
@@ -26,7 +26,7 @@ async def test_enhanced_search_direct_parameters():
             Ticket_Body="Cannot connect to email server",
             Ticket_Contact_Name="User2",
             Ticket_Contact_Email="user2@example.com",
-            Ticket_Status_ID="2",
+            Ticket_Status_ID=2,
             Severity_ID=1,
             Site_ID=2,
             Assigned_Email="tech@example.com",
@@ -75,7 +75,7 @@ async def test_enhanced_search_ai_features():
             Ticket_Body="The main email server is not responding to requests",
             Ticket_Contact_Name="Admin",
             Ticket_Contact_Email="admin@example.com",
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
             Created_Date=datetime.now(UTC),
         )
         await TicketManager().create_ticket(db, t)
@@ -112,7 +112,7 @@ async def test_backward_compatibility_aliases():
             Ticket_Body="Test body content",
             Ticket_Contact_Name="TestUser",
             Ticket_Contact_Email="test@example.com",
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
             Created_Date=datetime.now(UTC),
         )
         await TicketManager().create_ticket(db, t)
@@ -137,7 +137,7 @@ async def test_enhanced_search_date_filtering():
             Ticket_Body="Old problem",
             Ticket_Contact_Name="User",
             Ticket_Contact_Email="user@example.com",
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
             Created_Date=datetime(2024, 1, 1, tzinfo=UTC),
         )
         new_ticket = Ticket(
@@ -145,7 +145,7 @@ async def test_enhanced_search_date_filtering():
             Ticket_Body="Recent problem",
             Ticket_Contact_Name="User",
             Ticket_Contact_Email="user@example.com",
-            Ticket_Status_ID="1",
+            Ticket_Status_ID=1,
             Created_Date=datetime.now(UTC),
         )
         await TicketManager().create_ticket(db, old_ticket)
