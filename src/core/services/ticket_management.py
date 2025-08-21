@@ -539,7 +539,7 @@ class TicketManager:
             Message=message,
             SenderUserCode="GilAI@heinzcorps.com",
             SenderUserName="Gil AI",
-            DateTimeStamp=datetime.now(timezone.utc),
+           
         )
         db.add(msg)
         try:
