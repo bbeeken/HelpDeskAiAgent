@@ -55,7 +55,11 @@ class Ticket(Base):
     Ticket_Category_ID = Column(String(50))
     Version = Column(Integer, default=1, nullable=False)
 
-    Created_Date = Column(FormattedDateTime())
+    Created_Date = Column(
+        FormattedDateTime(),
+        nullable=False,
+        server_default=text("STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"),
+    )
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
     Severity_ID = Column(Integer)
@@ -63,7 +67,12 @@ class Ticket(Base):
 
 
     Closed_Date = Column(FormattedDateTime())
-    LastModified = Column(FormattedDateTime())
+    LastModified = Column(
+        FormattedDateTime(),
+        nullable=False,
+        server_default=text("STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"),
+        onupdate=text("STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"),
+    )
     LastModfiedBy = Column(String)
     Resolution = Column(Text)
     Most_Recent_Service_Scheduled_ID = Column(String(50), nullable=True)
