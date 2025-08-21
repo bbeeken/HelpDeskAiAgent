@@ -54,7 +54,6 @@ from src.core.services.ticket_management import _OPEN_STATE_IDS
 from src.core.services.enhanced_context import EnhancedContextManager
 from src.core.services.advanced_query import AdvancedQueryManager
 from src.shared.schemas.agent_data import AdvancedQuery
-from src.shared.utils.date_format import format_db_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -573,10 +572,6 @@ async def _create_ticket(**payload: Any) -> Dict[str, Any]:
 
         data_in = validated.model_dump()
         async with db.SessionLocal() as db_session:
-            now = datetime.now(timezone.utc)
-            formatted_now = format_db_datetime(now)
-            data_in["Created_Date"] = data_in.get("Created_Date") or formatted_now
-            data_in["LastModified"] = data_in.get("LastModified") or formatted_now
             data_in["LastModfiedBy"] = data_in.get("LastModfiedBy") or "Gil AI"
 
             result = await TicketManager().create_ticket(db_session, data_in)

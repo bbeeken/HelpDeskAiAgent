@@ -780,7 +780,6 @@ class TicketTools:
             Ticket_Body=description,
             Ticket_Contact_Name=contact.get("name"),
             Ticket_Contact_Email=contact.get("email"),
-            Created_Date=format_db_datetime(datetime.now(timezone.utc)),
             Ticket_Status_ID="1",
         )
         db_ticket = await TicketManager().create_ticket(self.db, ticket)

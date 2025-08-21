@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 import logging
 import re
-from datetime import datetime, timezone
 from typing import Any, List, Optional, Dict
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
@@ -12,7 +11,6 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.repositories.models import VTicketMasterExpanded
-from src.shared.utils.date_format import format_db_datetime
 from src.shared.schemas import (
     TicketCreate,
     TicketOut,
@@ -56,11 +54,6 @@ class SearchBody(BaseModel):
 
 async def create_ticket(db: AsyncSession, obj: Dict) -> Any:
     """Wrapper around TicketManager.create_ticket for easier testing."""
-    created = obj.get("Created_Date")
-    if created is None:
-        obj["Created_Date"] = format_db_datetime(datetime.now(timezone.utc))
-    elif isinstance(created, datetime):
-        obj["Created_Date"] = format_db_datetime(created)
     return await TicketManager().create_ticket(db, obj)
 
 
@@ -257,7 +250,6 @@ async def create_ticket_endpoint(
     ticket: TicketCreate, db: AsyncSession = Depends(get_db_with_commit)
 ) -> TicketOut:
     payload = ticket.model_dump()
-    payload["Created_Date"] = format_db_datetime(datetime.now(timezone.utc))
     result = await create_ticket(db, payload)
     if not result.success:
         field_val = _extract_data_error_field(result.error or "")
@@ -288,7 +280,6 @@ async def create_ticket_json(
     db: AsyncSession = Depends(get_db_with_commit),
 ) -> TicketExpandedOut:
     data = payload.model_dump()
-    data["Created_Date"] = format_db_datetime(datetime.now(timezone.utc))
     result = await create_ticket(db, data)
     if not result.success:
         field_val = _extract_data_error_field(result.error or "")
