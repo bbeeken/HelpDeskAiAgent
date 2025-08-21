@@ -170,7 +170,9 @@ class Site(Base):
     ID = Column(Integer, primary_key=True, index=True)
     Label = Column(String)
     City = Column(String)
-    State = Column(String)
+    # The underlying column name in the database is lowercase "state".
+    # Explicitly specify it to ensure proper mapping across engines.
+    State = Column("state", String)
 
 
 class TicketCategory(Base):

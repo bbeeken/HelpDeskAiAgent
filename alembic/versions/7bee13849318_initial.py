@@ -37,7 +37,8 @@ def upgrade() -> None:
         sa.Column('ID', sa.Integer(), nullable=False),
         sa.Column('Label', sa.String(), nullable=True),
         sa.Column('City', sa.String(), nullable=True),
-        sa.Column('State', sa.String(), nullable=True),
+        # Underlying column name uses lowercase to align with ORM mapping.
+        sa.Column('state', sa.String(), nullable=True),
         sa.PrimaryKeyConstraint('ID'),
     )
     op.create_index(op.f('ix_Sites_ID'), 'Sites', ['ID'], unique=False)
