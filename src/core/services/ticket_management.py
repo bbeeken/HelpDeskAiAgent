@@ -208,15 +208,7 @@ class TicketManager:
         self, db: AsyncSession, ticket_obj: Ticket | Dict[str, Any]
     ) -> OperationResult[Ticket]:
         if isinstance(ticket_obj, dict):
-            ticket_obj.pop("ValidFrom", None)
-            ticket_obj.pop("ValidTo", None)
             ticket_obj = Ticket(**ticket_obj)
-        else:
-            for field in ("ValidFrom", "ValidTo"):
-                try:
-                    delattr(ticket_obj, field)
-                except AttributeError:
-                    pass
         # Ensure datetime fields are formatted for DB storage before flushing
         datetime_fields = [
             "Created_Date",
@@ -266,8 +258,6 @@ class TicketManager:
             "LastMetaDataUpdateDate",
         ]
         for key, value in updates.items():
-            if key in {"ValidFrom", "ValidTo"}:
-                continue
             if hasattr(ticket, key):
                 if key in datetime_fields and value is not None:
                     dt = parse_search_datetime(value)
