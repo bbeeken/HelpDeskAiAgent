@@ -43,8 +43,8 @@ class TicketAttachmentOut(BaseModel):
     Name: str
     WebURl: str
     UploadDateTime: datetime
-    FileContent: str
-    Binary: bool
+    FileContent: bytes
+    Binary: bytes | None = None
     ContentBytes: bytes | None = None
 
     model_config = ConfigDict(from_attributes=True)

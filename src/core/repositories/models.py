@@ -146,9 +146,13 @@ class TicketAttachment(Base):
     Ticket_ID = Column(Integer)
     Name = Column(String)
     WebURl = Column(String)
-    UploadDateTime = Column(FormattedDateTime())
-    FileContent = Column(Text, nullable=False)
-    Binary = Column(Boolean, default=False, nullable=False)
+    UploadDateTime = Column(
+        FormattedDateTime(),
+        nullable=False,
+        server_default=text("STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"),
+    )
+    FileContent = Column(LargeBinary, nullable=False)
+    Binary = Column(LargeBinary, nullable=True)
     ContentBytes = Column(LargeBinary, nullable=True)
 
 

@@ -120,8 +120,8 @@ async def test_get_ticket_attachments_success(client: AsyncClient):
             Name="file.txt",
             WebURl="http://example.com/file.txt",
             UploadDateTime=now,
-            FileContent="content",
-            Binary=False,
+            FileContent=b"content",
+            Binary=None,
             ContentBytes=None,
         )
         db.add(att)
@@ -136,8 +136,8 @@ async def test_get_ticket_attachments_success(client: AsyncClient):
     att = data["data"][0]
     assert att["Name"] == "file.txt"
     assert att["WebURL"] == "http://example.com/file.txt"
-    assert att["FileContent"] == "content"
-    assert att["Binary"] is False
+    assert base64.b64decode(att["FileContent"]) == b"content"
+    assert att["Binary"] is None
     assert att["ContentBytes"] is None
 
 
@@ -164,8 +164,8 @@ async def test_ticket_attachment_stores_millisecond_precision(
             Name="precise.txt",
             WebURl="http://example.com/precise.txt",
             UploadDateTime=aware,
-            FileContent="precise",
-            Binary=True,
+            FileContent=b"precise",
+            Binary=b"flag",
             ContentBytes=b"precise-bytes",
         )
         db.add(att)
@@ -191,8 +191,8 @@ async def test_ticket_attachment_stores_millisecond_precision(
     parsed = datetime.fromisoformat(uploaded)
     assert parsed.microsecond % 1000 == 0
     returned = data["data"][0]
-    assert returned["FileContent"] == "precise"
-    assert returned["Binary"] is True
+    assert base64.b64decode(returned["FileContent"]) == b"precise"
+    assert base64.b64decode(returned["Binary"]) == b"flag"
     assert base64.b64decode(returned["ContentBytes"]) == b"precise-bytes"
 
 
