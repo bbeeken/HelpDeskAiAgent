@@ -29,10 +29,15 @@ async def test_create_ticket_stores_formatted_date(client: AsyncClient):
 
     async with SessionLocal() as session:
         result = await session.execute(
-            text("SELECT Created_Date FROM Tickets_Master WHERE Ticket_ID=:id"),
+            text(
+                "SELECT Created_Date, LastModified, Closed_Date FROM Tickets_Master WHERE Ticket_ID=:id"
+            ),
             {"id": tid},
         )
-        created_raw = result.scalar_one()
+        created_raw, lastmod_raw, closed_raw = result.one()
 
-    # Should be parseable without raising
+    # Created_Date and LastModified should be populated and parseable
     parse_db_datetime(created_raw)
+    parse_db_datetime(lastmod_raw)
+    # Closed_Date should default to NULL
+    assert closed_raw is None

@@ -208,12 +208,18 @@ class TicketManager:
         self, db: AsyncSession, ticket_obj: Ticket | Dict[str, Any]
     ) -> OperationResult[Ticket]:
         if isinstance(ticket_obj, dict):
+            # Remove system-managed timestamps so DB defaults are used
+            for field in ["Created_Date", "Closed_Date", "LastModified"]:
+                ticket_obj.pop(field, None)
             ticket_obj = Ticket(**ticket_obj)
-        # Ensure datetime fields are formatted for DB storage before flushing
+        else:
+            # Ensure any provided system-managed timestamps are ignored
+            for field in ["Created_Date", "Closed_Date", "LastModified"]:
+                if field in ticket_obj.__dict__:
+                    del ticket_obj.__dict__[field]
+
+        # Format only user-controlled schedule fields for DB storage
         datetime_fields = [
-            "Created_Date",
-            "Closed_Date",
-            "LastModified",
             "EstimatedCompletionDate",
             "CustomCompletionDate",
             "LastMetaDataUpdateDate",
