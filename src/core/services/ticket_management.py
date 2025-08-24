@@ -244,15 +244,18 @@ class TicketManager:
     ) -> Ticket | None:
         if isinstance(updates, BaseModel):
             updates = updates.model_dump(exclude_unset=True)
+        # Filter out fields that must be managed internally
+        updates = {
+            k: v
+            for k, v in updates.items()
+            if k not in {"Created_Date", "Closed_Date", "LastModified"}
+        }
         ticket = await db.get(Ticket, ticket_id)
         if not ticket:
             return None
 
         changed = False
         datetime_fields = [
-            "Created_Date",
-            "Closed_Date",
-            "LastModified",
             "EstimatedCompletionDate",
             "CustomCompletionDate",
             "LastMetaDataUpdateDate",
@@ -267,6 +270,20 @@ class TicketManager:
                 if current != value:
                     setattr(ticket, key, value)
                     changed = True
+
+        ts = updates.get("Ticket_Status_ID")
+        if ts is not None:
+            try:
+                ts_int = int(ts)
+            except (TypeError, ValueError):
+                ts_int = ts
+            if ts_int == 3:
+                if ticket.Closed_Date is None:
+                    ticket.Closed_Date = format_db_datetime(datetime.now(timezone.utc))
+                    changed = True
+            elif ticket.Closed_Date is not None:
+                ticket.Closed_Date = None
+                changed = True
 
         if not changed:
             logger.info("No ticket updates for %s", ticket_id)
