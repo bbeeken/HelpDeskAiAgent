@@ -37,3 +37,12 @@ async def test_post_message_with_sender_name():
     async with SessionLocal() as db:
         msg = await manager.post_message(db, 1, "hi", "u", sender_name="Alice")
         assert msg.SenderUserName == "Alice"
+
+
+@pytest.mark.asyncio
+async def test_post_message_autofills_timestamp():
+    """DateTimeStamp should be set by the database when omitted."""
+    manager = TicketManager()
+    async with SessionLocal() as db:
+        msg = await manager.post_message(db, 1, "ts", "u")
+        assert msg.DateTimeStamp is not None

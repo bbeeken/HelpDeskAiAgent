@@ -8,12 +8,14 @@ import asyncio
 import pytest
 import pytest_asyncio
 from src.core.repositories.sql import CREATE_VTICKET_MASTER_EXPANDED_VIEW_SQL
-from sqlalchemy import text
+from sqlalchemy import text, event
 from src.core.repositories.models import Base, PriorityLevel
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 import src.infrastructure.database as mssql
 import src.core.services.analytics_reporting as analytics_reporting
+from datetime import datetime, timezone
+from src.shared.utils.date_format import format_db_datetime
 
 
 # Pydantic 1.x fails on Python 3.12 unless this shim is disabled
@@ -28,6 +30,16 @@ mssql.engine = create_async_engine(
     poolclass=StaticPool,
 )
 mssql.SessionLocal = async_sessionmaker(bind=mssql.engine, expire_on_commit=False)
+
+
+@event.listens_for(mssql.engine.sync_engine, "connect")
+def _sqlite_getdate(dbapi_connection, connection_record):
+    """Provide SQL Server's ``GETDATE()`` for SQLite during tests."""
+
+    def _getdate():
+        return format_db_datetime(datetime.utcnow().replace(tzinfo=timezone.utc))
+
+    dbapi_connection.create_function("GETDATE", 0, _getdate)
 
 # Ensure the FastAPI app and dependencies use the test engine/session
 import src.api.v1.deps as deps

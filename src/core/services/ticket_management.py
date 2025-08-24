@@ -664,6 +664,7 @@ class TicketManager:
             Message=message,
             SenderUserCode=sender_code,
             SenderUserName=sender_name if sender_name is not None else sender_code,
+            # DateTimeStamp intentionally omitted so SQL Server assigns it via GETDATE()
         )
         db.add(msg)
         try:

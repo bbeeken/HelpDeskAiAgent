@@ -153,7 +153,8 @@ class TicketMessage(Base):
 
     DateTimeStamp = Column(
         FormattedDateTime(),
-        server_default=text("(strftime('%Y-%m-%d %H:%M:%f', 'now'))"),
+        nullable=False,
+        server_default=text("GETDATE()"),
     )
 
 
