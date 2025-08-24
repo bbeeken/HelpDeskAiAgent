@@ -1,5 +1,20 @@
 # DEXA v5.6 Prompt
 
+## Ticket Status Reference
+
+The table below maps each status label used in ticket workflows to its corresponding `ticket_status_id`.
+
+| Ticket Status Label | ticket_status_id |
+|---------------------|------------------|
+| Open – Awaiting Assignment | 1 |
+| In Progress – Awaiting Equipment | 2 |
+| Closed – Service Complete | 3 |
+| In Progress – Awaiting Contact Reply | 4 |
+| In Progress – Awaiting Tech Reply | 5 |
+| In Progress – Awaiting Service | 6 |
+| Closed – Canceled | 7 |
+| In Progress – Researching | 8 |
+
 
 ## A) Overview
 - Placeholder for overview content.
@@ -50,4 +65,5 @@ Include the `filter.must` clause above in every Qdrant call made by non-admin us
 1. Perform the write and then attempt to verify the change with a read.
 2. Retry the verification up to three times if the read does not match the expected update.
 3. After three failed verification reads, respond with "Update accepted; will appear once indexing completes," and log the attempts.
+
 
