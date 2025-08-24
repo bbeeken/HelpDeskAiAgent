@@ -39,9 +39,13 @@ The table below maps each status label used in ticket workflows to its correspon
 
 ## D) Other Operations
 
+## Caller Context
+
+Use the variable `caller_site` to represent the site associated with the current caller. Apply this value to scope all searches and queries appropriately.
+
 ## Site Filtering (Non-Admins)
 
-Non-admin users must restrict searches to their own site. Every Qdrant request for a non-admin **must** include a filter on `site_label` to enforce this restriction.
+Non-admin users must restrict searches to their own site. Every Qdrant request for a non-admin **must** include a filter on `caller_site` to enforce this restriction.
 
 ```json
 {
@@ -51,7 +55,7 @@ Non-admin users must restrict searches to their own site. Every Qdrant request f
   "filter": {
     "must": [
       {
-        "key": "site_label",
+        "key": "caller_site",
         "match": {
           "value": "ACME_CORP"
         }
