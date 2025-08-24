@@ -149,15 +149,18 @@ The `Tickets_Master` table stores the primary ticket data. Columns include:
 - `Site_ID`
 - `Ticket_Category_ID`
 - `Version`
-- `Created_Date`
+- `Created_Date` (set automatically by the database)
 - `Assigned_Name`
 - `Assigned_Email`
 - `Severity_ID`
 - `Assigned_Vendor_ID`
 - `Closed_Date`
-- `LastModified`
+- `LastModified` (read-only timestamp managed by the database)
 - `LastModfiedBy`
 - `Resolution`
+
+The `LastModified` and `LastModfiedBy` fields are maintained by the system and
+should not be supplied when creating new tickets.
 
 ### V_Ticket_Master_Expanded
 

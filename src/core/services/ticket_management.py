@@ -212,14 +212,14 @@ class TicketManager:
             for field in ["Created_Date", "Closed_Date", "LastModified"]:
                 ticket_obj.pop(field, None)
             ticket_obj = Ticket(**ticket_obj)
-        else:
-            # Ensure any provided system-managed timestamps are ignored
-            for field in ["Created_Date", "Closed_Date", "LastModified"]:
-                if field in ticket_obj.__dict__:
-                    del ticket_obj.__dict__[field]
 
-        # Format only user-controlled schedule fields for DB storage
+        if getattr(ticket_obj, "LastModfiedBy", None) is None:
+            ticket_obj.LastModified = None
+        # Ensure datetime fields are formatted for DB storage before flushing
         datetime_fields = [
+            "Created_Date",
+            "Closed_Date",
+
             "EstimatedCompletionDate",
             "CustomCompletionDate",
             "LastMetaDataUpdateDate",
@@ -250,15 +250,18 @@ class TicketManager:
     ) -> Ticket | None:
         if isinstance(updates, BaseModel):
             updates = updates.model_dump(exclude_unset=True)
+        # Filter out fields that must be managed internally
+        updates = {
+            k: v
+            for k, v in updates.items()
+            if k not in {"Created_Date", "Closed_Date", "LastModified"}
+        }
         ticket = await db.get(Ticket, ticket_id)
         if not ticket:
             return None
 
         changed = False
         datetime_fields = [
-            "Created_Date",
-            "Closed_Date",
-            "LastModified",
             "EstimatedCompletionDate",
             "CustomCompletionDate",
             "LastMetaDataUpdateDate",
@@ -273,6 +276,20 @@ class TicketManager:
                 if current != value:
                     setattr(ticket, key, value)
                     changed = True
+
+        ts = updates.get("Ticket_Status_ID")
+        if ts is not None:
+            try:
+                ts_int = int(ts)
+            except (TypeError, ValueError):
+                ts_int = ts
+            if ts_int == 3:
+                if ticket.Closed_Date is None:
+                    ticket.Closed_Date = format_db_datetime(datetime.now(timezone.utc))
+                    changed = True
+            elif ticket.Closed_Date is not None:
+                ticket.Closed_Date = None
+                changed = True
 
         if not changed:
             logger.info("No ticket updates for %s", ticket_id)

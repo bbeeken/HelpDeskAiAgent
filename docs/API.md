@@ -123,19 +123,33 @@ The underlying `Tickets_Master` table contains the following fields:
 - `Site_ID`
 - `Ticket_Category_ID`
 - `Version`
-- `Created_Date`
+- `Created_Date` (set automatically by the database)
 - `Assigned_Name`
 - `Assigned_Email`
 - `Severity_ID`
 - `Assigned_Vendor_ID`
 - `Closed_Date`
-- `LastModified`
+- `LastModified` (read-only timestamp managed by the database)
 - `LastModfiedBy`
 - `Resolution`
 
+
+The `LastModified` and `LastModfiedBy` fields are managed by the system and
+are not accepted when creating new tickets.
+
 ### TicketCreate
 
-Use this schema when creating a ticket. The server automatically populates `Created_Date` so it should be omitted from the payload. All other fields match the database columns and most are optional. If `Ticket_Status_ID` is not supplied it defaults to `1` (Open).
+Use this schema when creating a ticket. The server automatically populates
+`Created_Date` so it should be omitted from the payload. Fields such as
+`LastModified` and `LastModfiedBy` are system-managed and cannot be provided in
+the request. If `Ticket_Status_ID` is not supplied it defaults to `1` (Open).
+
+`Created_Date` and `LastModified` are database-managed timestamps and are never accepted from client requests.
+
+### TicketCreate
+
+Use this schema when creating a ticket. The server automatically populates `Created_Date` and sets `LastModified` on changes, so clients must omit both fields from the payload. All other fields match the database columns and most are optional. If `Ticket_Status_ID` is not supplied it defaults to `1` (Open).
+
 
 Example:
 
@@ -148,6 +162,18 @@ Example:
   "Asset_ID": 5,
   "Site_ID": 2,
   "Ticket_Category_ID": 1
+}
+```
+
+Server response:
+
+```json
+{
+  "Ticket_ID": 1,
+  "Subject": "Printer not working",
+  "Created_Date": "2024-01-01T12:00:00Z",
+  "LastModified": "2024-01-01T12:00:00Z",
+  "LastModfiedBy": "system"
 }
 ```
 
@@ -169,7 +195,7 @@ Another example showing assignment and severity:
 
 ### TicketUpdate
 
-This schema is used to partially update an existing ticket. Provide only the fields you want to change; omitted fields remain unchanged. Unknown fields are rejected and `Created_Date` cannot be updated.
+This schema is used to partially update an existing ticket. Provide only the fields you want to change; omitted fields remain unchanged. Unknown fields are rejected. `Created_Date` and `LastModified` are managed by the database and cannot be set by clients.
 
 Example payloads:
 
@@ -185,6 +211,16 @@ Example payloads:
 {"Ticket_Status_ID": 3}
 ```
 
+Server response snippet:
+
+```json
+{
+  "Ticket_ID": 1,
+  "LastModified": "2024-01-02T15:04:05Z",
+  "LastModfiedBy": "system"
+}
+```
+
 ### TicketExpandedOut
 
 `TicketExpandedOut` extends `TicketOut` with additional labels and timestamps.
@@ -197,6 +233,7 @@ Fields include:
 - `category_label` (maps to `Ticket_Category_Label`)
 - `Assigned_Vendor_Name`
 - `Priority_Level`
+- `Created_Date`
 - `Closed_Date`
 - `LastModified`
 - `LastModfiedBy`
@@ -211,8 +248,9 @@ Example:
   "Site_Label": "HQ",
   "Site_ID": 2,
   "Priority_Level": "High",
+  "Created_Date": "2024-01-01T12:00:00Z",
   "Closed_Date": null,
-  "LastModified": null,
-  "LastModfiedBy": null
+  "LastModified": "2024-01-02T09:30:00Z",
+  "LastModfiedBy": "system"
 }
 ```
