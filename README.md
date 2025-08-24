@@ -159,6 +159,9 @@ The `Tickets_Master` table stores the primary ticket data. Columns include:
 - `LastModfiedBy`
 - `Resolution`
 
+The `LastModified` and `LastModfiedBy` fields are maintained by the system and
+should not be supplied when creating new tickets.
+
 ### V_Ticket_Master_Expanded
 
 The API uses the `V_Ticket_Master_Expanded` view to join tickets with
