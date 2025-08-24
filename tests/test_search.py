@@ -222,6 +222,29 @@ async def test_search_days_none_returns_all():
 
 
 @pytest.mark.asyncio
+async def test_search_days_zero_returns_all():
+    async with SessionLocal() as db:
+        old = Ticket(
+            Subject="DayZero",
+            Ticket_Body="old",
+            Created_Date=datetime.now(UTC) - timedelta(days=5),
+            Ticket_Status_ID=1,
+        )
+        new = Ticket(
+            Subject="DayZero",
+            Ticket_Body="new",
+            Created_Date=datetime.now(UTC),
+            Ticket_Status_ID=1,
+        )
+        await TicketManager().create_ticket(db, old)
+        await TicketManager().create_ticket(db, new)
+        await db.commit()
+
+        res, _ = await TicketManager().search_tickets(db, "DayZero", days=0)
+        assert {r.Ticket_ID for r in res} == {old.Ticket_ID, new.Ticket_ID}
+
+
+@pytest.mark.asyncio
 async def test_search_days_invalid_value():
     async with SessionLocal() as db:
         t = Ticket(
