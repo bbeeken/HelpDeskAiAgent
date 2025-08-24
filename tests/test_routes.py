@@ -96,10 +96,11 @@ async def test_update_ticket(client: AsyncClient):
     tid = ticket["Ticket_ID"]
     assert ticket["Version"] == 1
 
-    # LastModified should be None right after creation
+    # LastModified should be populated by DB right after creation
     get_resp = await client.get(f"/ticket/{tid}")
     assert get_resp.status_code == 200
-    assert get_resp.json()["LastModified"] is None
+    first_mod = get_resp.json()["LastModified"]
+    assert first_mod is not None
     assert get_resp.json()["LastModfiedBy"] is None
 
     resp = await client.put(f"/ticket/{tid}", json={"Subject": "Updated"})
@@ -109,7 +110,7 @@ async def test_update_ticket(client: AsyncClient):
 
     get_resp = await client.get(f"/ticket/{tid}")
     assert get_resp.status_code == 200
-    assert get_resp.json()["LastModified"] is not None
+    assert get_resp.json()["LastModified"] != first_mod
     assert get_resp.json()["LastModfiedBy"] == "Gil AI"
     assert get_resp.json()["Version"] == 2
 

@@ -48,14 +48,14 @@ async def test_tickets_expanded_endpoint(client: AsyncClient):
     item = data["items"][0]
     assert item["Ticket_ID"] == tid
     assert item["Version"] == 1
-    assert "Ticket_Status_Label" in item
-    assert "Ticket_Category_Label" in item
-    assert "Site_Label" in item
+    assert "status_label" in item
+    assert "category_label" in item
+    assert "site_label" in item
     assert "Site_ID" in item
     assert "Closed_Date" in item
     assert item["Closed_Date"] is None
     assert "LastModified" in item
-    assert item["LastModified"] is None
+    assert item["LastModified"] is not None
     assert "LastModfiedBy" in item
     assert item["LastModfiedBy"] is None
 
