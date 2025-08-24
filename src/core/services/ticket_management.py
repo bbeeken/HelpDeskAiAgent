@@ -209,11 +209,12 @@ class TicketManager:
     ) -> OperationResult[Ticket]:
         if isinstance(ticket_obj, dict):
             ticket_obj = Ticket(**ticket_obj)
+        if getattr(ticket_obj, "LastModfiedBy", None) is None:
+            ticket_obj.LastModified = None
         # Ensure datetime fields are formatted for DB storage before flushing
         datetime_fields = [
             "Created_Date",
             "Closed_Date",
-            "LastModified",
             "EstimatedCompletionDate",
             "CustomCompletionDate",
             "LastMetaDataUpdateDate",

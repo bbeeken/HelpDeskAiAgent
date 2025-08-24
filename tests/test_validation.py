@@ -65,3 +65,14 @@ def test_long_body_allowed():
     )
     assert obj.Ticket_Body == long_text
     assert obj.Resolution == long_text
+
+
+def test_last_modified_ignored():
+    obj = TicketCreate(
+        Subject="Test",
+        Ticket_Body="Body",
+        Ticket_Contact_Name="Name",
+        Ticket_Contact_Email="test@example.com",
+        **{"LastModified": "2024-01-01T00:00:00Z"},
+    )
+    assert "LastModified" not in obj.model_dump()

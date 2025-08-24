@@ -67,7 +67,6 @@ class TicketBase(BaseModel):
 class TicketCreate(TicketBase):
     """Schema used when creating a new ticket."""
 
-    LastModified: Optional[datetime] = None
     Version: Optional[int] = 1
 
     model_config = ConfigDict(

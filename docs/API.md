@@ -133,11 +133,23 @@ The underlying `Tickets_Master` table contains the following fields:
 - `LastModfiedBy`
 - `Resolution`
 
+
+The `LastModified` and `LastModfiedBy` fields are managed by the system and
+are not accepted when creating new tickets.
+
+### TicketCreate
+
+Use this schema when creating a ticket. The server automatically populates
+`Created_Date` so it should be omitted from the payload. Fields such as
+`LastModified` and `LastModfiedBy` are system-managed and cannot be provided in
+the request. If `Ticket_Status_ID` is not supplied it defaults to `1` (Open).
+
 `Created_Date` and `LastModified` are database-managed timestamps and are never accepted from client requests.
 
 ### TicketCreate
 
 Use this schema when creating a ticket. The server automatically populates `Created_Date` and sets `LastModified` on changes, so clients must omit both fields from the payload. All other fields match the database columns and most are optional. If `Ticket_Status_ID` is not supplied it defaults to `1` (Open).
+
 
 Example:
 
