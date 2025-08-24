@@ -59,7 +59,6 @@ async def test_get_tickets_by_user_function():
             Message="hi",
             SenderUserCode="user@example.com",
             SenderUserName="User",
-            DateTimeStamp=now,
         )
         db.add(msg)
         await db.commit()
