@@ -63,7 +63,7 @@ async def open_by_assigned_user_endpoint(
     request: Request, db: AsyncSession = Depends(get_db)
 ) -> List[UserOpenCount]:
     filters = extract_filters(request)
-    return await open_tickets_by_user(db, filters or None)
+    return await open_tickets_by_user(db, filters)
 
 
 @analytics_router.get(
