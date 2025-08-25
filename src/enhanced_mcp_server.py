@@ -996,6 +996,15 @@ async def _get_analytics_unified(
                 overdue = await mgr._get_overdue_tickets_summary()
             return {"status": "success", "data": overdue}
 
+        if type == "status_counts":
+            async with db.SessionLocal() as db_session:
+                result = await tickets_by_status(db_session)
+            if not result.success:
+                return {"status": "error", "error": result.error}
+            return {
+                "status": "success",
+                "data": [item.model_dump() for item in result.data],
+            }
 
         valid_types = {
             "overview",
@@ -1006,9 +1015,6 @@ async def _get_analytics_unified(
             "overdue_tickets",
             "status_counts",
         }
-
-        if type in {"status_counts"}:
-            return JSONResponse(status_code=404, content={"detail": "Unsupported analytics type"})
 
         return {
             "status": "error",
@@ -1565,7 +1571,6 @@ ENHANCED_TOOLS: List[Tool] = [
         inputSchema={
             "type": "object",
             "properties": {
-                "type": {"type": "string", "description": "Analytics report type"},
                 "type": {
                     "type": "string",
                     "enum": [
