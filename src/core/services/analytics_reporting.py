@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from datetime import datetime, timedelta, timezone, date as date_cls
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Union
 import os
 import time
