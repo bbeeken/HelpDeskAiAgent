@@ -111,6 +111,7 @@ class AdvancedQueryManager:
         total_count = await self.db.scalar(count_stmt) or 0
 
         # Apply sorting
+        order_exprs = []
         for sort_spec in query.sort_by:
             field = sort_spec.get("field", "Created_Date")
             direction = sort_spec.get("direction", "desc")
@@ -118,9 +119,12 @@ class AdvancedQueryManager:
             if hasattr(VTicketMasterExpanded, field):
                 attr = getattr(VTicketMasterExpanded, field)
                 if direction.lower() == "desc":
-                    stmt = stmt.order_by(attr.desc())
+                    order_exprs.append(attr.desc())
                 else:
-                    stmt = stmt.order_by(attr.asc())
+                    order_exprs.append(attr.asc())
+
+        if order_exprs:
+            stmt = stmt.order_by(*order_exprs)
 
         # Apply pagination
         stmt = stmt.offset(query.offset).limit(query.limit)
