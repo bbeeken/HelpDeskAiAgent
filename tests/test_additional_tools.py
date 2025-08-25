@@ -342,6 +342,18 @@ async def test_get_analytics_sla_performance_error(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_get_analytics_status_counts_success(client: AsyncClient):
+    await _create_ticket(client)
+    await _create_ticket(client)
+    resp = await client.post("/get_analytics", json={"type": "status_counts"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data.get("status") == "success"
+    assert isinstance(data.get("data"), list)
+    assert sum(item["count"] for item in data["data"]) >= 2
+
+
+@pytest.mark.asyncio
 async def test_bulk_update_tickets_success(client: AsyncClient):
     tid1 = await _create_ticket(client, "Bulk1")
     tid2 = await _create_ticket(client, "Bulk2")

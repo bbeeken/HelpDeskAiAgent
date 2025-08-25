@@ -51,7 +51,11 @@ async def tickets_by_status_endpoint(db: AsyncSession = Depends(get_db)) -> List
     operation_id="open_by_site",
 )
 async def open_by_site_endpoint(db: AsyncSession = Depends(get_db)) -> List[SiteOpenCount]:
-    return await open_tickets_by_site(db)
+    result = await open_tickets_by_site(db)
+    if not result.success:
+        logger.error("open_tickets_by_site failed: %s", result.error)
+        raise HTTPException(status_code=503, detail=result.error or "analytics failure")
+    return result.data
 
 
 @analytics_router.get(
@@ -63,7 +67,11 @@ async def open_by_assigned_user_endpoint(
     request: Request, db: AsyncSession = Depends(get_db)
 ) -> List[UserOpenCount]:
     filters = extract_filters(request)
-    return await open_tickets_by_user(db, filters or None)
+    result = await open_tickets_by_user(db, filters or None)
+    if not result.success:
+        logger.error("open_tickets_by_user failed: %s", result.error)
+        raise HTTPException(status_code=503, detail=result.error or "analytics failure")
+    return result.data
 
 
 @analytics_router.get(
@@ -91,7 +99,11 @@ async def staff_report_endpoint(
     operation_id="waiting_on_user",
 )
 async def waiting_on_user_endpoint(db: AsyncSession = Depends(get_db)) -> List[WaitingOnUserCount]:
-    return await tickets_waiting_on_user(db)
+    result = await tickets_waiting_on_user(db)
+    if not result.success:
+        logger.error("tickets_waiting_on_user failed: %s", result.error)
+        raise HTTPException(status_code=503, detail=result.error or "analytics failure")
+    return result.data
 
 
 @analytics_router.get(
@@ -105,10 +117,13 @@ async def sla_breaches_endpoint(
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, int]:
     filters = extract_filters(request)
-    breaches = await sla_breaches(
+    result = await sla_breaches(
         db, sla_days, filters=filters or None, status_ids=status_id or None
     )
-    return {"breaches": breaches}
+    if not result.success:
+        logger.error("sla_breaches failed: %s", result.error)
+        raise HTTPException(status_code=503, detail=result.error or "analytics failure")
+    return {"breaches": result.data}
 
 
 @analytics_router.get(
@@ -120,7 +135,11 @@ async def ticket_trend_endpoint(
     days: int = Query(7, ge=1),
     db: AsyncSession = Depends(get_db),
 ) -> List[TrendCount]:
-    return await ticket_trend(db, days)
+    result = await ticket_trend(db, days)
+    if not result.success:
+        logger.error("ticket_trend failed: %s", result.error)
+        raise HTTPException(status_code=503, detail=result.error or "analytics failure")
+    return result.data
 
 
 __all__ = ["analytics_router"]
