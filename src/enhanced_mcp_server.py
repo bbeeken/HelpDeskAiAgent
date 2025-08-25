@@ -1358,7 +1358,11 @@ ENHANCED_TOOLS: List[Tool] = [
                 },
                 "created_after": {"type": "string", "format": "date-time", "description": "ISO 8601 datetime inclusive"},
                 "created_before": {"type": "string", "format": "date-time", "description": "ISO 8601 datetime inclusive"},
-                "status": {"type": "string", "enum": ["open", "in_progress", "resolved", "closed"], "description": "Ticket status"},
+                "status": {
+                    "type": ["string", "null"],
+                    "enum": ["open", "in_progress", "resolved", "closed", None],
+                    "description": "Ticket status",
+                },
                 "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"], "description": "Priority level"},
                 "site_id": {"type": "integer", "description": "Filter by specific site ID"},
                 "assigned_to": {"type": "string", "description": "Filter by assignee email"},

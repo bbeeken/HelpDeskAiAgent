@@ -130,6 +130,29 @@ async def test_backward_compatibility_aliases():
 
 
 @pytest.mark.asyncio
+async def test_search_tickets_accepts_null_status():
+    async with SessionLocal() as db:
+        t = Ticket(
+            Subject="Null Status Ticket",
+            Ticket_Body="Test body content",
+            Ticket_Contact_Name="TestUser",
+            Ticket_Contact_Email="test@example.com",
+            Ticket_Status_ID=1,
+            Created_Date=datetime.now(UTC),
+        )
+        await TicketManager().create_ticket(db, t)
+        await db.commit()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post("/search_tickets", json={"status": None})
+        assert resp.status_code == 200
+        data = resp.json()
+        ticket_ids = [item["Ticket_ID"] for item in data["data"]]
+        assert t.Ticket_ID in ticket_ids
+
+
+@pytest.mark.asyncio
 async def test_enhanced_search_date_filtering():
     async with SessionLocal() as db:
         old_ticket = Ticket(
