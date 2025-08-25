@@ -566,27 +566,15 @@ class TicketManager:
             .filter(VTicketMasterExpanded.Ticket_ID.in_(ticket_ids))
             .order_by(VTicketMasterExpanded.Ticket_ID)
         )
-        if status:
-            s = status.lower()
-            if s == "open":
-
-                query = query.filter(
-                    VTicketMasterExpanded.Ticket_Status_ID.in_(_OPEN_STATE_IDS)
-                )
-            elif s == "closed":
-
-                query = query.filter(VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7]))
-
-            elif s in {"in_progress", "progress"}:
-                query = query.filter(
-                    VTicketMasterExpanded.Ticket_Status_ID.in_(
-                        _STATUS_MAP["in_progress"]
-                    )
-                )
-
+        filters_dict: Dict[str, Any] = {}
+        if status is not None:
+            filters_dict.update(apply_semantic_filters({"status": status}))
         if filters:
+            filters_dict.update(apply_semantic_filters(filters))
+
+        if filters_dict:
             conditions = []
-            for key, value in filters.items():
+            for key, value in filters_dict.items():
                 if hasattr(VTicketMasterExpanded, key):
                     attr = getattr(VTicketMasterExpanded, key)
                     conditions.append(

@@ -392,7 +392,7 @@ python verify_tools.py http://localhost:8000
 
 The MCP server exposes several JSON-RPC tools. `get_tickets_by_user` returns
 expanded ticket records for a user. It accepts an `identifier`, optional
-`status` and arbitrary `filters`. Detailed descriptions for every tool are
+`status` (one of `open`, `closed`, `resolved`, `in_progress`, `progress`, `waiting`, or `pending`) and arbitrary `filters`. Detailed descriptions for every tool are
 available in [docs/MCP_TOOLS_GUIDE.md](docs/MCP_TOOLS_GUIDE.md).
 
 ```bash
