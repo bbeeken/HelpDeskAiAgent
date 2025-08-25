@@ -1331,9 +1331,11 @@ async def _get_workload_analytics() -> Dict[str, Any]:
             }
             
             # Calculate summary statistics
+            technician_workloads = data.get("technician_workloads", [])
             total_assigned = sum(
-                w.get("open_tickets", 0) for w in data["technician_workloads"]
+                w.get("open_tickets", 0) for w in technician_workloads
             )
+
             # The unassigned and overdue summaries return lists of ticket
             # dictionaries.  Previously this function expected summary
             # objects containing a ``total`` field, which would have caused
@@ -1342,12 +1344,13 @@ async def _get_workload_analytics() -> Dict[str, Any]:
             total_unassigned = len(data["unassigned_tickets"])
             total_overdue = len(data["overdue_tickets"])
             
+
             data["summary"] = {
                 "total_open_tickets": total_assigned + total_unassigned,
                 "total_assigned": total_assigned,
                 "total_unassigned": total_unassigned,
                 "total_overdue": total_overdue,
-                "technicians_count": len(data["technician_workloads"])
+                "technicians_count": len(technician_workloads)
             }
             
             return {"status": "success", "data": data}
