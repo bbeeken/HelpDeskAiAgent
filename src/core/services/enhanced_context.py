@@ -267,6 +267,63 @@ class EnhancedContextManager:
             for att in attachments
         ]
 
+    async def _get_messages_for_tickets(
+        self, ticket_ids: List[int]
+    ) -> Dict[int, List[Dict[str, Any]]]:
+        """Get messages for multiple tickets in a single query."""
+        if not ticket_ids:
+            return {}
+        result = await self.db.execute(
+            select(TicketMessage)
+            .filter(TicketMessage.Ticket_ID.in_(ticket_ids))
+            .order_by(TicketMessage.Ticket_ID, TicketMessage.DateTimeStamp)
+        )
+        messages = result.scalars().all()
+        messages_by_ticket: Dict[int, List[Dict[str, Any]]] = {tid: [] for tid in ticket_ids}
+        for msg in messages:
+            messages_by_ticket.setdefault(msg.Ticket_ID, []).append(
+                {
+                    "ID": msg.ID,
+                    "Message": msg.Message,
+                    "SenderUserCode": msg.SenderUserCode,
+                    "SenderUserName": msg.SenderUserName,
+                    "DateTimeStamp": msg.DateTimeStamp,
+                    "message_length": len(msg.Message) if msg.Message else 0,
+                    "is_technician": "@" in (msg.SenderUserCode or ""),
+                }
+            )
+        return messages_by_ticket
+
+    async def _get_attachments_for_tickets(
+        self, ticket_ids: List[int]
+    ) -> Dict[int, List[Dict[str, Any]]]:
+        """Get attachments for multiple tickets in a single query."""
+        if not ticket_ids:
+            return {}
+        result = await self.db.execute(
+            select(TicketAttachment).filter(TicketAttachment.Ticket_ID.in_(ticket_ids))
+        )
+        attachments = result.scalars().all()
+        attachments_by_ticket: Dict[int, List[Dict[str, Any]]] = {tid: [] for tid in ticket_ids}
+        for att in attachments:
+            attachments_by_ticket.setdefault(att.Ticket_ID, []).append(
+                {
+                    "ID": att.ID,
+                    "Name": att.Name,
+                    "WebURl": att.WebURl,
+                    "UploadDateTime": att.UploadDateTime,
+                    "FileContent": base64.b64encode(att.FileContent).decode("utf-8")
+                    if att.FileContent
+                    else None,
+                    "Binary": base64.b64encode(att.Binary).decode("utf-8") if att.Binary else None,
+                    "ContentBytes": base64.b64encode(att.ContentBytes).decode("utf-8")
+                    if att.ContentBytes
+                    else None,
+                    "file_size_estimate": len(att.Name) * 1024 if att.Name else 0,
+                }
+            )
+        return attachments_by_ticket
+
     async def _get_user_ticket_history(
         self, user_email: str, limit: int = 50
     ) -> List[Dict[str, Any]]:
