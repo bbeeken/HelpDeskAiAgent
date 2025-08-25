@@ -7,9 +7,10 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.repositories.models import VTicketMasterExpanded, TicketMessage, TicketAttachment
+from src.core.repositories.models import VTicketMasterExpanded
 from src.shared.schemas.agent_data import AdvancedQuery, QueryResult
 from .enhanced_context import EnhancedContextManager
+from src.core.constants import DEFAULT_LABEL
 
 logger = logging.getLogger(__name__)
 
@@ -197,19 +198,19 @@ class AdvancedQueryManager:
 
         for ticket in tickets:
             # Status
-            status = ticket.Ticket_Status_Label or "Unknown"
+            status = ticket.Ticket_Status_Label or DEFAULT_LABEL
             status_counts[status] = status_counts.get(status, 0) + 1
 
             # Priority
-            priority = ticket.Priority_Level or "Medium"
+            priority = ticket.Priority_Level or DEFAULT_LABEL
             priority_counts[priority] = priority_counts.get(priority, 0) + 1
 
             # Site
-            site = ticket.Site_Label or "Unknown"
+            site = ticket.Site_Label or DEFAULT_LABEL
             site_counts[site] = site_counts.get(site, 0) + 1
 
             # Category
-            category = ticket.Ticket_Category_Label or "Unknown"
+            category = ticket.Ticket_Category_Label or DEFAULT_LABEL
             category_counts[category] = category_counts.get(category, 0) + 1
 
         return {
