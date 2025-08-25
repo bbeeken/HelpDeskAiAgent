@@ -1570,7 +1570,6 @@ ENHANCED_TOOLS: List[Tool] = [
         inputSchema={
             "type": "object",
             "properties": {
-                "type": {"type": "string", "description": "Analytics report type"},
                 "type": {
                     "type": "string",
                     "enum": [
@@ -1582,9 +1581,7 @@ ENHANCED_TOOLS: List[Tool] = [
                         "overdue_tickets",
                         "status_counts",
                     ],
-
-                    "description": "Analytics report type"
-
+                    "description": "Analytics report type",
                 },
                 "params": {"type": "object", "description": "Optional parameters for the report"},
             },
