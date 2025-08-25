@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text, text
+
 from src.shared.utils.date_format import FormattedDateTime
 from sqlalchemy.orm import DeclarativeBase
 
@@ -19,13 +20,25 @@ class Ticket(Base):
     Site_ID = Column(Integer)
     Ticket_Category_ID = Column(Integer)
 
-    Created_Date = Column(FormattedDateTime())
+    Created_Date = Column(
+        FormattedDateTime(),
+        nullable=False,
+        server_default=text("(GETUTCDATE())")
+    )
     Assigned_Name = Column(String)
     Assigned_Email = Column(String)
     Severity_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
-    Closed_Date = Column(FormattedDateTime())
-    LastModified = Column(FormattedDateTime())
+    Closed_Date = Column(
+        FormattedDateTime(),
+        nullable=False,
+        server_default=text("(GETUTCDATE())")
+    )
+    LastModified = Column(
+        FormattedDateTime(),
+        nullable=False,
+        server_default=text("(GETUTCDATE())")
+    )
     LastModfiedBy = Column(String)
     Resolution = Column(Text)
 
@@ -55,7 +68,11 @@ class TicketAttachment(Base):
     Ticket_ID = Column(Integer)
     Name = Column(String)
     WebURl = Column(String)
-    UploadDateTime = Column(FormattedDateTime())
+    UploadDateTime = Column(
+        FormattedDateTime(),
+        nullable=False,
+        server_default=text("(GETUTCDATE())")
+    )
 
 class TicketMessage(Base):
     __tablename__ = "Ticket_Messages"
@@ -64,8 +81,11 @@ class TicketMessage(Base):
     Message = Column(Text)
     SenderUserCode = Column(String)
     SenderUserName = Column(String)
-
-    DateTimeStamp = Column(FormattedDateTime())
+    DateTimeStamp = Column(
+        FormattedDateTime(),
+        nullable=False,
+        server_default=text("(GETUTCDATE())")
+    )
 
 
 class Site(Base):
@@ -134,7 +154,11 @@ class VTicketMasterExpanded(ViewBase):
     Severity_ID = Column(Integer)
     Assigned_Vendor_ID = Column(Integer)
     Closed_Date = Column(FormattedDateTime())
-    LastModified = Column(FormattedDateTime())
+    LastModified = Column(
+        FormattedDateTime(),
+        nullable=False,
+        server_default=text("(GETUTCDATE())")
+    )
 
     LastModfiedBy = Column(String)
 
