@@ -320,7 +320,8 @@ async def _list_tickets(
 
 
 async def _get_tickets_by_user(
-    identifier: str,
+    identifier: str | None = None,
+    user: str | None = None,
     skip: int = 0,
     limit: int = 100,
     status: str | None = None,
@@ -328,6 +329,11 @@ async def _get_tickets_by_user(
 ) -> Dict[str, Any]:
     """Return tickets associated with a user."""
     try:
+        if identifier is None and user is not None:
+            identifier = user
+        if identifier is None:
+            raise HTTPException(status_code=422, detail="identifier is required")
+
         async with db.SessionLocal() as db_session:
             applied_filters = apply_semantic_filters(filters or {})
             tickets = await TicketManager().get_tickets_by_user(
@@ -343,7 +349,7 @@ async def _get_tickets_by_user(
                 "status": "success",
                 "data": data,
                 "user": identifier,
-                "count": len(data)
+                "count": len(data),
             }
     except Exception as e:
         logger.error(f"Error in get_tickets_by_user: {e}")
@@ -1336,6 +1342,52 @@ ENHANCED_TOOLS: List[Tool] = [
             "examples": [{"ticket_id": 123}],
         },
         _implementation=_get_ticket_attachments,
+    ),
+    Tool(
+        name="tickets_by_user",
+        description="Retrieve tickets associated with a specific user",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "identifier": {
+                    "type": "string",
+                    "description": "User email or identifier",
+                },
+                "user": {
+                    "type": "string",
+                    "description": "Alias for 'identifier'",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["open", "in_progress", "resolved", "closed"],
+                    "description": "Filter by ticket status",
+                },
+                "filters": {
+                    "type": "object",
+                    "description": "Additional key/value filters for advanced use",
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 100,
+                    "minimum": 1,
+                    "maximum": 100,
+                    "description": "Max results",
+                },
+                "skip": {
+                    "type": "integer",
+                    "default": 0,
+                    "minimum": 0,
+                    "description": "Offset for pagination",
+                },
+            },
+            "anyOf": [{"required": ["identifier"]}, {"required": ["user"]}],
+            "examples": [
+                {"identifier": "user@example.com"},
+                {"user": "user@example.com", "status": "open"},
+                {"identifier": "user@example.com", "filters": {"Site_ID": 1}},
+            ],
+        },
+        _implementation=_get_tickets_by_user,
     ),
     Tool(
         name="search_tickets",
