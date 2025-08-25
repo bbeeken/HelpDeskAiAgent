@@ -177,7 +177,7 @@ async def sla_breaches(
 
 
 async def open_tickets_by_user(
-    db: AsyncSession, filters: Optional[Dict[str, Any]] | None = None
+    db: AsyncSession, filters: Optional[Dict[str, Any]] = None
 ) -> List[UserOpenCount]:
     """Return open ticket counts for assigned technicians with optional filtering."""
 
