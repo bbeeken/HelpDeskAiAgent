@@ -344,7 +344,7 @@ Parameters:
 - `assigned_to` – restrict to these assignee emails or names.
 - `unassigned_only` – set to `true` to return only unassigned tickets.
 - `site_filter` – list of site IDs.
-- `limit` – maximum results to return (default 100).
+- `limit` – maximum results to return (default 100, max 1000).
 - `offset` – result offset (default 0).
 
 Example:

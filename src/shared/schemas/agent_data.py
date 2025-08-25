@@ -2,6 +2,9 @@ from pydantic import BaseModel, field_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
+# Maximum number of results that can be requested in an advanced query
+MAX_LIMIT = 1000
+
 
 class TicketFullContext(BaseModel):
     """Complete ticket data with all related information for agent analysis."""
@@ -116,9 +119,11 @@ class AdvancedQuery(BaseModel):
 
     @field_validator("limit", "offset")
     @classmethod
-    def non_negative(cls, v: int) -> int:
+    def non_negative(cls, v: int, info):
         if v < 0:
             raise ValueError("must be >= 0")
+        if info.field_name == "limit" and v > MAX_LIMIT:
+            return MAX_LIMIT
         return v
 
 

@@ -54,7 +54,7 @@ paths remain for backwards compatibility but are no longer documented here.
 - `GET /agent/ticket/{ticket_id}/full-context` – full context for a ticket.
 - `GET /agent/system/snapshot` – system state snapshot.
 - `GET /agent/user/{user_email}/complete-profile` – user profile information.
-- `POST /agent/tickets/query-advanced` – execute an advanced ticket query.
+- `POST /agent/tickets/query-advanced` – execute an advanced ticket query (limit capped at 1000).
 - `POST /agent/operation/validate` – validate an operation.
 - `POST /agent/ticket/{ticket_id}/execute-operation` – run a ticket operation.
 
@@ -99,7 +99,7 @@ JSON body matching the tool's schema. See
 - `POST /get_ticket_stats` – Ticket statistics summary. Example: `{}`
 - `POST /get_workload_analytics` – Technician workload analytics. Example: `{}`
 
-- `POST /advanced_search` – Advanced ticket search. Example: `{"text_search": "printer"}`
+- `POST /advanced_search` – Advanced ticket search (limit capped at 1000). Example: `{"text_search": "printer"}`
 
 - `POST /sla_metrics` – SLA metrics summary. Example: `{}`
 - `POST /bulk_update_tickets` – Bulk ticket updates using semantic fields or
