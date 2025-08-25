@@ -27,6 +27,16 @@ paths remain for backwards compatibility but are no longer documented here.
 - `GET /ticket/{ticket_id}/messages` – list ticket messages.
 - `POST /ticket/{ticket_id}/messages` – add a message to a ticket.
 
+Example:
+
+```bash
+curl "http://localhost:8000/ticket/by_user?identifier=user@example.com&status=open"
+```
+
+The `POST /get_tickets_by_user` route is retained for compatibility but is
+considered legacy; use `GET /ticket/by_user` or `POST /search_tickets` with a
+`user` parameter instead.
+
 ## Lookup Endpoints
 
 - `GET /lookup/assets` – list assets.
@@ -88,7 +98,7 @@ JSON body matching the tool's schema. See
   `/search_tickets_advanced` route was removed.
 - `POST /update_ticket` – Update, close, or assign a ticket using semantic
   fields or raw IDs as defined in the mapping table.
-- `POST /get_tickets_by_user` – Tickets for a user. Example: `{"identifier": "user@example.com"}`
+- `POST /get_tickets_by_user` *(legacy)* – Tickets for a user. Example: `{"identifier": "user@example.com"}`. Prefer `GET /ticket/by_user` or `POST /search_tickets` with a `user` parameter.
 
 - `POST /get_open_tickets` – List open tickets. Example: `{"days": 30}`
 - `POST /get_analytics` – Analytics reports. Example: `{"type": "site_counts"}`
