@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import html
 import re
-from typing import Any, Sequence, Dict, List, Optional
+from typing import Any, Sequence, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime, timezone, timedelta
@@ -534,7 +534,8 @@ class TicketManager:
         limit: int | None = 100,
         status: str | None = None,
         filters: Dict[str, Any] | None = None,
-    ) -> List[VTicketMasterExpanded]:
+        return_total: bool = False,
+    ) -> List[VTicketMasterExpanded] | Tuple[List[VTicketMasterExpanded], int]:
         ident = identifier.lower()
 
         contact_stmt = select(VTicketMasterExpanded.Ticket_ID).filter(
@@ -559,9 +560,9 @@ class TicketManager:
 
         ticket_ids = contact_ids | message_ids
         if not ticket_ids:
-            return []
+            return ([], 0) if return_total else []
 
-        query = (
+        base_query = (
             select(VTicketMasterExpanded)
             .filter(VTicketMasterExpanded.Ticket_ID.in_(ticket_ids))
             .order_by(VTicketMasterExpanded.Ticket_ID)
@@ -570,15 +571,17 @@ class TicketManager:
             s = status.lower()
             if s == "open":
 
-                query = query.filter(
+                base_query = base_query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_(_OPEN_STATE_IDS)
                 )
             elif s == "closed":
 
-                query = query.filter(VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7]))
+                base_query = base_query.filter(
+                    VTicketMasterExpanded.Ticket_Status_ID.in_([3, 7])
+                )
 
             elif s in {"in_progress", "progress"}:
-                query = query.filter(
+                base_query = base_query.filter(
                     VTicketMasterExpanded.Ticket_Status_ID.in_(
                         _STATUS_MAP["in_progress"]
                     )
@@ -593,13 +596,26 @@ class TicketManager:
                         attr.in_(value) if isinstance(value, list) else attr == value
                     )
             if conditions:
-                query = query.filter(and_(*conditions))
+                base_query = base_query.filter(and_(*conditions))
+
+        query = base_query
+        if return_total:
+            query = query.add_columns(func.count().over().label("total"))
+
         if skip:
             query = query.offset(skip)
         if limit is not None:
             query = query.limit(limit)
 
         result = await db.execute(query)
+
+        if return_total:
+            rows = result.all()
+            if not rows:
+                return [], 0
+            items = [row[0] for row in rows]
+            total = rows[0][1]
+            return items, total
         return list(result.scalars().all())
 
     async def get_tickets_by_timeframe(

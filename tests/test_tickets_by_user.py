@@ -85,8 +85,15 @@ async def test_get_tickets_by_user_function():
             t5.Ticket_ID,
         ]
 
-        limited = await TicketManager().get_tickets_by_user(db, "user@example.com", skip=1, limit=1)
+        limited = await TicketManager().get_tickets_by_user(
+            db, "user@example.com", skip=1, limit=1
+        )
         assert [t.Ticket_ID for t in limited] == [t2.Ticket_ID]
+        items, total = await TicketManager().get_tickets_by_user(
+            db, "user@example.com", skip=1, limit=1, return_total=True
+        )
+        assert [t.Ticket_ID for t in items] == [t2.Ticket_ID]
+        assert total == 5
         closed_only = await TicketManager().get_tickets_by_user(
             db, "user@example.com", status="closed"
         )

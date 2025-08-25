@@ -204,23 +204,14 @@ async def tickets_by_user_endpoint(
     filters = extract_filters(
         request, exclude=["identifier", "skip", "limit", "status"]
     )
-    items = await TicketManager().get_tickets_by_user(
+    items, total = await TicketManager().get_tickets_by_user(
         db,
         identifier,
         skip=skip,
         limit=limit,
         status=status,
         filters=filters or None,
-    )
-    total = len(
-        await TicketManager().get_tickets_by_user(
-            db,
-            identifier,
-            skip=0,
-            limit=None,
-            status=status,
-            filters=filters or None,
-        )
+        return_total=True,
     )
     validated: List[TicketExpandedOut] = [TicketExpandedOut.model_validate(t) for t in items]
     return PaginatedResponse(items=validated, total=total, skip=skip, limit=limit)
