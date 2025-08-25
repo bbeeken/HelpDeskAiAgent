@@ -92,6 +92,15 @@ class UserManager:
             "id": data.get("id"),
         }
 
+    async def get_users_by_emails(
+        self, emails: Sequence[str]
+    ) -> Dict[str, Dict[str, str | None]]:
+        """Fetch multiple user profiles, one request per unique email."""
+        profiles: Dict[str, Dict[str, str | None]] = {}
+        for email in set(emails):
+            profiles[email] = await self.get_user_by_email(email)
+        return profiles
+
     async def get_users_in_group(self) -> List[Dict[str, str | None]]:
         try:
             token = await self._get_token()

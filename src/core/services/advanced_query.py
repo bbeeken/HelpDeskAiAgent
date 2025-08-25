@@ -129,7 +129,25 @@ class AdvancedQueryManager:
         result = await self.db.execute(stmt)
         tickets: List[VTicketMasterExpanded] = result.scalars().all()
 
-        # Convert to dict format
+        ticket_ids = [t.Ticket_ID for t in tickets]
+
+        messages_by_ticket: Dict[int, List[Dict[str, Any]]] = {}
+        if query.include_messages and ticket_ids:
+            messages_by_ticket = await self.context_manager._get_messages_for_tickets(ticket_ids)
+
+        attachments_by_ticket: Dict[int, List[Dict[str, Any]]] = {}
+        if query.include_attachments and ticket_ids:
+            attachments_by_ticket = await self.context_manager._get_attachments_for_tickets(ticket_ids)
+
+        user_profiles: Dict[str, Dict[str, Any]] = {}
+        if query.include_user_context:
+            emails = [t.Ticket_Contact_Email for t in tickets if t.Ticket_Contact_Email]
+            try:
+                user_profiles = await self.context_manager.user_manager.get_users_by_emails(emails)
+            except Exception as exc:
+                logger.exception("Error retrieving user profiles: %s", exc)
+                user_profiles = {}
+
         ticket_dicts = []
         for ticket in tickets:
             ticket_dict = {
@@ -137,25 +155,16 @@ class AdvancedQueryManager:
                 for column in ticket.__table__.columns
             }
 
-            # Add related data if requested
             if query.include_messages:
-                ticket_dict["messages"] = await self.context_manager._get_ticket_messages(ticket.Ticket_ID)
+                ticket_dict["messages"] = messages_by_ticket.get(ticket.Ticket_ID, [])
 
             if query.include_attachments:
-                ticket_dict["attachments"] = await self.context_manager._get_ticket_attachments(ticket.Ticket_ID)
+                ticket_dict["attachments"] = attachments_by_ticket.get(ticket.Ticket_ID, [])
 
             if query.include_user_context:
-                try:
-                    ticket_dict["user_profile"] = await self.context_manager.user_manager.get_user_by_email(
-                        ticket.Ticket_Contact_Email
-                    )
-                except Exception as exc:
-                    logger.exception(
-                        "Error retrieving user profile for %s: %s",
-                        ticket.Ticket_Contact_Email,
-                        exc,
-                    )
-                    ticket_dict["user_profile"] = None
+                ticket_dict["user_profile"] = user_profiles.get(
+                    ticket.Ticket_Contact_Email
+                )
 
             ticket_dicts.append(ticket_dict)
 
