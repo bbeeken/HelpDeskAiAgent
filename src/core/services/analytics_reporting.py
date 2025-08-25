@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Union
 import os
 import time
 import threading
+import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from .system_utilities import OperationResult, parse_search_datetime
@@ -327,35 +328,28 @@ class AnalyticsManager:
     async def _gather_all_metrics(
         self, start: datetime, end: datetime
     ) -> Dict[str, Any]:
-        total = (
-            await self.db.scalar(
+        total, active, resolved = await asyncio.gather(
+            self.db.scalar(
                 select(func.count(Ticket.Ticket_ID)).filter(
                     Ticket.Created_Date.between(start, end)
                 )
-            )
-
-            or 0
-        )
-
-        active = (
-            await self.db.scalar(
+            ),
+            self.db.scalar(
                 select(func.count(Ticket.Ticket_ID)).filter(
                     Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS)
                 )
-            )
-            or 0
-        )
-
-        resolved = (
-            await self.db.scalar(
+            ),
+            self.db.scalar(
                 select(func.count(Ticket.Ticket_ID)).filter(
                     Ticket.Created_Date.between(start, end),
                     Ticket.Ticket_Status_ID.in_(_CLOSED_STATE_IDS),
                 )
-
-            )
-            or 0
+            ),
         )
+
+        total = total or 0
+        active = active or 0
+        resolved = resolved or 0
 
         return {
             "total_tickets": total,
