@@ -127,7 +127,7 @@ class AdvancedQueryManager:
 
         # Execute query
         result = await self.db.execute(stmt)
-        tickets = result.scalars().all()
+        tickets: List[VTicketMasterExpanded] = result.scalars().all()
 
         # Convert to dict format
         ticket_dicts = []
@@ -182,7 +182,9 @@ class AdvancedQueryManager:
             }
         )
 
-    async def _generate_query_aggregations(self, tickets) -> Dict[str, Any]:
+    async def _generate_query_aggregations(
+        self, tickets: List[VTicketMasterExpanded]
+    ) -> Dict[str, Any]:
         """Generate useful aggregations from query results."""
         if not tickets:
             return {}
