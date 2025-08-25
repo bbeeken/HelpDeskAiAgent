@@ -1,22 +1,23 @@
 """Analytics helpers for summarizing ticket data."""
 
+from __future__ import annotations
+
 import logging
-from dataclasses import dataclass
-from enum import Enum
-from datetime import datetime, timedelta, timezone, date as date_cls
-from typing import Any, Dict, List, Optional, Union
 import os
 import time
 import threading
 import asyncio
+from dataclasses import dataclass
+from enum import Enum
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from .system_utilities import OperationResult, parse_search_datetime
-from sqlalchemy import func, select, or_
 from src.core.repositories.models import Ticket, TicketStatus, Site
 from src.core.services.ticket_management import _OPEN_STATE_IDS
-
-_CLOSED_STATE_IDS = [3]
 
 from src.shared.schemas.analytics import (
     StatusCount,
@@ -27,8 +28,14 @@ from src.shared.schemas.analytics import (
     StaffTicketReport,
 )
 
-
 logger = logging.getLogger(__name__)
+
+# ─── Status/State Constants ────────────────────────────────────────────────────
+
+_CLOSED_STATE_IDS = [3]
+WAITING_ON_USER_STATUS_ID = 4
+
+# ─── Trend Analysis Types ──────────────────────────────────────────────────────
 
 
 class TrendDirection(str, Enum):
@@ -60,17 +67,18 @@ class TrendAnalysis:
         }
 
 
-_analytics_cache: dict[str, tuple[float, Any]] = {}
+# ─── Simple In-Process Cache (opt-out in tests) ────────────────────────────────
+
+_analytics_cache: Dict[str, Tuple[float, Any]] = {}
 _cache_lock = threading.RLock()
 _cache_ttl = 300  # 5 minutes
-
-# Disable caching when running tests to avoid stale data issues
 _cache_enabled = os.getenv("APP_ENV") != "test"
 
 
-async def tickets_by_status(
-    db: AsyncSession,
-) -> OperationResult[List[StatusCount]]:
+# ─── Analytics Queries ─────────────────────────────────────────────────────────
+
+
+async def tickets_by_status(db: AsyncSession) -> OperationResult[List[StatusCount]]:
     """Return counts of tickets grouped by status with caching."""
     cache_key = "tickets_by_status"
 
@@ -90,15 +98,8 @@ async def tickets_by_status(
                 TicketStatus.Label,
                 func.count(Ticket.Ticket_ID),
             )
-            .join(
-                TicketStatus,
-                Ticket.Ticket_Status_ID == TicketStatus.ID,
-                isouter=True,
-            )
-            .group_by(
-                Ticket.Ticket_Status_ID,
-                TicketStatus.Label,
-            )
+            .join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
+            .group_by(Ticket.Ticket_Status_ID, TicketStatus.Label)
         )
         status_counts = [
             StatusCount(status_id=row[0], status_label=row[1], count=row[2])
@@ -108,36 +109,35 @@ async def tickets_by_status(
         if _cache_enabled:
             with _cache_lock:
                 _analytics_cache[cache_key] = (time.time(), status_counts)
+
         return OperationResult(success=True, data=status_counts)
     except Exception as e:
         logger.exception("Failed to get tickets by status")
         return OperationResult(success=False, error=str(e))
 
 
-async def open_tickets_by_site(
-    db: AsyncSession,
-) -> List[SiteOpenCount]:
+async def open_tickets_by_site(db: AsyncSession) -> OperationResult[List[SiteOpenCount]]:
     """Return open ticket counts grouped by site."""
     logger.info("Calculating open tickets by site")
-    result = await db.execute(
-        select(
-            Ticket.Site_ID,
-            Site.Label,
-            func.count(Ticket.Ticket_ID),
+    try:
+        result = await db.execute(
+            select(
+                Ticket.Site_ID,
+                Site.Label,
+                func.count(Ticket.Ticket_ID),
+            )
+            .join(Site, Ticket.Site_ID == Site.ID, isouter=True)
+            .filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
+            .group_by(Ticket.Site_ID, Site.Label)
         )
-        .join(Site, Ticket.Site_ID == Site.ID, isouter=True)
-
-        .filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
-
-        .group_by(
-            Ticket.Site_ID,
-            Site.Label,
-        )
-    )
-    return [
-        SiteOpenCount(site_id=row[0], site_label=row[1], count=row[2])
-        for row in result.all()
-    ]
+        counts = [
+            SiteOpenCount(site_id=row[0], site_label=row[1], count=row[2])
+            for row in result.all()
+        ]
+        return OperationResult(success=True, data=counts)
+    except Exception as e:
+        logger.exception("Failed to get open tickets by site")
+        return OperationResult(success=False, error=str(e))
 
 
 async def sla_breaches(
@@ -145,7 +145,7 @@ async def sla_breaches(
     sla_days: int = 2,
     filters: Optional[Dict[str, Any]] = None,
     status_ids: Optional[Union[List[int], int]] = None,
-) -> int:
+) -> OperationResult[int]:
     """Count tickets older than `sla_days` with optional filtering."""
     logger.info(
         "Counting SLA breaches older than %s days with filters=%s statuses=%s",
@@ -153,126 +153,144 @@ async def sla_breaches(
         filters,
         status_ids,
     )
-    cutoff = datetime.now(timezone.utc) - timedelta(days=sla_days)
-    cutoff = parse_search_datetime(cutoff)
-    query = select(func.count(Ticket.Ticket_ID)).filter(Ticket.Created_Date < cutoff)
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=sla_days)
+        cutoff = parse_search_datetime(cutoff)
 
-    if status_ids is not None:
-        if isinstance(status_ids, int):
-            status_ids = [status_ids]
-        query = query.filter(Ticket.Ticket_Status_ID.in_(status_ids))
-    else:
+        query = select(func.count(Ticket.Ticket_ID)).filter(Ticket.Created_Date < cutoff)
 
-        # Default to counting only open or in-progress tickets
+        if status_ids is not None:
+            if isinstance(status_ids, int):
+                status_ids = [status_ids]
+            query = query.filter(Ticket.Ticket_Status_ID.in_(status_ids))
+        else:
+            # Default to counting only open/in-progress
+            query = query.filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
 
-        query = query.filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
+        if filters:
+            for key, value in filters.items():
+                if hasattr(Ticket, key):
+                    query = query.filter(getattr(Ticket, key) == value)
 
-
-    if filters:
-        for key, value in filters.items():
-            if hasattr(Ticket, key):
-                query = query.filter(getattr(Ticket, key) == value)
-
-    result = await db.execute(query)
-    return result.scalar_one()
+        result = await db.execute(query)
+        return OperationResult(success=True, data=result.scalar_one())
+    except Exception as e:
+        logger.exception("Failed to count SLA breaches")
+        return OperationResult(success=False, error=str(e))
 
 
 async def open_tickets_by_user(
-    db: AsyncSession, filters: Optional[Dict[str, Any]] | None = None
-) -> List[UserOpenCount]:
+    db: AsyncSession,
+    filters: Optional[Dict[str, Any]] = None,
+) -> OperationResult[List[UserOpenCount]]:
     """Return open ticket counts for assigned technicians with optional filtering."""
-
     logger.info("Calculating open tickets by user with filters %s", filters)
-
-
-    query = select(
-        Ticket.Assigned_Email,
-        Ticket.Assigned_Name,
-        func.count(Ticket.Ticket_ID),
-    ).filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
-
-
-    if filters:
-        for key, value in filters.items():
-            if hasattr(Ticket, key):
-                query = query.filter(getattr(Ticket, key) == value)
-
-    query = query.group_by(Ticket.Assigned_Email, Ticket.Assigned_Name)
-
-    result = await db.execute(query)
-    return [
-        UserOpenCount(assigned_email=row[0], assigned_name=row[1], count=row[2])
-        for row in result.all()
-    ]
-
-
-async def tickets_waiting_on_user(db: AsyncSession) -> List[WaitingOnUserCount]:
-    """Return counts of tickets awaiting user response (status == 4)."""
-    logger.info("Calculating tickets waiting on user")
-    result = await db.execute(
-        select(
-            Ticket.Ticket_Contact_Email,
-            func.count(Ticket.Ticket_ID),
+    try:
+        query = (
+            select(
+                Ticket.Assigned_Email,
+                Ticket.Assigned_Name,
+                func.count(Ticket.Ticket_ID),
+            )
+            .filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
         )
-        .filter(Ticket.Ticket_Status_ID == 4)
-        .group_by(Ticket.Ticket_Contact_Email)
-    )
-    return [
-        WaitingOnUserCount(contact_email=row[0], count=row[1]) for row in result.all()
-    ]
+
+        if filters:
+            for key, value in filters.items():
+                if hasattr(Ticket, key):
+                    query = query.filter(getattr(Ticket, key) == value)
+
+        query = query.group_by(Ticket.Assigned_Email, Ticket.Assigned_Name)
+
+        result = await db.execute(query)
+        counts = [
+            UserOpenCount(assigned_email=row[0], assigned_name=row[1], count=row[2])
+            for row in result.all()
+        ]
+        return OperationResult(success=True, data=counts)
+    except Exception as e:
+        logger.exception("Failed to get open tickets by user")
+        return OperationResult(success=False, error=str(e))
 
 
-async def ticket_trend(db: AsyncSession, days: int = 7) -> List[TrendCount]:
+async def tickets_waiting_on_user(
+    db: AsyncSession,
+) -> OperationResult[List[WaitingOnUserCount]]:
+    """Return counts of tickets awaiting user response (status == WAITING_ON_USER_STATUS_ID)."""
+    logger.info("Calculating tickets waiting on user")
+    try:
+        result = await db.execute(
+            select(
+                Ticket.Ticket_Contact_Email,
+                func.count(Ticket.Ticket_ID),
+            )
+            .filter(Ticket.Ticket_Status_ID == WAITING_ON_USER_STATUS_ID)
+            .group_by(Ticket.Ticket_Contact_Email)
+        )
+        counts = [
+            WaitingOnUserCount(contact_email=row[0], count=row[1])
+            for row in result.all()
+        ]
+        return OperationResult(success=True, data=counts)
+    except Exception as e:
+        logger.exception("Failed to get tickets waiting on user")
+        return OperationResult(success=False, error=str(e))
+
+
+async def ticket_trend(
+    db: AsyncSession,
+    days: int = 7,
+) -> OperationResult[List[TrendCount]]:
     """Return ticket counts grouped by creation date over the past `days` days."""
     logger.info("Calculating ticket trend for the past %d days", days)
-    start = datetime.now(timezone.utc) - timedelta(days=days)
-    start = parse_search_datetime(start)
-    result = await db.execute(
-        select(
-            func.date(Ticket.Created_Date),
-            func.count(Ticket.Ticket_ID),
-        )
-        .filter(Ticket.Created_Date >= start)
-        .group_by(func.date(Ticket.Created_Date))
-        .order_by(func.date(Ticket.Created_Date))
-    )
+    try:
+        start = datetime.now(timezone.utc) - timedelta(days=days)
+        start = parse_search_datetime(start)
 
-    trend: List[TrendCount] = []
-    for d, c in result.all():
-        if isinstance(d, str):
-            parsed = parse_search_datetime(d)
-            d = parsed.date() if parsed else None
-        elif isinstance(d, datetime):
-            d = d.date()
-        trend.append(TrendCount(date=d, count=c))
-    return trend
+        result = await db.execute(
+            select(
+                func.date(Ticket.Created_Date),
+                func.count(Ticket.Ticket_ID),
+            )
+            .filter(Ticket.Created_Date >= start)
+            .group_by(func.date(Ticket.Created_Date))
+            .order_by(func.date(Ticket.Created_Date))
+        )
+
+        trend: List[TrendCount] = []
+        for d, c in result.all():
+            if isinstance(d, str):
+                parsed = parse_search_datetime(d)
+                d = parsed.date() if parsed else None
+            elif isinstance(d, datetime):
+                d = d.date()
+            trend.append(TrendCount(date=d, count=c))
+
+        return OperationResult(success=True, data=trend)
+    except Exception as e:
+        logger.exception("Failed to get ticket trend")
+        return OperationResult(success=False, error=str(e))
 
 
 async def get_staff_ticket_report(
     db: AsyncSession,
     email: str,
-    start_date: datetime | None = None,
-    end_date: datetime | None = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
 ) -> StaffTicketReport:
     """Return open/closed counts for a technician with recent tickets."""
-
     base_query = select(Ticket).filter(Ticket.Assigned_Email == email)
+
     if start_date:
         base_query = base_query.filter(Ticket.Created_Date >= start_date)
     if end_date:
         base_query = base_query.filter(Ticket.Created_Date <= end_date)
 
-
     open_q = base_query.filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
     closed_q = base_query.filter(Ticket.Ticket_Status_ID.in_(_CLOSED_STATE_IDS))
 
-    open_count = (
-        await db.scalar(select(func.count()).select_from(open_q.subquery())) or 0
-    )
-    closed_count = (
-        await db.scalar(select(func.count()).select_from(closed_q.subquery())) or 0
-
-    )
+    open_count = await db.scalar(select(func.count()).select_from(open_q.subquery())) or 0
+    closed_count = await db.scalar(select(func.count()).select_from(closed_q.subquery())) or 0
 
     recent_q = (
         base_query.order_by(Ticket.Created_Date.desc())
@@ -290,6 +308,9 @@ async def get_staff_ticket_report(
     )
 
 
+# ─── Analytics Manager (Dashboard/Trends) ─────────────────────────────────────
+
+
 class AnalyticsManager:
     """Enhanced analytics helper with trends, insights, and predictions."""
 
@@ -297,12 +318,12 @@ class AnalyticsManager:
         self.db = db
 
     async def get_comprehensive_dashboard(
-        self, time_range_days: int = 30, include_predictions: bool = True
+        self,
+        time_range_days: int = 30,
+        include_predictions: bool = True,
     ) -> Dict[str, Any]:
-        end_date = datetime.now(timezone.utc)
-        end_date = parse_search_datetime(end_date)
-        start_date = end_date - timedelta(days=time_range_days)
-        start_date = parse_search_datetime(start_date)
+        end_date = parse_search_datetime(datetime.now(timezone.utc))
+        start_date = parse_search_datetime(end_date - timedelta(days=time_range_days))
 
         metrics = await self._gather_all_metrics(start_date, end_date)
         trends = await self._analyze_trends(metrics, time_range_days)
@@ -325,9 +346,8 @@ class AnalyticsManager:
             dashboard["predictions"] = await self._generate_predictions(metrics, trends)
         return dashboard
 
-    async def _gather_all_metrics(
-        self, start: datetime, end: datetime
-    ) -> Dict[str, Any]:
+    async def _gather_all_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
+        """Collect total/active/resolved counts concurrently."""
         total, active, resolved = await asyncio.gather(
             self.db.scalar(
                 select(func.count(Ticket.Ticket_ID)).filter(
@@ -357,13 +377,9 @@ class AnalyticsManager:
             "resolution_rate": resolved / max(total, 1),
         }
 
-    async def _analyze_trends(
-        self, metrics: Dict[str, Any], days: int
-    ) -> Dict[str, TrendAnalysis]:
-        prev_end = datetime.now(timezone.utc) - timedelta(days=days)
-        prev_end = parse_search_datetime(prev_end)
-        prev_start = prev_end - timedelta(days=days)
-        prev_start = parse_search_datetime(prev_start)
+    async def _analyze_trends(self, metrics: Dict[str, Any], days: int) -> Dict[str, TrendAnalysis]:
+        prev_end = parse_search_datetime(datetime.now(timezone.utc) - timedelta(days=days))
+        prev_start = parse_search_datetime(prev_end - timedelta(days=days))
         prev_metrics = await self._gather_all_metrics(prev_start, prev_end)
 
         change = (
@@ -385,29 +401,19 @@ class AnalyticsManager:
             return TrendDirection.STABLE
         return TrendDirection.INCREASING if change > 0 else TrendDirection.DECREASING
 
-    def _generate_insights(
-        self, metrics: Dict[str, Any], trends: Dict[str, TrendAnalysis]
-    ) -> List[Dict[str, Any]]:
+    def _generate_insights(self, metrics: Dict[str, Any], trends: Dict[str, TrendAnalysis]) -> List[Dict[str, Any]]:
         insights: List[Dict[str, Any]] = []
         trend = trends["volume_trend"]
-        if (
-            trend.direction == TrendDirection.INCREASING
-            and trend.change_percentage > 30
-        ):
+        if trend.direction == TrendDirection.INCREASING and trend.change_percentage > 30:
             insights.append(
                 {
                     "type": "warning",
-                    "message": (
-                        "Ticket volume is increasing rapidly; "
-                        "consider scaling support resources."
-                    ),
+                    "message": "Ticket volume is increasing rapidly; consider scaling support resources.",
                 }
             )
         return insights
 
-    async def _generate_predictions(
-        self, metrics: Dict[str, Any], trends: Dict[str, TrendAnalysis]
-    ) -> Dict[str, Any]:
+    async def _generate_predictions(self, metrics: Dict[str, Any], trends: Dict[str, TrendAnalysis]) -> Dict[str, Any]:
         trend = trends["volume_trend"]
         return {
             "expected_ticket_volume": int(trend.prediction_next_period),
