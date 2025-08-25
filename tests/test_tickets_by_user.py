@@ -110,7 +110,7 @@ async def test_tickets_by_user_endpoint():
             )
             await TicketManager().create_ticket(db, t)
             await db.commit()
-        resp = await ac.get("/tickets/by_user", params={"identifier": "endpoint@example.com"})
+        resp = await ac.get("/ticket/by_user", params={"identifier": "endpoint@example.com"})
         assert resp.status_code == 200
         data = resp.json()
         assert data["total"] >= 1
@@ -128,7 +128,7 @@ async def test_tickets_by_user_endpoint():
             )
             await TicketManager().create_ticket(db, t_new)
             await db.commit()
-        resp = await ac.get("/tickets/by_user", params={"identifier": "endpoint@example.com"})
+        resp = await ac.get("/ticket/by_user", params={"identifier": "endpoint@example.com"})
         ids = [item["Ticket_ID"] for item in resp.json()["items"]]
         assert t_new.Ticket_ID in ids
 
@@ -202,7 +202,7 @@ async def test_status_and_filtering():
             await db.commit()
 
         resp = await ac.get(
-            "/tickets/by_user",
+            "/ticket/by_user",
             params={"identifier": "filter@example.com", "status": "closed"},
         )
         assert resp.status_code == 200
@@ -210,7 +210,7 @@ async def test_status_and_filtering():
         assert ids == [closed_t.Ticket_ID]
 
         resp = await ac.get(
-            "/tickets/by_user",
+            "/ticket/by_user",
             params={"identifier": "filter@example.com", "Site_ID": 1},
         )
         assert resp.status_code == 200

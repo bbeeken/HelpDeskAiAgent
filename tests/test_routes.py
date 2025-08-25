@@ -63,7 +63,7 @@ async def test_create_and_get_ticket(client: AsyncClient):
     assert created["Version"] == 1
     tid = created["Ticket_ID"]
 
-    list_resp = await client.get("/tickets/expanded")
+    list_resp = await client.get("/ticket/expanded")
     assert list_resp.status_code == 200
     data = list_resp.json()
     assert data["total"] == 1
