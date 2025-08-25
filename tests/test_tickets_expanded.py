@@ -41,7 +41,7 @@ async def test_tickets_expanded_endpoint(client: AsyncClient):
     assert created.status_code == 201
     tid = created.json()["Ticket_ID"]
 
-    resp = await client.get("/tickets/expanded")
+    resp = await client.get("/ticket/expanded")
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 1
@@ -98,7 +98,7 @@ async def test_ticket_filtering(client: AsyncClient):
         },
     )
 
-    resp = await client.get("/tickets/expanded", params={"Subject": "Foo"})
+    resp = await client.get("/ticket/expanded", params={"Subject": "Foo"})
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] == 1
@@ -127,7 +127,7 @@ async def test_ticket_sorting(client: AsyncClient):
         },
     )
 
-    resp = await client.get("/tickets/expanded", params={"sort": "-Ticket_ID"})
+    resp = await client.get("/ticket/expanded", params={"sort": "-Ticket_ID"})
     assert resp.status_code == 200
     data = resp.json()
     assert data["items"][0]["Ticket_ID"] == second.json()["Ticket_ID"]

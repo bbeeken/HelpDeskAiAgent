@@ -60,7 +60,7 @@ async def test_search_endpoint_handles_long_ticket_body():
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.get("/tickets/search", params={"q": "Bad"})
+        resp = await ac.get("/ticket/search", params={"q": "Bad"})
         assert resp.status_code == 200
         data = resp.json()
         assert any(item["Ticket_ID"] == bad_id for item in data)

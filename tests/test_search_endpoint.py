@@ -36,7 +36,7 @@ async def test_search_returns_long_ticket_body():
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.get("/tickets/search", params={"q": "Query"})
+        resp = await ac.get("/ticket/search", params={"q": "Query"})
         assert resp.status_code == 200
         data = resp.json()
         ids = {item["Ticket_ID"] for item in data}
@@ -76,14 +76,14 @@ async def test_search_filters_and_sort():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get(
-            "/tickets/search",
+            "/ticket/search",
             params={"q": "Query", "Site_ID": 1, "Ticket_Status_ID": 1, "sort": "oldest"},
         )
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1 and data[0]["Ticket_ID"] == first_id
 
-        resp = await ac.get("/tickets/search", params={"q": "Query", "sort": "oldest"})
+        resp = await ac.get("/ticket/search", params={"q": "Query", "sort": "oldest"})
         ids = [item["Ticket_ID"] for item in resp.json()]
         assert ids == [first_id, second_id]
 
@@ -105,7 +105,7 @@ async def test_search_accepts_json():
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.post("/tickets/search", json={"q": "JSON Search"})
+        resp = await ac.post("/ticket/search", json={"q": "JSON Search"})
         assert resp.status_code == 200
         ids = [item["Ticket_ID"] for item in resp.json()]
         assert tid in ids
@@ -135,7 +135,7 @@ async def test_search_created_date_filters_endpoint():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get(
-            "/tickets/search",
+            "/ticket/search",
             params={"q": "DateFilter", "created_after": "2023-01-05T00:00:00+00:00"},
         )
         assert resp.status_code == 200
@@ -143,7 +143,7 @@ async def test_search_created_date_filters_endpoint():
         assert ids == {new_id}
 
         resp = await ac.post(
-            "/tickets/search",
+            "/ticket/search",
             json={
                 "q": "DateFilter",
                 "params": {"created_before": "2023-01-05T00:00:00+00:00"},

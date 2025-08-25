@@ -25,7 +25,7 @@ async def _add_sample_ticket():
 async def _search_worker():
     transport = ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.get("/tickets/search", params={"q": "Net"})
+        resp = await ac.get("/ticket/search", params={"q": "Net"})
         return resp.json()[0]["Subject"]
 
 
