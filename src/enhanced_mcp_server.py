@@ -1289,28 +1289,34 @@ async def _get_ticket_stats() -> Dict[str, Any]:
     try:
         async with db.SessionLocal() as db_session:
             mgr = EnhancedContextManager(db_session)
-            
-            data = {
-                "by_status": await mgr._get_ticket_counts_by_status(),
-                "by_priority": await mgr._get_ticket_counts_by_priority(),
-                "by_site": await mgr._get_ticket_counts_by_site(),
-                "by_category": await mgr._get_ticket_counts_by_category(),
-                "summary": {
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
-            }
-            
-            # Calculate totals
-            total_tickets = sum(item["count"] for item in data["by_status"])
+
+            # Retrieve ticket counts grouped by various dimensions
+            status_counts = await mgr._get_ticket_counts_by_status()
+            priority_counts = await mgr._get_ticket_counts_by_priority()
+            site_counts = await mgr._get_ticket_counts_by_site()
+            category_counts = await mgr._get_ticket_counts_by_category()
+
+            # Calculate totals from status counts
+            total_tickets = sum(status_counts.values())
             open_tickets = sum(
-                item["count"] for item in data["by_status"]
-                if "open" in item["status"].lower() or "progress" in item["status"].lower()
+                count
+                for label, count in status_counts.items()
+                if "open" in label.lower() or "progress" in label.lower()
             )
-            
-            data["summary"]["total_tickets"] = total_tickets
-            data["summary"]["open_tickets"] = open_tickets
-            data["summary"]["closed_tickets"] = total_tickets - open_tickets
-            
+
+            data = {
+                "by_status": status_counts,
+                "by_priority": priority_counts,
+                "by_site": site_counts,
+                "by_category": category_counts,
+                "summary": {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "total_tickets": total_tickets,
+                    "open_tickets": open_tickets,
+                    "closed_tickets": total_tickets - open_tickets,
+                },
+            }
+
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in get_ticket_stats: {e}")
