@@ -22,7 +22,7 @@ from src.shared.schemas import (
 from src.shared.schemas.search_params import TicketSearchParams
 from src.shared.schemas.basic import TicketMessageOut
 from src.shared.schemas.paginated import PaginatedResponse
-from src.core.services.ticket_management import TicketManager
+from src.core.services.ticket_management import TicketManager, apply_semantic_filters
 
 from .deps import get_db, get_db_with_commit, extract_filters
 
@@ -198,12 +198,20 @@ async def tickets_by_user_endpoint(
     identifier: str = Query(..., min_length=1),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1),
-    status: str | None = Query(None),
+    status: str | None = Query(
+        None,
+        description="Filter by ticket status. Allowed values: open, closed, resolved, in_progress, progress, waiting, pending.",
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedResponse[TicketExpandedOut]:
     filters = extract_filters(
         request, exclude=["identifier", "skip", "limit", "status"]
     )
+    if status:
+        try:
+            apply_semantic_filters({"status": status})
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=exc.args[0])
     items = await TicketManager().get_tickets_by_user(
         db,
         identifier,

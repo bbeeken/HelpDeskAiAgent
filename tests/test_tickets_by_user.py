@@ -92,6 +92,10 @@ async def test_get_tickets_by_user_function():
         )
         ids = {t.Ticket_ID for t in closed_only}
         assert ids == {t4.Ticket_ID}
+        with pytest.raises(ValueError):
+            await TicketManager().get_tickets_by_user(
+                db, "user@example.com", status="bogus"
+            )
 
 
 @pytest.mark.asyncio
@@ -131,6 +135,17 @@ async def test_tickets_by_user_endpoint():
         resp = await ac.get("/ticket/by_user", params={"identifier": "endpoint@example.com"})
         ids = [item["Ticket_ID"] for item in resp.json()["items"]]
         assert t_new.Ticket_ID in ids
+
+
+@pytest.mark.asyncio
+async def test_invalid_status_rejected():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.get(
+            "/ticket/by_user",
+            params={"identifier": "endpoint@example.com", "status": "bogus"},
+        )
+        assert resp.status_code == 400
 
 
 @pytest.mark.asyncio

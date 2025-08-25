@@ -336,12 +336,13 @@ async def _get_tickets_by_user(
 
         async with db.SessionLocal() as db_session:
             applied_filters = apply_semantic_filters(filters or {})
+            if status is not None:
+                applied_filters.update(apply_semantic_filters({"status": status}))
             tickets = await TicketManager().get_tickets_by_user(
                 db_session,
                 identifier,
                 skip=skip,
                 limit=limit,
-                status=status,
                 filters=applied_filters,
             )
             data = [_format_ticket_by_level(t) for t in tickets]

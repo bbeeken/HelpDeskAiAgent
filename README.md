@@ -390,12 +390,14 @@ python verify_tools.py http://localhost:8000
 
 ### Tool Reference
 
+
 The MCP server exposes several JSON-RPC tools. Use `GET /ticket/by_user` or the
 `search_tickets` tool with a `user` parameter to retrieve expanded ticket
 records for a user. The legacy `POST /get_tickets_by_user` route remains
 available for backward compatibility and should be considered deprecated.
 Detailed descriptions for every tool are available in
 [docs/MCP_TOOLS_GUIDE.md](docs/MCP_TOOLS_GUIDE.md).
+
 
 ```bash
 curl "http://localhost:8000/ticket/by_user?identifier=user@example.com&status=open"

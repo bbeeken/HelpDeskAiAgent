@@ -226,7 +226,7 @@ Legacy parameters:
 - `identifier` – email or other user identifier.
 - `skip` – optional offset (default 0).
 - `limit` – optional maximum number (default 100).
-- `status` – optional status filter.
+ - `status` – optional status filter. Allowed values: `open`, `closed`, `resolved`, `in_progress`, `progress`, `waiting`, `pending`.
 - `filters` – optional additional filters.
 
 Legacy example:
