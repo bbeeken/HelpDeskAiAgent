@@ -1334,8 +1334,13 @@ async def _get_workload_analytics() -> Dict[str, Any]:
             total_assigned = sum(
                 w.get("open_tickets", 0) for w in data["technician_workloads"]
             )
-            total_unassigned = data["unassigned_tickets"].get("total", 0)
-            total_overdue = data["overdue_tickets"].get("total", 0)
+            # The unassigned and overdue summaries return lists of ticket
+            # dictionaries.  Previously this function expected summary
+            # objects containing a ``total`` field, which would have caused
+            # attribute errors.  Compute the counts directly from the list
+            # lengths instead.
+            total_unassigned = len(data["unassigned_tickets"])
+            total_overdue = len(data["overdue_tickets"])
             
             data["summary"] = {
                 "total_open_tickets": total_assigned + total_unassigned,
