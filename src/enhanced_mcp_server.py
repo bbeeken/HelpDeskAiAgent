@@ -47,7 +47,6 @@ from src.core.services.analytics_reporting import (
     open_tickets_by_user,
     tickets_by_status,
     ticket_trend,
-    sla_breaches,
     AnalyticsManager,
 )
 from src.core.services.ticket_management import _OPEN_STATE_IDS
@@ -1018,58 +1017,6 @@ async def _get_analytics_unified(
 
     except Exception as e:
         logger.error(f"Error in get_analytics_unified: {e}")
-        return {"status": "error", "error": str(e)}
-
-
-async def _get_sla_metrics(
-    sla_days: int = 2,
-    filters: Dict[str, Any] | None = None,
-    status_ids: list[int] | None = None,
-) -> Dict[str, Any]:
-    """Return SLA compliance metrics."""
-    try:
-        async with db.SessionLocal() as db_session:
-            # Count open tickets
-            query = (
-                select(func.count(Ticket.Ticket_ID))
-                .join(TicketStatus, Ticket.Ticket_Status_ID == TicketStatus.ID, isouter=True)
-                .filter(TicketStatus.ID.in_(_OPEN_STATE_IDS))
-            )
-            
-            # Apply filters
-            if filters:
-                applied_filters = apply_semantic_filters(filters)
-                for key, value in applied_filters.items():
-                    if hasattr(Ticket, key):
-                        query = query.filter(getattr(Ticket, key) == value)
-
-            open_count = await db_session.scalar(query) or 0
-
-            # Get breach count
-            breaches = await sla_breaches(
-                db_session,
-                sla_days=sla_days,
-                filters=filters,
-                status_ids=status_ids,
-            )
-
-            # Calculate compliance percentage
-            compliance = ((open_count - breaches) / open_count * 100) if open_count > 0 else 100.0
-
-            return {
-                "status": "success",
-                "data": {
-                    "open_tickets": open_count,
-                    "sla_breaches": breaches,
-                    "sla_compliance_pct": round(compliance, 2),
-                    "sla_days": sla_days,
-                    "compliant_tickets": open_count - breaches,
-                },
-                "filters_applied": bool(filters),
-                "status_ids": status_ids
-            }
-    except Exception as e:
-        logger.error(f"Error in get_sla_metrics: {e}")
         return {"status": "error", "error": str(e)}
 
 
