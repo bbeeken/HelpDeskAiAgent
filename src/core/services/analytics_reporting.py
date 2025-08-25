@@ -115,28 +115,31 @@ async def tickets_by_status(
 
 async def open_tickets_by_site(
     db: AsyncSession,
-) -> List[SiteOpenCount]:
+) -> OperationResult[List[SiteOpenCount]]:
     """Return open ticket counts grouped by site."""
     logger.info("Calculating open tickets by site")
-    result = await db.execute(
-        select(
-            Ticket.Site_ID,
-            Site.Label,
-            func.count(Ticket.Ticket_ID),
+    try:
+        result = await db.execute(
+            select(
+                Ticket.Site_ID,
+                Site.Label,
+                func.count(Ticket.Ticket_ID),
+            )
+            .join(Site, Ticket.Site_ID == Site.ID, isouter=True)
+            .filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
+            .group_by(
+                Ticket.Site_ID,
+                Site.Label,
+            )
         )
-        .join(Site, Ticket.Site_ID == Site.ID, isouter=True)
-
-        .filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
-
-        .group_by(
-            Ticket.Site_ID,
-            Site.Label,
-        )
-    )
-    return [
-        SiteOpenCount(site_id=row[0], site_label=row[1], count=row[2])
-        for row in result.all()
-    ]
+        counts = [
+            SiteOpenCount(site_id=row[0], site_label=row[1], count=row[2])
+            for row in result.all()
+        ]
+        return OperationResult(success=True, data=counts)
+    except Exception as e:
+        logger.exception("Failed to get open tickets by site")
+        return OperationResult(success=False, error=str(e))
 
 
 async def sla_breaches(
@@ -144,7 +147,7 @@ async def sla_breaches(
     sla_days: int = 2,
     filters: Optional[Dict[str, Any]] = None,
     status_ids: Optional[Union[List[int], int]] = None,
-) -> int:
+) -> OperationResult[int]:
     """Count tickets older than `sla_days` with optional filtering."""
     logger.info(
         "Counting SLA breaches older than %s days with filters=%s statuses=%s",
@@ -152,99 +155,116 @@ async def sla_breaches(
         filters,
         status_ids,
     )
-    cutoff = datetime.now(timezone.utc) - timedelta(days=sla_days)
-    cutoff = parse_search_datetime(cutoff)
-    query = select(func.count(Ticket.Ticket_ID)).filter(Ticket.Created_Date < cutoff)
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=sla_days)
+        cutoff = parse_search_datetime(cutoff)
+        query = select(func.count(Ticket.Ticket_ID)).filter(Ticket.Created_Date < cutoff)
 
-    if status_ids is not None:
-        if isinstance(status_ids, int):
-            status_ids = [status_ids]
-        query = query.filter(Ticket.Ticket_Status_ID.in_(status_ids))
-    else:
+        if status_ids is not None:
+            if isinstance(status_ids, int):
+                status_ids = [status_ids]
+            query = query.filter(Ticket.Ticket_Status_ID.in_(status_ids))
+        else:
+            # Default to counting only open or in-progress tickets
+            query = query.filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
 
-        # Default to counting only open or in-progress tickets
+        if filters:
+            for key, value in filters.items():
+                if hasattr(Ticket, key):
+                    query = query.filter(getattr(Ticket, key) == value)
 
-        query = query.filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
-
-
-    if filters:
-        for key, value in filters.items():
-            if hasattr(Ticket, key):
-                query = query.filter(getattr(Ticket, key) == value)
-
-    result = await db.execute(query)
-    return result.scalar_one()
+        result = await db.execute(query)
+        return OperationResult(success=True, data=result.scalar_one())
+    except Exception as e:
+        logger.exception("Failed to count SLA breaches")
+        return OperationResult(success=False, error=str(e))
 
 
 async def open_tickets_by_user(
     db: AsyncSession, filters: Optional[Dict[str, Any]] | None = None
-) -> List[UserOpenCount]:
+) -> OperationResult[List[UserOpenCount]]:
     """Return open ticket counts for assigned technicians with optional filtering."""
 
     logger.info("Calculating open tickets by user with filters %s", filters)
+    try:
+        query = select(
+            Ticket.Assigned_Email,
+            Ticket.Assigned_Name,
+            func.count(Ticket.Ticket_ID),
+        ).filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
+
+        if filters:
+            for key, value in filters.items():
+                if hasattr(Ticket, key):
+                    query = query.filter(getattr(Ticket, key) == value)
+
+        query = query.group_by(Ticket.Assigned_Email, Ticket.Assigned_Name)
+
+        result = await db.execute(query)
+        counts = [
+            UserOpenCount(assigned_email=row[0], assigned_name=row[1], count=row[2])
+            for row in result.all()
+        ]
+        return OperationResult(success=True, data=counts)
+    except Exception as e:
+        logger.exception("Failed to get open tickets by user")
+        return OperationResult(success=False, error=str(e))
 
 
-    query = select(
-        Ticket.Assigned_Email,
-        Ticket.Assigned_Name,
-        func.count(Ticket.Ticket_ID),
-    ).filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
-
-
-    if filters:
-        for key, value in filters.items():
-            if hasattr(Ticket, key):
-                query = query.filter(getattr(Ticket, key) == value)
-
-    query = query.group_by(Ticket.Assigned_Email, Ticket.Assigned_Name)
-
-    result = await db.execute(query)
-    return [
-        UserOpenCount(assigned_email=row[0], assigned_name=row[1], count=row[2])
-        for row in result.all()
-    ]
-
-
-async def tickets_waiting_on_user(db: AsyncSession) -> List[WaitingOnUserCount]:
+async def tickets_waiting_on_user(
+    db: AsyncSession,
+) -> OperationResult[List[WaitingOnUserCount]]:
     """Return counts of tickets awaiting user response (status == 4)."""
     logger.info("Calculating tickets waiting on user")
-    result = await db.execute(
-        select(
-            Ticket.Ticket_Contact_Email,
-            func.count(Ticket.Ticket_ID),
+    try:
+        result = await db.execute(
+            select(
+                Ticket.Ticket_Contact_Email,
+                func.count(Ticket.Ticket_ID),
+            )
+            .filter(Ticket.Ticket_Status_ID == 4)
+            .group_by(Ticket.Ticket_Contact_Email)
         )
-        .filter(Ticket.Ticket_Status_ID == 4)
-        .group_by(Ticket.Ticket_Contact_Email)
-    )
-    return [
-        WaitingOnUserCount(contact_email=row[0], count=row[1]) for row in result.all()
-    ]
+        counts = [
+            WaitingOnUserCount(contact_email=row[0], count=row[1])
+            for row in result.all()
+        ]
+        return OperationResult(success=True, data=counts)
+    except Exception as e:
+        logger.exception("Failed to get tickets waiting on user")
+        return OperationResult(success=False, error=str(e))
 
 
-async def ticket_trend(db: AsyncSession, days: int = 7) -> List[TrendCount]:
+async def ticket_trend(
+    db: AsyncSession, days: int = 7
+) -> OperationResult[List[TrendCount]]:
     """Return ticket counts grouped by creation date over the past `days` days."""
     logger.info("Calculating ticket trend for the past %d days", days)
-    start = datetime.now(timezone.utc) - timedelta(days=days)
-    start = parse_search_datetime(start)
-    result = await db.execute(
-        select(
-            func.date(Ticket.Created_Date),
-            func.count(Ticket.Ticket_ID),
+    try:
+        start = datetime.now(timezone.utc) - timedelta(days=days)
+        start = parse_search_datetime(start)
+        result = await db.execute(
+            select(
+                func.date(Ticket.Created_Date),
+                func.count(Ticket.Ticket_ID),
+            )
+            .filter(Ticket.Created_Date >= start)
+            .group_by(func.date(Ticket.Created_Date))
+            .order_by(func.date(Ticket.Created_Date))
         )
-        .filter(Ticket.Created_Date >= start)
-        .group_by(func.date(Ticket.Created_Date))
-        .order_by(func.date(Ticket.Created_Date))
-    )
 
-    trend: List[TrendCount] = []
-    for d, c in result.all():
-        if isinstance(d, str):
-            parsed = parse_search_datetime(d)
-            d = parsed.date() if parsed else None
-        elif isinstance(d, datetime):
-            d = d.date()
-        trend.append(TrendCount(date=d, count=c))
-    return trend
+        trend: List[TrendCount] = []
+        for d, c in result.all():
+            if isinstance(d, str):
+                parsed = parse_search_datetime(d)
+                d = parsed.date() if parsed else None
+            elif isinstance(d, datetime):
+                d = d.date()
+            trend.append(TrendCount(date=d, count=c))
+        return OperationResult(success=True, data=trend)
+    except Exception as e:
+        logger.exception("Failed to get ticket trend")
+        return OperationResult(success=False, error=str(e))
 
 
 async def get_staff_ticket_report(

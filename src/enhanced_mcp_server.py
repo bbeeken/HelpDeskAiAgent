@@ -987,8 +987,10 @@ async def _get_analytics_unified(
         if type == "trends":
             days = params.get("days", 7)
             async with db.SessionLocal() as db_session:
-                trend = await ticket_trend(db_session, days)
-            return {"status": "success", "data": trend, "days": days}
+                trend_result = await ticket_trend(db_session, days)
+            if not trend_result.success:
+                return {"status": "error", "error": trend_result.error}
+            return {"status": "success", "data": trend_result.data, "days": days}
 
         if type == "overdue_tickets":
             async with db.SessionLocal() as db_session:
@@ -1046,15 +1048,20 @@ async def _get_sla_metrics(
             open_count = await db_session.scalar(query) or 0
 
             # Get breach count
-            breaches = await sla_breaches(
+            breach_result = await sla_breaches(
                 db_session,
                 sla_days=sla_days,
                 filters=filters,
                 status_ids=status_ids,
             )
+            if not breach_result.success:
+                return {"status": "error", "error": breach_result.error}
+            breaches = breach_result.data or 0
 
             # Calculate compliance percentage
-            compliance = ((open_count - breaches) / open_count * 100) if open_count > 0 else 100.0
+            compliance = (
+                (open_count - breaches) / open_count * 100
+            ) if open_count > 0 else 100.0
 
             return {
                 "status": "success",

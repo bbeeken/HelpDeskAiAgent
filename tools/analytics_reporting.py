@@ -8,6 +8,7 @@ from src.core.services.analytics_reporting import (
     tickets_by_status,
     tickets_waiting_on_user,
 )
+from src.core.services.system_utilities import OperationResult
 
 __all__ = [
     "tickets_by_status",
@@ -18,4 +19,5 @@ __all__ = [
     "ticket_trend",
     "get_staff_ticket_report",
     "AnalyticsManager",
+    "OperationResult",
 ]
