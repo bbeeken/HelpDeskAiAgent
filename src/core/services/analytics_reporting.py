@@ -1,9 +1,12 @@
 """Analytics helpers for summarizing ticket data."""
 
+from __future__ import annotations
+
 import logging
 import os
 import time
 import threading
+import asyncio
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime, timedelta, timezone
@@ -34,8 +37,10 @@ WAITING_ON_USER_STATUS_ID = 4
 
 # ─── Trend Analysis Types ──────────────────────────────────────────────────────
 
+
 class TrendDirection(str, Enum):
     """Trend direction indicators."""
+
     INCREASING = "increasing"
     DECREASING = "decreasing"
     STABLE = "stable"
@@ -71,6 +76,7 @@ _cache_enabled = os.getenv("APP_ENV") != "test"
 
 
 # ─── Analytics Queries ─────────────────────────────────────────────────────────
+
 
 async def tickets_by_status(db: AsyncSession) -> OperationResult[List[StatusCount]]:
     """Return counts of tickets grouped by status with caching."""
@@ -304,6 +310,7 @@ async def get_staff_ticket_report(
 
 # ─── Analytics Manager (Dashboard/Trends) ─────────────────────────────────────
 
+
 class AnalyticsManager:
     """Enhanced analytics helper with trends, insights, and predictions."""
 
@@ -340,20 +347,29 @@ class AnalyticsManager:
         return dashboard
 
     async def _gather_all_metrics(self, start: datetime, end: datetime) -> Dict[str, Any]:
-        total = await self.db.scalar(
-            select(func.count(Ticket.Ticket_ID)).filter(Ticket.Created_Date.between(start, end))
-        ) or 0
+        """Collect total/active/resolved counts concurrently."""
+        total, active, resolved = await asyncio.gather(
+            self.db.scalar(
+                select(func.count(Ticket.Ticket_ID)).filter(
+                    Ticket.Created_Date.between(start, end)
+                )
+            ),
+            self.db.scalar(
+                select(func.count(Ticket.Ticket_ID)).filter(
+                    Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS)
+                )
+            ),
+            self.db.scalar(
+                select(func.count(Ticket.Ticket_ID)).filter(
+                    Ticket.Created_Date.between(start, end),
+                    Ticket.Ticket_Status_ID.in_(_CLOSED_STATE_IDS),
+                )
+            ),
+        )
 
-        active = await self.db.scalar(
-            select(func.count(Ticket.Ticket_ID)).filter(Ticket.Ticket_Status_ID.in_(_OPEN_STATE_IDS))
-        ) or 0
-
-        resolved = await self.db.scalar(
-            select(func.count(Ticket.Ticket_ID)).filter(
-                Ticket.Created_Date.between(start, end),
-                Ticket.Ticket_Status_ID.in_(_CLOSED_STATE_IDS),
-            )
-        ) or 0
+        total = total or 0
+        active = active or 0
+        resolved = resolved or 0
 
         return {
             "total_tickets": total,
