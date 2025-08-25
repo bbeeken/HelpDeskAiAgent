@@ -1301,12 +1301,14 @@ async def _get_ticket_stats() -> Dict[str, Any]:
             }
             
             # Calculate totals
-            total_tickets = sum(item["count"] for item in data["by_status"])
+            status_counts = data["by_status"]
+            total_tickets = sum(status_counts.values())
             open_tickets = sum(
-                item["count"] for item in data["by_status"]
-                if "open" in item["status"].lower() or "progress" in item["status"].lower()
+                count
+                for label, count in status_counts.items()
+                if "open" in label.lower() or "progress" in label.lower()
             )
-            
+
             data["summary"]["total_tickets"] = total_tickets
             data["summary"]["open_tickets"] = open_tickets
             data["summary"]["closed_tickets"] = total_tickets - open_tickets
