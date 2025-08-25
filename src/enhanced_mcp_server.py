@@ -1091,29 +1091,78 @@ async def _system_snapshot() -> Dict[str, Any]:
 
 
 async def _get_ticket_stats() -> Dict[str, Any]:
-    """Return ticket statistics across multiple dimensions."""
+    """Return ticket statistics across multiple dimensions.
+
+    This implementation is resilient to different shapes returned by
+    EnhancedContextManager._get_ticket_counts_by_status(), supporting:
+      - List[{"status": str, "count": int}]
+      - Dict[str, int]  (label -> count)
+      - List[Tuple[str, int]]
+    """
     try:
         async with db.SessionLocal() as db_session:
             mgr = EnhancedContextManager(db_session)
-            data = {
-                "by_status": await mgr._get_ticket_counts_by_status(),
-                "by_priority": await mgr._get_ticket_counts_by_priority(),
-                "by_site": await mgr._get_ticket_counts_by_site(),
-                "by_category": await mgr._get_ticket_counts_by_category(),
-                "summary": {"timestamp": datetime.now(timezone.utc).isoformat()},
-            }
-            total_tickets = sum(item["count"] for item in data["by_status"])
+
+            by_status = await mgr._get_ticket_counts_by_status()
+            by_priority = await mgr._get_ticket_counts_by_priority()
+            by_site = await mgr._get_ticket_counts_by_site()
+            by_category = await mgr._get_ticket_counts_by_category()
+
+            # Normalize by_status into a uniform iterable of (label, count)
+            norm_status_iter: List[Tuple[str, int]] = []
+
+            if isinstance(by_status, dict):
+                # Dict[str, int]
+                norm_status_iter = [(k, int(v or 0)) for k, v in by_status.items()]
+            elif isinstance(by_status, list):
+                if by_status and isinstance(by_status[0], dict) and "count" in by_status[0]:
+                    # List[Dict[str, Any]] expected keys: "status" and "count"
+                    for item in by_status:
+                        label = str(item.get("status") or item.get("label") or "")
+                        cnt = int(item.get("count") or 0)
+                        norm_status_iter.append((label, cnt))
+                else:
+                    # Possibly List[Tuple[str, int]] or List[List[Any]]
+                    for item in by_status:
+                        if isinstance(item, (tuple, list)) and len(item) >= 2:
+                            label = str(item[0])
+                            cnt = int(item[1] or 0)
+                            norm_status_iter.append((label, cnt))
+                        elif isinstance(item, dict):
+                            # Fallback for unexpected dict shape
+                            label = str(item.get("status") or item.get("label") or "")
+                            cnt = int(item.get("count") or 0)
+                            if label:
+                                norm_status_iter.append((label, cnt))
+            else:
+                # Unknown shape; leave empty and avoid crashing
+                norm_status_iter = []
+
+            total_tickets = sum(cnt for _, cnt in norm_status_iter)
             open_tickets = sum(
-                item["count"] for item in data["by_status"]
-                if "open" in item["status"].lower() or "progress" in item["status"].lower()
+                cnt
+                for label, cnt in norm_status_iter
+                if "open" in label.lower() or "progress" in label.lower()
             )
-            data["summary"]["total_tickets"] = total_tickets
-            data["summary"]["open_tickets"] = open_tickets
-            data["summary"]["closed_tickets"] = total_tickets - open_tickets
+
+            data = {
+                "by_status": by_status,
+                "by_priority": by_priority,
+                "by_site": by_site,
+                "by_category": by_category,
+                "summary": {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "total_tickets": total_tickets,
+                    "open_tickets": open_tickets,
+                    "closed_tickets": total_tickets - open_tickets,
+                },
+            }
+
             return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error in get_ticket_stats: {e}")
         return {"status": "error", "error": str(e)}
+
 
 
 async def _get_workload_analytics() -> Dict[str, Any]:
