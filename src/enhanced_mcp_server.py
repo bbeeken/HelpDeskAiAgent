@@ -1335,8 +1335,15 @@ async def _get_workload_analytics() -> Dict[str, Any]:
             total_assigned = sum(
                 w.get("open_tickets", 0) for w in technician_workloads
             )
-            total_unassigned = len(data.get("unassigned_tickets", []))
-            total_overdue = len(data.get("overdue_tickets", []))
+
+            # The unassigned and overdue summaries return lists of ticket
+            # dictionaries.  Previously this function expected summary
+            # objects containing a ``total`` field, which would have caused
+            # attribute errors.  Compute the counts directly from the list
+            # lengths instead.
+            total_unassigned = len(data["unassigned_tickets"])
+            total_overdue = len(data["overdue_tickets"])
+            
 
             data["summary"] = {
                 "total_open_tickets": total_assigned + total_unassigned,
@@ -1566,7 +1573,6 @@ ENHANCED_TOOLS: List[Tool] = [
         inputSchema={
             "type": "object",
             "properties": {
-                "type": {"type": "string", "description": "Analytics report type"},
                 "type": {
                     "type": "string",
                     "enum": [
@@ -1578,9 +1584,7 @@ ENHANCED_TOOLS: List[Tool] = [
                         "overdue_tickets",
                         "status_counts",
                     ],
-
-                    "description": "Analytics report type"
-
+                    "description": "Analytics report type",
                 },
                 "params": {"type": "object", "description": "Optional parameters for the report"},
             },
