@@ -16,6 +16,7 @@ from src.core.repositories.models import Ticket, TicketStatus, Site
 from src.core.services.ticket_management import _OPEN_STATE_IDS
 
 _CLOSED_STATE_IDS = [3]
+WAITING_ON_USER_STATUS_ID = 4
 
 from src.shared.schemas.analytics import (
     StatusCount,
@@ -206,14 +207,14 @@ async def open_tickets_by_user(
 
 
 async def tickets_waiting_on_user(db: AsyncSession) -> List[WaitingOnUserCount]:
-    """Return counts of tickets awaiting user response (status == 4)."""
+    """Return counts of tickets awaiting user response (status == WAITING_ON_USER_STATUS_ID)."""
     logger.info("Calculating tickets waiting on user")
     result = await db.execute(
         select(
             Ticket.Ticket_Contact_Email,
             func.count(Ticket.Ticket_ID),
         )
-        .filter(Ticket.Ticket_Status_ID == 4)
+        .filter(Ticket.Ticket_Status_ID == WAITING_ON_USER_STATUS_ID)
         .group_by(Ticket.Ticket_Contact_Email)
     )
     return [
