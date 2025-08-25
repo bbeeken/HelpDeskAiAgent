@@ -390,13 +390,21 @@ python verify_tools.py http://localhost:8000
 
 ### Tool Reference
 
-The MCP server exposes several JSON-RPC tools. `get_tickets_by_user` returns
-expanded ticket records for a user. It accepts an `identifier`, optional
-`status` (one of `open`, `closed`, `resolved`, `in_progress`, `progress`, `waiting`, or `pending`) and arbitrary `filters`. Detailed descriptions for every tool are
-available in [docs/MCP_TOOLS_GUIDE.md](docs/MCP_TOOLS_GUIDE.md).
+
+The MCP server exposes several JSON-RPC tools. Use `GET /ticket/by_user` or the
+`search_tickets` tool with a `user` parameter to retrieve expanded ticket
+records for a user. The legacy `POST /get_tickets_by_user` route remains
+available for backward compatibility and should be considered deprecated.
+Detailed descriptions for every tool are available in
+[docs/MCP_TOOLS_GUIDE.md](docs/MCP_TOOLS_GUIDE.md).
+
 
 ```bash
-curl "http://localhost:8000/get_tickets_by_user?identifier=user@example.com&status=open"
+curl "http://localhost:8000/ticket/by_user?identifier=user@example.com&status=open"
+
+# or via the search_tickets tool
+curl -X POST http://localhost:8000/search_tickets \
+  -d '{"user": "user@example.com", "status": "open"}'
 ```
 
 Tool endpoints validate request bodies against each tool's `inputSchema` using
@@ -463,7 +471,7 @@ The server exposes ten core JSON-RPC tools. Each expects a JSON body matching it
 4. `update_ticket` – `{"ticket_id": 1, "updates": {}}` (semantic or raw fields)
 5. `add_ticket_message` – `{"ticket_id": 1, "message": "Checking", "sender_name": "Agent"}`
 6. `search_tickets` – `{"text": "printer", "status": 1, "days": 0}`
-7. `get_tickets_by_user` – `{"identifier": "user@example.com"}`
+7. `get_tickets_by_user` *(legacy – use `GET /ticket/by_user` or `search_tickets` with `user`)* – `{"identifier": "user@example.com"}`
 8. `get_open_tickets` – `{"days": 30}`
 9. `get_ticket_full_context` – `{"ticket_id": 123}` (no user history or nested related tickets)
 10. `get_system_snapshot` – `{}`
@@ -484,7 +492,7 @@ The server exposes the following JSON-RPC tools defined in `ENHANCED_TOOLS`. Eac
 - `advanced_search` – `{"text_search": "printer issue"}`
 - `search_tickets` – `{"text": "printer", "status": "open", "days": 0}`
 
-- `get_tickets_by_user` – `{"identifier": "user@example.com"}`
+- `get_tickets_by_user` *(legacy – use `GET /ticket/by_user` or `search_tickets` with `user`)* – `{"identifier": "user@example.com"}`
 - `get_ticket_full_context` – `{"ticket_id": 123}` (no user history or nested related tickets)
 - `get_system_snapshot` – `{}`
 - `get_ticket_stats` – `{}`

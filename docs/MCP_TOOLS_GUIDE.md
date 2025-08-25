@@ -104,7 +104,7 @@ curl -X POST http://localhost:8000/get_ticket_attachments \
 ```
 
 ## search_tickets
-Comprehensive ticket search with AI-optimized features and semantic filtering. Supports text queries, user filtering, date ranges, and intelligent result ranking.
+Comprehensive ticket search with AI-optimized features and semantic filtering. Supports text queries, user filtering, date ranges, and intelligent result ranking. This tool replaces the legacy `get_tickets_by_user` route; use the `user` parameter to retrieve tickets for a specific person.
 
 ### Parameters
 
@@ -215,20 +215,29 @@ Site Reference
 | 6       | Corporate       | 1000     |
 | 7       | Heinz Retail Estate | 2000 |
 
-## get_tickets_by_user
+## get_tickets_by_user *(Legacy)*
 Retrieve tickets associated with a user.
 
-Parameters:
+> **Deprecated:** This POST endpoint is kept for backward compatibility. Use
+> `GET /ticket/by_user` or the `search_tickets` tool with a `user` parameter
+> instead.
+
+Legacy parameters:
 - `identifier` – email or other user identifier.
 - `skip` – optional offset (default 0).
 - `limit` – optional maximum number (default 100).
  - `status` – optional status filter. Allowed values: `open`, `closed`, `resolved`, `in_progress`, `progress`, `waiting`, `pending`.
 - `filters` – optional additional filters.
 
-Example:
+Legacy example:
 ```bash
 curl -X POST http://localhost:8000/get_tickets_by_user \
   -d '{"identifier": "user@example.com", "status": "open"}'
+```
+
+Current replacement:
+```bash
+curl "http://localhost:8000/ticket/by_user?identifier=user@example.com&status=open"
 ```
 
 ## get_open_tickets
