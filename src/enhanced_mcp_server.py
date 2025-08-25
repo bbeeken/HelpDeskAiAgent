@@ -298,9 +298,7 @@ async def _list_tickets(
     """List tickets using semantic filters and return serialized results."""
     try:
         async with db.SessionLocal() as db_session:
-            # Apply semantic filtering
             applied_filters = apply_semantic_filters(filters or {})
-            
             tickets = await TicketManager().list_tickets(
                 db_session,
                 filters=applied_filters,
@@ -308,9 +306,7 @@ async def _list_tickets(
                 limit=limit,
                 sort=sort,
             )
-            
             data = [_format_ticket_by_level(t) for t in tickets]
-            
             return {
                 "status": "success", 
                 "data": data,
@@ -718,8 +714,8 @@ async def _add_ticket_message(
                 sender_code or sender_name,
                 sender_name=sender_name,
             )
-            await db.SessionLocal.commit  # no-op to preserve structure if changed later
-
+            # Commit the new message to persist it
+            await db_session.commit()
             return {
                 "status": "success",
                 "data": {
